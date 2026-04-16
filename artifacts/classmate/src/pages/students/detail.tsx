@@ -1,0 +1,303 @@
+import { useParams } from "wouter";
+import { Link } from "wouter";
+import { useGetStudent, getGetStudentQueryKey, useGetStudentProgress, getGetStudentProgressQueryKey, useListAssignments, useListAssessments } from "@workspace/api-client-react";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
+import { BrainCircuit, BookOpen, CheckSquare, Target, ChevronRight, ArrowLeft } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Badge } from "@/components/ui/badge";
+import { formatDate } from "@/lib/utils";
+
+export default function StudentDetail() {
+  const params = useParams();
+  const id = parseInt(params.id || "0", 10);
+
+  const { data: student, isLoading: isLoadingStudent } = useGetStudent(id, {
+    query: { enabled: !!id, queryKey: getGetStudentQueryKey(id) }
+  });
+
+  const { data: progress, isLoading: isLoadingProgress } = useGetStudentProgress(id, {
+    query: { enabled: !!id, queryKey: getGetStudentProgressQueryKey(id) }
+  });
+
+  const { data: assignments, isLoading: isLoadingAssignments } = useListAssignments({ studentId: id });
+  const { data: assessments, isLoading: isLoadingAssessments } = useListAssessments({ studentId: id });
+
+  if (isLoadingStudent) {
+    return (
+      <div className="space-y-6">
+        <Skeleton className="h-10 w-32" />
+        <Skeleton className="h-32 w-full" />
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <Skeleton className="h-64" />
+          <Skeleton className="h-64 md:col-span-2" />
+        </div>
+      </div>
+    );
+  }
+
+  if (!student) {
+    return <div>Student not found</div>;
+  }
+
+  return (
+    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+      <div className="flex items-center gap-4">
+        <Link href="/students">
+          <Button variant="outline" size="icon">
+            <ArrowLeft className="h-4 w-4" />
+          </Button>
+        </Link>
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">{student.name}</h1>
+          <p className="text-muted-foreground mt-1">{student.email} • Grade {student.grade}</p>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+        {/* Sidebar / Overview */}
+        <div className="space-y-6">
+          <Card>
+            <CardHeader className="pb-4">
+              <CardTitle>Overview</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-muted-foreground">Joined</span>
+                <span className="text-sm font-medium">{formatDate(student.createdAt)}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-muted-foreground">Enrolled Courses</span>
+                <span className="text-sm font-medium">{student.enrolledCourseIds.length}</span>
+              </div>
+              
+              {progress && (
+                <>
+                  <div className="pt-4 border-t border-border">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-sm text-muted-foreground">Average Score</span>
+                      <span className="font-bold text-lg text-primary">{progress.averageScore.toFixed(1)}%</span>
+                    </div>
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-sm text-muted-foreground">Completion Rate</span>
+                      <span className="font-bold text-lg">{progress.completionRate.toFixed(1)}%</span>
+                    </div>
+                  </div>
+                </>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card className="border-primary/20 bg-primary/5">
+            <CardHeader className="pb-4">
+              <div className="flex items-center gap-2">
+                <BrainCircuit className="h-5 w-5 text-primary" />
+                <CardTitle className="text-primary">AI Insights</CardTitle>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <p className="text-sm text-muted-foreground mb-4">
+                View personalized learning recommendations and focus areas based on recent performance.
+              </p>
+              <Link href={`/students/${student.id}/ai`}>
+                <Button className="w-full" variant="default">
+                  View Full Analysis
+                  <ChevronRight className="ml-2 h-4 w-4" />
+                </Button>
+              </Link>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Main Content */}
+        <div className="md:col-span-3 space-y-6">
+          <Tabs defaultValue="assignments" className="w-full">
+            <TabsList className="w-full justify-start border-b rounded-none h-auto p-0 bg-transparent">
+              <TabsTrigger 
+                value="assignments" 
+                className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-4 py-2"
+              >
+                <CheckSquare className="mr-2 h-4 w-4" />
+                Assignments
+              </TabsTrigger>
+              <TabsTrigger 
+                value="assessments" 
+                className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-4 py-2"
+              >
+                <Target className="mr-2 h-4 w-4" />
+                Assessments
+              </TabsTrigger>
+              <TabsTrigger 
+                value="progress" 
+                className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-4 py-2"
+              >
+                <BookOpen className="mr-2 h-4 w-4" />
+                Learning Progress
+              </TabsTrigger>
+            </TabsList>
+            
+            <TabsContent value="assignments" className="pt-6">
+              {isLoadingAssignments ? (
+                <div className="space-y-4">
+                  {[1, 2, 3].map(i => <Skeleton key={i} className="h-24 w-full" />)}
+                </div>
+              ) : assignments && assignments.length > 0 ? (
+                <div className="space-y-4">
+                  {assignments.map(assignment => (
+                    <Card key={assignment.id}>
+                      <CardContent className="p-4 sm:p-6">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                          <div className="space-y-1">
+                            <div className="flex items-center gap-2">
+                              <h3 className="font-semibold text-lg">{assignment.title}</h3>
+                              <Badge variant={
+                                assignment.status === "graded" ? "default" :
+                                assignment.status === "submitted" ? "secondary" :
+                                assignment.status === "late" ? "destructive" : "outline"
+                              }>
+                                {assignment.status}
+                              </Badge>
+                            </div>
+                            <div className="text-sm text-muted-foreground flex items-center gap-2">
+                              <span>{assignment.courseName}</span>
+                              <span>•</span>
+                              <span>Due {formatDate(assignment.dueDate)}</span>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-4">
+                            {assignment.score !== undefined && assignment.score !== null ? (
+                              <div className="text-right">
+                                <div className="font-bold text-2xl text-primary">
+                                  {assignment.score}/{assignment.maxScore}
+                                </div>
+                                <div className="text-xs text-muted-foreground font-medium uppercase tracking-wider">
+                                  Score
+                                </div>
+                              </div>
+                            ) : null}
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-12 text-muted-foreground border rounded-lg bg-card/50">
+                  <CheckSquare className="mx-auto h-8 w-8 mb-3 opacity-20" />
+                  <p>No assignments found</p>
+                </div>
+              )}
+            </TabsContent>
+            
+            <TabsContent value="assessments" className="pt-6">
+              {isLoadingAssessments ? (
+                <div className="space-y-4">
+                  {[1, 2].map(i => <Skeleton key={i} className="h-32 w-full" />)}
+                </div>
+              ) : assessments && assessments.length > 0 ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {assessments.map(assessment => (
+                    <Card key={assessment.id} className="flex flex-col">
+                      <CardHeader className="pb-2">
+                        <div className="flex items-start justify-between">
+                          <div>
+                            <CardTitle className="text-lg">{assessment.title}</CardTitle>
+                            <CardDescription>{assessment.courseName} • {formatDate(assessment.createdAt)}</CardDescription>
+                          </div>
+                          <Badge variant="secondary" className="text-base py-1 px-2">
+                            {assessment.percentage}%
+                          </Badge>
+                        </div>
+                      </CardHeader>
+                      <CardContent className="flex-1 mt-2">
+                        <div className="space-y-4">
+                          <div>
+                            <h4 className="text-xs uppercase tracking-wider font-semibold text-muted-foreground mb-2">Strengths</h4>
+                            <div className="flex flex-wrap gap-2">
+                              {assessment.strengths.slice(0, 3).map((strength, i) => (
+                                <Badge key={i} variant="outline" className="bg-green-500/10 text-green-700 dark:text-green-400 border-green-500/20">
+                                  {strength}
+                                </Badge>
+                              ))}
+                            </div>
+                          </div>
+                          <div>
+                            <h4 className="text-xs uppercase tracking-wider font-semibold text-muted-foreground mb-2">Areas for Improvement</h4>
+                            <div className="flex flex-wrap gap-2">
+                              {assessment.weaknesses.slice(0, 3).map((weakness, i) => (
+                                <Badge key={i} variant="outline" className="bg-orange-500/10 text-orange-700 dark:text-orange-400 border-orange-500/20">
+                                  {weakness}
+                                </Badge>
+                              ))}
+                            </div>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-12 text-muted-foreground border rounded-lg bg-card/50">
+                  <Target className="mx-auto h-8 w-8 mb-3 opacity-20" />
+                  <p>No assessments found</p>
+                </div>
+              )}
+            </TabsContent>
+            
+            <TabsContent value="progress" className="pt-6">
+              {isLoadingProgress ? (
+                <Skeleton className="h-64 w-full" />
+              ) : progress ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-base text-green-600 dark:text-green-400 flex items-center gap-2">
+                        <div className="w-2 h-2 rounded-full bg-green-500" />
+                        Mastered Topics
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <ul className="space-y-2">
+                        {progress.topicsMastered.length > 0 ? (
+                          progress.topicsMastered.map((topic, i) => (
+                            <li key={i} className="text-sm font-medium p-2 rounded-md bg-muted/50 border">
+                              {topic}
+                            </li>
+                          ))
+                        ) : (
+                          <li className="text-sm text-muted-foreground">No mastered topics yet.</li>
+                        )}
+                      </ul>
+                    </CardContent>
+                  </Card>
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-base text-orange-600 dark:text-orange-400 flex items-center gap-2">
+                        <div className="w-2 h-2 rounded-full bg-orange-500" />
+                        Needs Work
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <ul className="space-y-2">
+                        {progress.topicsNeedingWork.length > 0 ? (
+                          progress.topicsNeedingWork.map((topic, i) => (
+                            <li key={i} className="text-sm font-medium p-2 rounded-md bg-muted/50 border">
+                              {topic}
+                            </li>
+                          ))
+                        ) : (
+                          <li className="text-sm text-muted-foreground">No topics needing work.</li>
+                        )}
+                      </ul>
+                    </CardContent>
+                  </Card>
+                </div>
+              ) : null}
+            </TabsContent>
+          </Tabs>
+        </div>
+      </div>
+    </div>
+  );
+}

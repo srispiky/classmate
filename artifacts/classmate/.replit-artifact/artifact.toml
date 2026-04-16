@@ -1,0 +1,31 @@
+kind = "web"
+previewPath = "/"
+title = "Classmate"
+version = "1.0.0"
+id = "artifacts/classmate"
+router = "path"
+
+[[integratedSkills]]
+name = "react-vite"
+version = "1.0.0"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 22337
+
+[services.development]
+run = "pnpm --filter @workspace/classmate run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/classmate", "run", "build" ]
+publicDir = "artifacts/classmate/dist/public"
+serve = "static"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "22337"
+BASE_PATH = "/"

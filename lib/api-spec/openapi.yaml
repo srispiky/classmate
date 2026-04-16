@@ -3,20 +3,34 @@ info:
   # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: API specification
+  description: Classmate API specification
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
     description: Health operations
+  - name: students
+    description: Student operations
+  - name: teachers
+    description: Teacher operations
+  - name: courses
+    description: Course operations
+  - name: assignments
+    description: Assignment operations
+  - name: notes
+    description: Notes and lesson content
+  - name: assessments
+    description: Assessment and AI suggestions
+  - name: dashboard
+    description: Dashboard aggregations
+
 paths:
   /healthz:
     get:
       operationId: healthCheck
       tags: [health]
       summary: Health check
-      description: Returns server health status
       responses:
         "200":
           description: Healthy
@@ -24,6 +38,446 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+
+  # ---- STUDENTS ----
+  /students:
+    get:
+      operationId: listStudents
+      tags: [students]
+      summary: List all students
+      responses:
+        "200":
+          description: List of students
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Student"
+    post:
+      operationId: createStudent
+      tags: [students]
+      summary: Create a student
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateStudentBody"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Student"
+
+  /students/{id}:
+    get:
+      operationId: getStudent
+      tags: [students]
+      summary: Get a student
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Student
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Student"
+    patch:
+      operationId: updateStudent
+      tags: [students]
+      summary: Update a student
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateStudentBody"
+      responses:
+        "200":
+          description: Updated student
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Student"
+
+  /students/{id}/progress:
+    get:
+      operationId: getStudentProgress
+      tags: [students]
+      summary: Get student progress summary
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Student progress
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StudentProgress"
+
+  # ---- COURSES ----
+  /courses:
+    get:
+      operationId: listCourses
+      tags: [courses]
+      summary: List all courses
+      responses:
+        "200":
+          description: List of courses
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Course"
+    post:
+      operationId: createCourse
+      tags: [courses]
+      summary: Create a course
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateCourseBody"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Course"
+
+  /courses/{id}:
+    get:
+      operationId: getCourse
+      tags: [courses]
+      summary: Get a course
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Course
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Course"
+
+  # ---- ASSIGNMENTS ----
+  /assignments:
+    get:
+      operationId: listAssignments
+      tags: [assignments]
+      summary: List assignments
+      parameters:
+        - name: courseId
+          in: query
+          required: false
+          schema:
+            type: integer
+        - name: studentId
+          in: query
+          required: false
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: List of assignments
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Assignment"
+    post:
+      operationId: createAssignment
+      tags: [assignments]
+      summary: Create assignment
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateAssignmentBody"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Assignment"
+
+  /assignments/{id}:
+    get:
+      operationId: getAssignment
+      tags: [assignments]
+      summary: Get assignment
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Assignment
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Assignment"
+    patch:
+      operationId: updateAssignment
+      tags: [assignments]
+      summary: Update assignment (grade/status)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateAssignmentBody"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Assignment"
+
+  # ---- NOTES / LESSONS ----
+  /notes:
+    get:
+      operationId: listNotes
+      tags: [notes]
+      summary: List lesson notes/topics
+      parameters:
+        - name: courseId
+          in: query
+          required: false
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Notes list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Note"
+    post:
+      operationId: createNote
+      tags: [notes]
+      summary: Create a lesson note
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateNoteBody"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Note"
+
+  /notes/{id}:
+    get:
+      operationId: getNote
+      tags: [notes]
+      summary: Get a note/lesson
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Note
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Note"
+    patch:
+      operationId: updateNote
+      tags: [notes]
+      summary: Update a note
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateNoteBody"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Note"
+
+  # ---- ASSESSMENTS ----
+  /assessments:
+    get:
+      operationId: listAssessments
+      tags: [assessments]
+      summary: List assessments
+      parameters:
+        - name: studentId
+          in: query
+          required: false
+          schema:
+            type: integer
+        - name: courseId
+          in: query
+          required: false
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Assessments
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Assessment"
+    post:
+      operationId: createAssessment
+      tags: [assessments]
+      summary: Submit an assessment result
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateAssessmentBody"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Assessment"
+
+  /assessments/{id}/ai-suggestions:
+    get:
+      operationId: getAiSuggestions
+      tags: [assessments]
+      summary: Get AI-powered improvement suggestions for a student based on assessment
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: AI suggestions
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AiSuggestions"
+
+  /students/{id}/ai-suggestions:
+    get:
+      operationId: getStudentAiSuggestions
+      tags: [assessments]
+      summary: Get AI improvement suggestions for a student across all courses
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: AI suggestions
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AiSuggestions"
+
+  # ---- DASHBOARD ----
+  /dashboard/summary:
+    get:
+      operationId: getDashboardSummary
+      tags: [dashboard]
+      summary: Get overall classroom dashboard stats
+      responses:
+        "200":
+          description: Dashboard summary
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DashboardSummary"
+
+  /dashboard/recent-activity:
+    get:
+      operationId: getRecentActivity
+      tags: [dashboard]
+      summary: Get recent activity feed
+      responses:
+        "200":
+          description: Recent activity
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ActivityItem"
+
+  /dashboard/grade-breakdown:
+    get:
+      operationId: getGradeBreakdown
+      tags: [dashboard]
+      summary: Get grade distribution breakdown per course
+      responses:
+        "200":
+          description: Grade breakdown
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/GradeBreakdown"
+
 components:
   schemas:
     HealthStatus:
@@ -31,6 +485,388 @@ components:
       properties:
         status:
           type: string
-      required:
-        - status
+      required: [status]
 
+    Student:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        email:
+          type: string
+        grade:
+          type: string
+        avatarUrl:
+          type: string
+          nullable: true
+        enrolledCourseIds:
+          type: array
+          items:
+            type: integer
+        createdAt:
+          type: string
+      required: [id, name, email, grade, enrolledCourseIds, createdAt]
+
+    CreateStudentBody:
+      type: object
+      properties:
+        name:
+          type: string
+        email:
+          type: string
+        grade:
+          type: string
+        avatarUrl:
+          type: string
+          nullable: true
+      required: [name, email, grade]
+
+    UpdateStudentBody:
+      type: object
+      properties:
+        name:
+          type: string
+        email:
+          type: string
+        grade:
+          type: string
+        avatarUrl:
+          type: string
+
+    StudentProgress:
+      type: object
+      properties:
+        studentId:
+          type: integer
+        totalAssignments:
+          type: integer
+        completedAssignments:
+          type: integer
+        averageScore:
+          type: number
+        completionRate:
+          type: number
+        topicsMastered:
+          type: array
+          items:
+            type: string
+        topicsNeedingWork:
+          type: array
+          items:
+            type: string
+      required: [studentId, totalAssignments, completedAssignments, averageScore, completionRate, topicsMastered, topicsNeedingWork]
+
+    Course:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        description:
+          type: string
+        teacherName:
+          type: string
+        subject:
+          type: string
+        studentCount:
+          type: integer
+        createdAt:
+          type: string
+      required: [id, name, description, teacherName, subject, studentCount, createdAt]
+
+    CreateCourseBody:
+      type: object
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+        teacherName:
+          type: string
+        subject:
+          type: string
+      required: [name, description, teacherName, subject]
+
+    Assignment:
+      type: object
+      properties:
+        id:
+          type: integer
+        title:
+          type: string
+        description:
+          type: string
+        courseId:
+          type: integer
+        courseName:
+          type: string
+        studentId:
+          type: integer
+        studentName:
+          type: string
+        dueDate:
+          type: string
+        status:
+          type: string
+          enum: [pending, submitted, graded, late]
+        score:
+          type: number
+          nullable: true
+        maxScore:
+          type: number
+        feedback:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+      required: [id, title, description, courseId, courseName, studentId, studentName, dueDate, status, maxScore, createdAt]
+
+    CreateAssignmentBody:
+      type: object
+      properties:
+        title:
+          type: string
+        description:
+          type: string
+        courseId:
+          type: integer
+        studentId:
+          type: integer
+        dueDate:
+          type: string
+        maxScore:
+          type: number
+      required: [title, description, courseId, studentId, dueDate, maxScore]
+
+    UpdateAssignmentBody:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [pending, submitted, graded, late]
+        score:
+          type: number
+        feedback:
+          type: string
+
+    Note:
+      type: object
+      properties:
+        id:
+          type: integer
+        title:
+          type: string
+        content:
+          type: string
+        courseId:
+          type: integer
+        courseName:
+          type: string
+        topic:
+          type: string
+        videoUrl:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+      required: [id, title, content, courseId, courseName, topic, createdAt]
+
+    CreateNoteBody:
+      type: object
+      properties:
+        title:
+          type: string
+        content:
+          type: string
+        courseId:
+          type: integer
+        topic:
+          type: string
+        videoUrl:
+          type: string
+          nullable: true
+      required: [title, content, courseId, topic]
+
+    UpdateNoteBody:
+      type: object
+      properties:
+        title:
+          type: string
+        content:
+          type: string
+        topic:
+          type: string
+        videoUrl:
+          type: string
+
+    Assessment:
+      type: object
+      properties:
+        id:
+          type: integer
+        studentId:
+          type: integer
+        studentName:
+          type: string
+        courseId:
+          type: integer
+        courseName:
+          type: string
+        title:
+          type: string
+        score:
+          type: number
+        maxScore:
+          type: number
+        percentage:
+          type: number
+        strengths:
+          type: array
+          items:
+            type: string
+        weaknesses:
+          type: array
+          items:
+            type: string
+        createdAt:
+          type: string
+      required: [id, studentId, studentName, courseId, courseName, title, score, maxScore, percentage, strengths, weaknesses, createdAt]
+
+    CreateAssessmentBody:
+      type: object
+      properties:
+        studentId:
+          type: integer
+        courseId:
+          type: integer
+        title:
+          type: string
+        score:
+          type: number
+        maxScore:
+          type: number
+        strengths:
+          type: array
+          items:
+            type: string
+        weaknesses:
+          type: array
+          items:
+            type: string
+      required: [studentId, courseId, title, score, maxScore, strengths, weaknesses]
+
+    AiSuggestions:
+      type: object
+      properties:
+        studentId:
+          type: integer
+        studentName:
+          type: string
+        overallScore:
+          type: number
+        suggestions:
+          type: array
+          items:
+            $ref: "#/components/schemas/Suggestion"
+        recommendedTopics:
+          type: array
+          items:
+            type: string
+        strengths:
+          type: array
+          items:
+            type: string
+        generatedAt:
+          type: string
+      required: [studentId, studentName, overallScore, suggestions, recommendedTopics, strengths, generatedAt]
+
+    Suggestion:
+      type: object
+      properties:
+        area:
+          type: string
+        priority:
+          type: string
+          enum: [high, medium, low]
+        suggestion:
+          type: string
+        relatedTopic:
+          type: string
+          nullable: true
+      required: [area, priority, suggestion]
+
+    DashboardSummary:
+      type: object
+      properties:
+        totalStudents:
+          type: integer
+        totalCourses:
+          type: integer
+        totalAssignments:
+          type: integer
+        pendingAssignments:
+          type: integer
+        averageClassScore:
+          type: number
+        completionRate:
+          type: number
+        atRiskStudents:
+          type: integer
+        topPerformers:
+          type: array
+          items:
+            $ref: "#/components/schemas/StudentSummary"
+      required: [totalStudents, totalCourses, totalAssignments, pendingAssignments, averageClassScore, completionRate, atRiskStudents, topPerformers]
+
+    StudentSummary:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        averageScore:
+          type: number
+      required: [id, name, averageScore]
+
+    ActivityItem:
+      type: object
+      properties:
+        id:
+          type: integer
+        type:
+          type: string
+          enum: [assignment_submitted, assignment_graded, note_created, assessment_completed]
+        description:
+          type: string
+        studentName:
+          type: string
+        courseName:
+          type: string
+        timestamp:
+          type: string
+      required: [id, type, description, studentName, courseName, timestamp]
+
+    GradeBreakdown:
+      type: object
+      properties:
+        courseName:
+          type: string
+        courseId:
+          type: integer
+        averageScore:
+          type: number
+        aCount:
+          type: integer
+        bCount:
+          type: integer
+        cCount:
+          type: integer
+        dCount:
+          type: integer
+        fCount:
+          type: integer
+      required: [courseName, courseId, averageScore, aCount, bCount, cCount, dCount, fCount]
