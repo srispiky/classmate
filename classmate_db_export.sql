@@ -2,7 +2,6 @@
 -- PostgreSQL database dump
 --
 
-\restrict 5IxihudhBHtdsZMky7IAbvpzcd7AmcPEb4vJ5ThJtfsYfrrtiVcHXcAhBvufGQv
 
 -- Dumped from database version 16.10
 -- Dumped by pg_dump version 16.10
@@ -465,5 +464,5 @@ ALTER TABLE ONLY public.students
 -- PostgreSQL database dump complete
 --
 
-\unrestrict 5IxihudhBHtdsZMky7IAbvpzcd7AmcPEb4vJ5ThJtfsYfrrtiVcHXcAhBvufGQv
+\unrestrict d8B4wKeUqbm5UPqRzHK94FOec9vpXEQdXfdJhQFCRUq3BOwjnqjplDYhVRef2uO
 
