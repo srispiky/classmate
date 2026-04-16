@@ -6,6 +6,7 @@ import assignmentsRouter from "./assignments";
 import notesRouter from "./notes";
 import assessmentsRouter from "./assessments";
 import dashboardRouter from "./dashboard";
+import downloadsRouter from "./downloads";
 
 const router: IRouter = Router();
 
@@ -16,5 +17,6 @@ router.use(assignmentsRouter);
 router.use(notesRouter);
 router.use(assessmentsRouter);
 router.use(dashboardRouter);
+router.use(downloadsRouter);
 
 export default router;
