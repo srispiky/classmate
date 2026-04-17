@@ -20,6 +20,11 @@ const FILES: Record<string, { file: string; name: string; mime: string }> = {
     name: "LOCAL_SETUP.md",
     mime: "text/markdown",
   },
+  "bundle": {
+    file: path.resolve(process.cwd(), "../../classmate-deploy.tar.gz"),
+    name: "classmate-deploy.tar.gz",
+    mime: "application/gzip",
+  },
 };
 
 router.get("/downloads", async (_req, res): Promise<void> => {
