@@ -25,7 +25,7 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
 # ==============================================================================
-# CONFIGURATION  — Adjust these values before running
+# CONFIGURATION - Adjust these values before running
 # ==============================================================================
 
 $Config = @{
@@ -90,7 +90,7 @@ function Wait-ForPort {
 }
 
 # ==============================================================================
-# STEP 0 — Validate working directory
+# STEP 0 - Validate working directory
 # ==============================================================================
 
 Write-Step "Validating project directory"
@@ -107,7 +107,7 @@ Write-Ok "Project directory looks good: $($Config.AppRoot)"
 Set-Location $Config.AppRoot
 
 # ==============================================================================
-# STEP 1 — Chocolatey
+# STEP 1 - Chocolatey
 # ==============================================================================
 
 Write-Step "Checking Chocolatey package manager"
@@ -122,7 +122,7 @@ if (-not (Get-Command choco -ErrorAction SilentlyContinue)) {
 }
 
 # ==============================================================================
-# STEP 2 — Node.js
+# STEP 2 - Node.js
 # ==============================================================================
 
 Write-Step "Installing Node.js LTS"
@@ -136,7 +136,7 @@ $nodeVersion = node --version 2>&1
 Write-Ok "Node.js version: $nodeVersion"
 
 # ==============================================================================
-# STEP 3 — pnpm
+# STEP 3 - pnpm
 # ==============================================================================
 
 Write-Step "Installing pnpm"
@@ -149,7 +149,7 @@ if (-not (Get-Command pnpm -ErrorAction SilentlyContinue)) {
 }
 
 # ==============================================================================
-# STEP 4 — PostgreSQL
+# STEP 4 - PostgreSQL
 # ==============================================================================
 
 Write-Step "Installing PostgreSQL"
@@ -178,7 +178,7 @@ if (-not $pgStarted) {
 Write-Ok "PostgreSQL is running on port $($Config.DbPort)"
 
 # ==============================================================================
-# STEP 5 — Create database and user
+# STEP 5 - Create database and user
 # ==============================================================================
 
 Write-Step "Setting up PostgreSQL database"
@@ -220,13 +220,13 @@ if (Test-Path $sqlDump) {
         Write-Warn "Import completed with warnings (this may be normal for duplicate data)"
     }
 } else {
-    Write-Warn "classmate_db_export.sql not found — skipping data import (schema will be empty)"
+    Write-Warn "classmate_db_export.sql not found - skipping data import (schema will be empty)"
 }
 
 $Config.DatabaseUrl = "postgresql://$($Config.DbUser):$($Config.DbPassword)@localhost:$($Config.DbPort)/$($Config.DbName)"
 
 # ==============================================================================
-# STEP 6 — Install Node dependencies & Build
+# STEP 6 - Install Node dependencies and Build
 # ==============================================================================
 
 Write-Step "Installing Node.js dependencies (this may take a few minutes)"
@@ -253,7 +253,7 @@ if ($LASTEXITCODE -ne 0) { throw "Frontend build failed" }
 Write-Ok "Frontend built"
 
 # ==============================================================================
-# STEP 7 — Write .env files
+# STEP 7 - Write .env files
 # ==============================================================================
 
 Write-Step "Writing environment configuration"
@@ -268,7 +268,7 @@ Set-Content -Path (Join-Path $Config.AppRoot "artifacts\api-server\.env") -Value
 Write-Ok "API .env written"
 
 # ==============================================================================
-# STEP 8 — Enable IIS
+# STEP 8 - Enable IIS
 # ==============================================================================
 
 Write-Step "Enabling IIS and required Windows features"
@@ -304,7 +304,7 @@ foreach ($feature in $iisFeatures) {
 Write-Ok "IIS features enabled"
 
 # ==============================================================================
-# STEP 9 — Install IIS URL Rewrite & ARR modules
+# STEP 9 - Install IIS URL Rewrite and ARR modules
 # ==============================================================================
 
 Write-Step "Installing IIS URL Rewrite and Application Request Routing"
@@ -346,7 +346,7 @@ if ($arrProxy.Value -ne $true) {
 Write-Ok "ARR reverse proxy enabled"
 
 # ==============================================================================
-# STEP 10 — Copy frontend static files to IIS
+# STEP 10 - Copy frontend static files to IIS
 # ==============================================================================
 
 Write-Step "Deploying frontend static files to IIS"
@@ -370,12 +370,10 @@ $webConfig = @"
   <system.webServer>
     <rewrite>
       <rules>
-        <!-- Reverse proxy: forward /api/* to the Node.js API server -->
         <rule name="API Proxy" stopProcessing="true">
           <match url="^api/(.*)" />
           <action type="Rewrite" url="http://localhost:$($Config.ApiPort)/api/{R:1}" />
         </rule>
-        <!-- SPA fallback: serve index.html for all non-file routes -->
         <rule name="SPA Fallback" stopProcessing="true">
           <match url=".*" />
           <conditions logicalGrouping="MatchAll">
@@ -387,7 +385,7 @@ $webConfig = @"
       </rules>
     </rewrite>
     <staticContent>
-      <mimeMap fileExtension=".json"    mimeType="application/json" />
+      <mimeMap fileExtension=".json"   mimeType="application/json" />
       <mimeMap fileExtension=".webp"   mimeType="image/webp" />
       <mimeMap fileExtension=".woff"   mimeType="font/woff" />
       <mimeMap fileExtension=".woff2"  mimeType="font/woff2" />
@@ -405,7 +403,7 @@ Set-Content -Path (Join-Path $Config.IisSitePath "web.config") -Value $webConfig
 Write-Ok "web.config written"
 
 # ==============================================================================
-# STEP 11 — Create IIS Site
+# STEP 11 - Create IIS Site
 # ==============================================================================
 
 Write-Step "Configuring IIS website"
@@ -414,11 +412,11 @@ Import-Module WebAdministration
 
 # Remove existing site with the same name (clean reinstall)
 if (Get-WebSite -Name $Config.SiteName -ErrorAction SilentlyContinue) {
-    Write-Warn "IIS site '$($Config.SiteName)' already exists — removing and recreating"
+    Write-Warn "IIS site '$($Config.SiteName)' already exists - removing and recreating"
     Remove-WebSite -Name $Config.SiteName
 }
 
-# Stop Default Web Site if it's on port 80
+# Stop Default Web Site if it is on port 80
 $defaultSite = Get-WebSite -Name "Default Web Site" -ErrorAction SilentlyContinue
 if ($defaultSite -and $defaultSite.State -eq "Started" -and $Config.SitePort -eq 80) {
     Write-Warn "Stopping Default Web Site (conflicts on port 80)"
@@ -434,7 +432,7 @@ Start-WebSite -Name $Config.SiteName
 Write-Ok "IIS site '$($Config.SiteName)' created on port $($Config.SitePort)"
 
 # ==============================================================================
-# STEP 12 — Windows Service for API (NSSM)
+# STEP 12 - Windows Service for API (NSSM)
 # ==============================================================================
 
 Write-Step "Installing NSSM (service manager)"
@@ -452,7 +450,7 @@ if (-not (Test-Path $apiIndex)) {
 # Remove existing service if present
 $existingSvc = Get-Service -Name $Config.ServiceName -ErrorAction SilentlyContinue
 if ($existingSvc) {
-    Write-Warn "Service '$($Config.ServiceName)' exists — stopping and removing"
+    Write-Warn "Service '$($Config.ServiceName)' exists - stopping and removing"
     if ($existingSvc.Status -eq "Running") { nssm stop $Config.ServiceName confirm }
     nssm remove $Config.ServiceName confirm
     Start-Sleep 2
@@ -494,7 +492,7 @@ if ($apiReady) {
 }
 
 # ==============================================================================
-# STEP 13 — Firewall rule for IIS site
+# STEP 13 - Firewall rule for IIS site
 # ==============================================================================
 
 Write-Step "Adding Windows Firewall rule"
@@ -530,7 +528,7 @@ Write-Host "================================================================" -F
 Write-Host ""
 Write-Host "  App URL    : http://localhost:$($Config.SitePort)" -ForegroundColor White
 if ($ip) {
-Write-Host "  Network URL: http://${ip}:$($Config.SitePort)" -ForegroundColor White
+    Write-Host "  Network URL: http://${ip}:$($Config.SitePort)" -ForegroundColor White
 }
 Write-Host ""
 Write-Host "  Database   : $($Config.DbName) @ localhost:$($Config.DbPort)" -ForegroundColor White
@@ -538,8 +536,8 @@ Write-Host "  API Service: $($Config.ServiceName)  (port $($Config.ApiPort), int
 Write-Host "  Logs       : C:\Logs\classmate-api.log" -ForegroundColor White
 Write-Host ""
 Write-Host "  Useful commands:" -ForegroundColor Yellow
-Write-Host "    nssm restart $($Config.ServiceName)    — restart the API" -ForegroundColor Gray
-Write-Host "    nssm status  $($Config.ServiceName)    — check API status" -ForegroundColor Gray
-Write-Host "    iisreset                       — restart IIS" -ForegroundColor Gray
+Write-Host "    nssm restart $($Config.ServiceName)   - restart the API" -ForegroundColor Gray
+Write-Host "    nssm status  $($Config.ServiceName)   - check API status" -ForegroundColor Gray
+Write-Host "    iisreset                      - restart IIS" -ForegroundColor Gray
 Write-Host ""
 Write-Host "================================================================" -ForegroundColor Green
