@@ -7,6 +7,7 @@ import notesRouter from "./notes";
 import assessmentsRouter from "./assessments";
 import dashboardRouter from "./dashboard";
 import downloadsRouter from "./downloads";
+import adminRouter from "./admin";
 
 const router: IRouter = Router();
 
@@ -18,5 +19,6 @@ router.use(notesRouter);
 router.use(assessmentsRouter);
 router.use(dashboardRouter);
 router.use(downloadsRouter);
+router.use(adminRouter);
 
 export default router;

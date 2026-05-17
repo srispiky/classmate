@@ -13,6 +13,7 @@ import Notes from "@/pages/notes";
 import NoteDetail from "@/pages/notes/detail";
 import Assessments from "@/pages/assessments";
 import StudentAi from "@/pages/students/ai";
+import Settings from "@/pages/settings";
 import NotFound from "@/pages/not-found";
 
 const queryClient = new QueryClient({
@@ -38,6 +39,7 @@ function Router() {
         <Route path="/notes" component={Notes} />
         <Route path="/notes/:id" component={NoteDetail} />
         <Route path="/assessments" component={Assessments} />
+        <Route path="/settings" component={Settings} />
         <Route component={NotFound} />
       </Switch>
     </Layout>
