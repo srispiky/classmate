@@ -1,0 +1,51 @@
+PS D:\ClassMate\Latest\classmate-deploy> D:\ClassMate\Latest\classmate-deploy\classmate-deploy\Deploy-Classmate.ps1
+At D:\ClassMate\Latest\classmate-deploy\classmate-deploy\Deploy-Classmate.ps1:159 char:69
++ ...   if ($env:PATH -notlike "*$pgBinDir*") { $env:PATH += ";$pgBinDir" }
++                                                                       ~~~
+Unexpected token '" }
+    # Ask for the existing postgres superuser password
+    Write-Host ""
+    Write-Host "' in expression or statement.
+At D:\ClassMate\Latest\classmate-deploy\classmate-deploy\Deploy-Classmate.ps1:163 char:21
++     Write-Host "    PostgreSQL is already installed on this machine." ...
++                     ~~~~~~~~~~
+Unexpected token 'PostgreSQL' in expression or statement.
+At D:\ClassMate\Latest\classmate-deploy\classmate-deploy\Deploy-Classmate.ps1:223 char:15
++     Write-Ok "DB user '$($Config.DbUser)' created"
++               ~~
+Unexpected token 'DB' in expression or statement.
+At D:\ClassMate\Latest\classmate-deploy\classmate-deploy\Deploy-Classmate.ps1:226 char:15
++     Write-Ok "DB user '$($Config.DbUser)' already exists (password up ...
++               ~~
+Unexpected token 'DB' in expression or statement.
+At D:\ClassMate\Latest\classmate-deploy\classmate-deploy\Deploy-Classmate.ps1:232 char:15
++     Write-Ok "Database '$($Config.DbName)' created"
++               ~~~~~~~~
+Unexpected token 'Database' in expression or statement.
+At D:\ClassMate\Latest\classmate-deploy\classmate-deploy\Deploy-Classmate.ps1:241 char:17
++ Write-Host "    Importing sample data..."
++                 ~~~~~~~~~
+Unexpected token 'Importing' in expression or statement.
+At D:\ClassMate\Latest\classmate-deploy\classmate-deploy\Deploy-Classmate.ps1:345 char:51
++ ... th $Config.IisSitePath "web.config") -Value $webConfig -Encoding UTF8
++                             ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Unexpected token 'web.config") -Value $webConfig -Encoding UTF8
+Write-Ok "IIS' in expression or statement.
+At D:\ClassMate\Latest\classmate-deploy\classmate-deploy\Deploy-Classmate.ps1:443 char:46
++ Write-Host "  Database   : $($Config.DbName) @ localhost:$($Config.Db ...
++                                              ~
+Unrecognized token in source text.
+At D:\ClassMate\Latest\classmate-deploy\classmate-deploy\Deploy-Classmate.ps1:452 char:77
++ ... =============================================" -ForegroundColor Green
++                                                  ~~~~~~~~~~~~~~~~~~~~~~~~
+The string is missing the terminator: ".
+At D:\ClassMate\Latest\classmate-deploy\classmate-deploy\Deploy-Classmate.ps1:187 char:24
++     if (-not $pgReady) {
++                        ~
+Missing closing '}' in statement block or type definition.
+Not all parse errors were reported.  Correct the reported errors and try again.
+    + CategoryInfo          : ParserError: (:) [], ParentContainsErrorRecordException
+    + FullyQualifiedErrorId : UnexpectedToken
+ 
+
+PS D:\ClassMate\Latest\classmate-deploy> 
