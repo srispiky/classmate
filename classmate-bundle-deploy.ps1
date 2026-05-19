@@ -157,21 +157,25 @@ else {
 }
 
 $dbExists = psql -U postgres -tAc "SELECT 1 FROM pg_database WHERE datname='$($Config.DbName)'" 2>&1
-if ($dbExists -notlike "*1*") {
-    psql -U postgres -c "CREATE DATABASE $($Config.DbName) OWNER $($Config.DbUser);" | Out-Null
-    Write-Ok "Database '$($Config.DbName)' created"
+if ($dbExists -like "*1*") {
+    Write-Warn "Database '$($Config.DbName)' exists - dropping for a clean import"
+    psql -U postgres -c "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname='$($Config.DbName)';" | Out-Null
+    psql -U postgres -c "DROP DATABASE $($Config.DbName);" | Out-Null
 }
-else {
-    Write-Ok "Database '$($Config.DbName)' already exists"
-}
-
+psql -U postgres -c "CREATE DATABASE $($Config.DbName) OWNER $($Config.DbUser);" | Out-Null
 psql -U postgres -c "GRANT ALL PRIVILEGES ON DATABASE $($Config.DbName) TO $($Config.DbUser);" | Out-Null
+Write-Ok "Database '$($Config.DbName)' ready"
 
 $env:PGPASSWORD = $Config.DbPassword
 $sqlFile = Join-Path $Config.BundleRoot "classmate_db_export.sql"
 Write-Host "    Importing data..."
-psql -U $Config.DbUser -d $Config.DbName -f $sqlFile 2>&1 | Out-Null
-Write-Ok "Database imported"
+psql -U $Config.DbUser -d $Config.DbName -f $sqlFile
+if ($LASTEXITCODE -eq 0) {
+    Write-Ok "Database imported successfully"
+}
+else {
+    Write-Warn "Import finished with warnings (usually safe to continue)"
+}
 
 $Config.DatabaseUrl = "postgresql://" + $Config.DbUser + ":" + $Config.DbPassword + "@localhost:" + $Config.DbPort + "/" + $Config.DbName
 
