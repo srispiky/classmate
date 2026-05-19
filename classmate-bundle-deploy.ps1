@@ -7,8 +7,7 @@ $Config = @{
     DbUser          = "classmate_user"
     DbPassword      = "ClassmateDb@2024!"
     DbPort          = 5432
-    SiteName        = "Classmate"
-    SitePort        = 80
+    AppAlias        = "classmate"
     IisSitePath     = "C:\inetpub\classmate"
     ApiPort         = 8080
     ServiceName     = "ClassmateAPI"
@@ -242,17 +241,17 @@ $xmlLines = @(
     '  <system.webServer>',
     '    <rewrite>',
     '      <rules>',
-    '        <rule name="API Proxy" stopProcessing="true">',
+    '        <rule name="Classmate API Proxy" stopProcessing="true">',
     "          <match url=""^api/(.*)"" />",
     "          <action type=""Rewrite"" url=""http://localhost:$proxyPort/api/{R:1}"" />",
     '        </rule>',
-    '        <rule name="SPA Fallback" stopProcessing="true">',
+    '        <rule name="Classmate SPA Fallback" stopProcessing="true">',
     '          <match url=".*" />',
     '          <conditions logicalGrouping="MatchAll">',
     '            <add input="{REQUEST_FILENAME}" matchType="IsFile"      negate="true" />',
     '            <add input="{REQUEST_FILENAME}" matchType="IsDirectory" negate="true" />',
     '          </conditions>',
-    '          <action type="Rewrite" url="/index.html" />',
+    '          <action type="Rewrite" url="/classmate/index.html" />',
     '        </rule>',
     '      </rules>',
     '    </rewrite>',
@@ -272,20 +271,21 @@ $xmlLines = @(
 $xmlLines | Set-Content -Path $webConfigPath -Encoding UTF8
 Write-Ok "web.config written"
 
-Write-Step "Configuring IIS website"
+Write-Step "Configuring IIS virtual application"
 Import-Module WebAdministration
-if (Get-WebSite -Name $Config.SiteName -ErrorAction SilentlyContinue) {
-    Write-Warn "Site already exists - recreating"
-    Remove-WebSite -Name $Config.SiteName
+if (Get-WebApplication -Site "Default Web Site" -Name $Config.AppAlias -ErrorAction SilentlyContinue) {
+    Write-Warn "Virtual app '$($Config.AppAlias)' exists - removing"
+    Remove-WebApplication -Site "Default Web Site" -Name $Config.AppAlias
 }
 $defaultSite = Get-WebSite -Name "Default Web Site" -ErrorAction SilentlyContinue
-if ($defaultSite -and ($defaultSite.State -eq "Started") -and ($Config.SitePort -eq 80)) {
-    Write-Warn "Stopping Default Web Site (port conflict)"
-    Stop-WebSite -Name "Default Web Site"
+if (-not $defaultSite) {
+    New-WebSite -Name "Default Web Site" -Port 80 -PhysicalPath "C:\inetpub\wwwroot" -Force | Out-Null
 }
-New-WebSite -Name $Config.SiteName -Port $Config.SitePort -PhysicalPath $Config.IisSitePath -Force | Out-Null
-Start-WebSite -Name $Config.SiteName
-Write-Ok "IIS site running on port $($Config.SitePort)"
+if ((Get-WebSite -Name "Default Web Site").State -ne "Started") {
+    Start-WebSite -Name "Default Web Site"
+}
+New-WebApplication -Site "Default Web Site" -Name $Config.AppAlias -PhysicalPath $Config.IisSitePath -Force | Out-Null
+Write-Ok "Virtual app '/classmate' created under Default Web Site"
 
 Write-Step "Installing NSSM"
 Invoke-Choco "nssm"
@@ -344,9 +344,9 @@ Write-Host ""
 Write-Host "================================================================" -ForegroundColor Green
 Write-Host "  CLASSMATE DEPLOYED SUCCESSFULLY" -ForegroundColor Green
 Write-Host "================================================================" -ForegroundColor Green
-Write-Host "  App URL    : http://localhost:$($Config.SitePort)" -ForegroundColor White
+Write-Host "  App URL    : http://localhost/$($Config.AppAlias)" -ForegroundColor White
 if ($ip) {
-    Write-Host "  Network URL: http://${ip}:$($Config.SitePort)" -ForegroundColor White
+    Write-Host "  Network URL: http://${ip}/$($Config.AppAlias)" -ForegroundColor White
 }
 Write-Host "  Logs       : C:\Logs\classmate-api.log" -ForegroundColor White
 Write-Host "  Restart API: nssm restart $($Config.ServiceName)" -ForegroundColor Gray
