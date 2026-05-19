@@ -25,6 +25,11 @@ const FILES: Record<string, { file: string; name: string; mime: string }> = {
     name: "classmate-deploy.tar.gz",
     mime: "application/gzip",
   },
+  "source": {
+    file: path.resolve(process.cwd(), "../../classmate-source.tar.gz"),
+    name: "classmate-source.tar.gz",
+    mime: "application/gzip",
+  },
 };
 
 router.get("/downloads", async (_req, res): Promise<void> => {
