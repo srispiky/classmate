@@ -1,0 +1,55 @@
+
+# ==============================================================================
+# STEP 3 - PostgreSQL
+# ==============================================================================
+
+Write-Step "Installing PostgreSQL"
+Invoke-Choco "postgresql16" "--params" "/Password:$($Config.DbPassword)"
+
+$pgBin = "C:\Program Files\PostgreSQL\16\bin"
+if (Test-Path $pgBin) {
+    $env:PATH += ";$pgBin"
+} else {
+    $pg = Get-ChildItem "C:\Program Files\PostgreSQL" -Directory -ErrorAction SilentlyContinue |
+          Sort-Object Name -Descending | Select-Object -First 1
+    if ($pg) { $env:PATH += ";$($pg.FullName)\bin" }
+}
+
+$pgReady = Wait-ForPort -Port $Config.DbPort -TimeoutSec 60
+if (-not $pgReady) {
+    Write-Warn "PostgreSQL not responding - trying to start service..."
+    Get-Service | Where-Object { $_.Name -like "postgresql*" } | Start-Service
+    if (-not (Wait-ForPort -Port $Config.DbPort -TimeoutSec 30)) {
+        throw "PostgreSQL failed to start on port $($Config.DbPort)"
+    }
+}
+Write-Ok "PostgreSQL running on port $($Config.DbPort)"
+
+# ==============================================================================
+# STEP 4 - Create database and import data
+# ==============================================================================
+
+Write-Step "Setting up database"
+$env:PGPASSWORD = $Config.DbPassword
+
+if ((psql -U postgres -tAc "SELECT 1 FROM pg_roles WHERE rolname='$($Config.DbUser)'" 2>&1) -ne "1") {
+    psql -U postgres -c "CREATE USER $($Config.DbUser) WITH PASSWORD '$($Config.DbPassword)';" | Out-Null
+    Write-Ok "DB user '$($Config.DbUser)' created"
+} else {
+    Write-Ok "DB user '$($Config.DbUser)' already exists"
+}
+
+if ((psql -U postgres -tAc "SELECT 1 FROM pg_database WHERE datname='$($Config.DbName)'" 2>&1) -ne "1") {
+    psql -U postgres -c "CREATE DATABASE $($Config.DbName) OWNER $($Config.DbUser);" | Out-Null
+    Write-Ok "Database '$($Config.DbName)' created"
+} else {
+    Write-Ok "Database '$($Config.DbName)' already exists"
+}
+
+psql -U postgres -c "GRANT ALL PRIVILEGES ON DATABASE $($Config.DbName) TO $($Config.DbUser);" | Out-Null
+
+Write-Host "    Importing data from classmate_db_export.sql..."
+psql -U $Config.DbUser -d $Config.DbName -f (Join-Path $Config.BundleRoot "classmate_db_export.sql") 2>&1 | Out-Null
+Write-Ok "Database imported"
+
+$Config.DatabaseUrl = "postgresql://$($Config.DbUser):$($Config.DbPassword)@localhost:$($Config.DbPort)/$($Config.DbName)"
