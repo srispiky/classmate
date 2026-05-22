@@ -1,7 +1,7 @@
 import { Router, type IRouter } from "express";
-import bcrypt from "bcryptjs";
 import { db, users } from "@workspace/db";
 import { eq } from "drizzle-orm";
+import { hashPassword, verifyPassword } from "../lib/password";
 
 const router: IRouter = Router();
 
@@ -20,7 +20,7 @@ router.post("/auth/login", async (req, res): Promise<void> => {
     return;
   }
 
-  const valid = await bcrypt.compare(password, user.passwordHash);
+  const valid = await verifyPassword(password, user.passwordHash);
   if (!valid) {
     res.status(401).json({ error: "Invalid username or password" });
     return;
@@ -59,4 +59,5 @@ router.get("/auth/me", (req, res): void => {
   });
 });
 
+export { hashPassword };
 export default router;

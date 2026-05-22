@@ -33,3 +33,8 @@ externalPort = 3000
 
 [nix]
 channel = "stable-25_05"
+
+[userenv]
+
+[userenv.shared]
+PASSWORD_ENCRYPTION_KEY = "a020dcdcbaf23bef23af68dcec10c297163de3ecdcb2af1e7442b57bcd843661"
