@@ -15,6 +15,7 @@ const router: IRouter = Router();
 
 router.use(healthRouter);
 router.use(authRouter);
+router.use(downloadsRouter);
 
 router.use(requireAuth);
 
@@ -24,7 +25,6 @@ router.use(assignmentsRouter);
 router.use(notesRouter);
 router.use(assessmentsRouter);
 router.use(dashboardRouter);
-router.use(downloadsRouter);
 router.use(adminRouter);
 
 export default router;
