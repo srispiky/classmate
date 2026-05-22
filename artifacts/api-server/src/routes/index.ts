@@ -1,5 +1,6 @@
 import { Router, type IRouter } from "express";
 import healthRouter from "./health";
+import authRouter from "./auth";
 import studentsRouter from "./students";
 import coursesRouter from "./courses";
 import assignmentsRouter from "./assignments";
@@ -8,10 +9,15 @@ import assessmentsRouter from "./assessments";
 import dashboardRouter from "./dashboard";
 import downloadsRouter from "./downloads";
 import adminRouter from "./admin";
+import { requireAuth } from "../middleware/auth";
 
 const router: IRouter = Router();
 
 router.use(healthRouter);
+router.use(authRouter);
+
+router.use(requireAuth);
+
 router.use(studentsRouter);
 router.use(coursesRouter);
 router.use(assignmentsRouter);
