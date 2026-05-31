@@ -45,7 +45,6 @@ app.use(
     store: new PgSession({
       pool,
       tableName: "session",
-      createTableIfMissing: true,
     }),
     secret: sessionSecret,
     resave: false,
