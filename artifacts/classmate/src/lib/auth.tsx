@@ -38,8 +38,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       body: JSON.stringify({ username, password }),
     });
     if (!res.ok) {
-      const body = (await res.json()) as { error?: string };
-      throw new Error(body.error ?? "Login failed");
+      const text = await res.text();
+      let message = "Login failed";
+      try {
+        const body = JSON.parse(text) as { error?: string };
+        message = body.error ?? message;
+      } catch {
+        if (res.status === 404) message = "Login service not available — server may need to be updated";
+        else if (res.status === 500) message = "Server error — check server logs";
+        else message = `Login failed (HTTP ${res.status})`;
+      }
+      throw new Error(message);
     }
     const data = (await res.json()) as AuthUser;
     setUser(data);
