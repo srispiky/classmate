@@ -1,0 +1,36 @@
+PS C:\Windows\system32> # Run Node.js directly — error will print right in the window
+$env:PORT="3001"
+$env:DATABASE_URL="postgresql://classmate_user:Welcome%40)26@localhost:5432/classmate_db"
+$env:PASSWORD_ENCRYPTION_KEY="a020dcdcbaf23bef23af68dcec10c297163de3ecdcb2af1e7442b57bcd843661"
+$env:SESSION_SECRET="5824f79ba6ed4fdeb1dd23a4103f867590df1e9cd380436e8efd521787d3bb0c"
+
+& "C:\Program Files\nodejs\node.exe" "D:\ClassMate\Latest\classmate-deploy\classmate-deploy\api-dist\index.mjs"
+node.exe : file:///D:/ClassMate/Latest/classmate-deploy/classmate-deploy/api-dist/index.mjs:33065
+At line:7 char:1
++ & "C:\Program Files\nodejs\node.exe" "D:\ClassMate\Latest\classmate-d ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (file:///D:/Clas...index.mjs:33065:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+          throw new Error("_flushSync took too long (10s)");
+          ^
+Error: _flushSync took too long (10s)
+    at flushSync (file:///D:/ClassMate/Latest/classmate-deploy/classmate-deploy/api-dist/index.mjs:33065:17)
+    at ThreadStream.flushSync (file:///D:/ClassMate/Latest/classmate-deploy/classmate-deploy/api-dist/index.mjs:32906:9)
+    at process.onExit2 (file:///D:/ClassMate/Latest/classmate-deploy/classmate-deploy/api-dist/index.mjs:33113:16)
+    at process.emit (node:events:508:28)
+    at process.exit (node:internal/process/per_thread:236:15)
+    at Server.<anonymous> (file:///D:/ClassMate/Latest/classmate-deploy/classmate-deploy/api-dist/index.mjs:60533:13)
+    at Server.f (file:///D:/ClassMate/Latest/classmate-deploy/classmate-deploy/api-dist/index.mjs:19818:29)
+    at Object.onceWrapper (node:events:623:26)
+    at Server.emit (node:events:508:28)
+    at emitErrorNT (node:net:1984:8)
+Node.js v24.14.1
+
+PS C:\Windows\system32> # See what's actually on port 8080
+Write-Host "=== PID 4716 ===" -ForegroundColor Cyan
+Get-Process -Id 4716
+
+# Read the Node.js startup log
+Write-Host "`n=== Node.js startup log ===" -ForegroundColor Cyan
+Get-Content C:\Logs\classmate-api.log -Tail 30
