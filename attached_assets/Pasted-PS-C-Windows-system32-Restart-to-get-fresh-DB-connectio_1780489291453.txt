@@ -1,0 +1,56 @@
+PS C:\Windows\system32> # Restart to get fresh DB connections with new permissions
+sc.exe stop ClassmateAPI
+Start-Sleep 5
+sc.exe start ClassmateAPI
+Start-Sleep 5
+
+# Then test and check error log at the same time
+$body = '{"username":"admin","password":"classmate123"}'
+try {
+    $r = Invoke-WebRequest http://localhost:3001/api/auth/login -Method POST -Body $body -ContentType "application/json" -UseBasicParsing
+    Write-Host "SUCCESS: $($r.Content)"
+} catch {
+    Write-Host "FAILED"
+}
+
+Write-Host "`n=== Error log ===" -ForegroundColor Cyan
+Get-Content C:\Logs\classmate-api-error.log -Tail 15 | Out-String | Write-Host
+
+SERVICE_NAME: ClassmateAPI 
+        TYPE               : 10  WIN32_OWN_PROCESS  
+        STATE              : 3  STOP_PENDING 
+                                (NOT_STOPPABLE, NOT_PAUSABLE, IGNORES_SHUTDOWN)
+        WIN32_EXIT_CODE    : 0  (0x0)
+        SERVICE_EXIT_CODE  : 0  (0x0)
+        CHECKPOINT         : 0x41
+        WAIT_HINT          : 0x184ac
+
+SERVICE_NAME: ClassmateAPI 
+        TYPE               : 10  WIN32_OWN_PROCESS  
+        STATE              : 2  START_PENDING 
+                                (NOT_STOPPABLE, NOT_PAUSABLE, IGNORES_SHUTDOWN)
+        WIN32_EXIT_CODE    : 0  (0x0)
+        SERVICE_EXIT_CODE  : 0  (0x0)
+        CHECKPOINT         : 0x0
+        WAIT_HINT          : 0x7d0
+        PID                : 9584
+        FLAGS              : 
+FAILED
+
+=== Error log ===
+Error: Failed query: select "id", "username", "password_hash", "display_name", "role", "is_active", "created_at", "updated_at" from "u
+sers" where "users"."username" = $1 limit $2
+params: admin,1
+    at NodePgPreparedQuery.queryWithCache (file:///D:/ClassMate/Latest/classmate-deploy/classmate-deploy/api-dist/index.mjs:46016:15)
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at async file:///D:/ClassMate/Latest/classmate-deploy/classmate-deploy/api-dist/index.mjs:46249:22
+    at async file:///D:/ClassMate/Latest/classmate-deploy/classmate-deploy/api-dist/index.mjs:59744:18
+
+
+PS C:\Windows\system32> # See what's actually on port 8080
+Write-Host "=== PID 4716 ===" -ForegroundColor Cyan
+Get-Process -Id 4716
+
+# Read the Node.js startup log
+Write-Host "`n=== Node.js startup log ===" -ForegroundColor Cyan
+Get-Content C:\Logs\classmate-api.log -Tail 30
