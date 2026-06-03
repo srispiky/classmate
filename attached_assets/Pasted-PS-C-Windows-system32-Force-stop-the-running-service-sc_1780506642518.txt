@@ -1,0 +1,58 @@
+PS C:\Windows\system32> # Force stop the running service
+sc.exe stop ClassmateAPI
+Start-Sleep 8
+
+# Verify it's stopped
+sc.exe query ClassmateAPI | Select-String "STATE"
+
+# Now start fresh with the new DATABASE_URL
+sc.exe start ClassmateAPI
+Start-Sleep 10
+
+# Test login
+$body = '{"username":"admin","password":"classmate123"}'
+try {
+    $r = Invoke-WebRequest http://localhost:3001/api/auth/login -Method POST -Body $body -ContentType "application/json" -UseBasicParsing
+    Write-Host "SUCCESS: $($r.Content)"
+} catch {
+    Write-Host "FAILED"
+    Get-Content C:\Logs\classmate-api-error.log -Tail 5
+}
+
+SERVICE_NAME: ClassmateAPI 
+        TYPE               : 10  WIN32_OWN_PROCESS  
+        STATE              : 3  STOP_PENDING 
+                                (NOT_STOPPABLE, NOT_PAUSABLE, IGNORES_SHUTDOWN)
+        WIN32_EXIT_CODE    : 0  (0x0)
+        SERVICE_EXIT_CODE  : 0  (0x0)
+        CHECKPOINT         : 0x1
+        WAIT_HINT          : 0xdac
+
+        STATE              : 1  STOPPED 
+
+SERVICE_NAME: ClassmateAPI 
+        TYPE               : 10  WIN32_OWN_PROCESS  
+        STATE              : 2  START_PENDING 
+                                (NOT_STOPPABLE, NOT_PAUSABLE, IGNORES_SHUTDOWN)
+        WIN32_EXIT_CODE    : 0  (0x0)
+        SERVICE_EXIT_CODE  : 0  (0x0)
+        CHECKPOINT         : 0x0
+        WAIT_HINT          : 0x7d0
+        PID                : 13564
+        FLAGS              : 
+FAILED
+params: admin,1
+    at NodePgPreparedQuery.queryWithCache (file:///D:/ClassMate/Latest/classmate-deploy/classmate-deploy/api-dist/index.mjs:46016:15)
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at async file:///D:/ClassMate/Latest/classmate-deploy/classmate-deploy/api-dist/index.mjs:46249:22
+    at async file:///D:/ClassMate/Latest/classmate-deploy/classmate-deploy/api-dist/index.mjs:59744:18
+
+
+
+PS C:\Windows\system32> # See what's actually on port 8080
+Write-Host "=== PID 4716 ===" -ForegroundColor Cyan
+Get-Process -Id 4716
+
+# Read the Node.js startup log
+Write-Host "`n=== Node.js startup log ===" -ForegroundColor Cyan
+Get-Content C:\Logs\classmate-api.log -Tail 30
