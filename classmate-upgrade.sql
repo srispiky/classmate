@@ -39,4 +39,9 @@ ON CONFLICT (username) DO UPDATE
         display_name  = EXCLUDED.display_name,
         is_active     = TRUE;
 
+-- 4. Grant permissions to the application user
+GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE users TO classmate_user;
+GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE session TO classmate_user;
+GRANT USAGE, SELECT ON SEQUENCE users_id_seq TO classmate_user;
+
 SELECT 'Upgrade complete.' AS status;

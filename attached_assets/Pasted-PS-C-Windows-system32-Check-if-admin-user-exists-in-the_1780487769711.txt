@@ -1,0 +1,34 @@
+PS C:\Windows\system32> # Check if admin user exists in the table
+$env:PGPASSWORD = "M1t1g@t0r"
+& "C:\Program Files\PostgreSQL\18\bin\psql.exe" -U postgres -d classmate_db -c "SELECT id, username, display_name, is_active FROM users;"
+
+# Get the FULL error log line (not truncated)
+Get-Content C:\Logs\classmate-api-error.log -Tail 30 | Out-String | Write-Host
+ id | username | display_name  | is_active 
+----+----------+---------------+-----------
+  1 | admin    | Administrator | t
+(1 row)
+
+Error: Failed query: select "id", "username", "password_hash", "display_name", "role", "is_active", "created_at", "updated_at" from "u
+sers" where "users"."username" = $1 limit $2
+params: admin,1
+    at NodePgPreparedQuery.queryWithCache (file:///D:/ClassMate/Latest/classmate-deploy/classmate-deploy/api-dist/index.mjs:46016:15)
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at async file:///D:/ClassMate/Latest/classmate-deploy/classmate-deploy/api-dist/index.mjs:46249:22
+    at async file:///D:/ClassMate/Latest/classmate-deploy/classmate-deploy/api-dist/index.mjs:59744:18
+Error: Failed query: select "id", "username", "password_hash", "display_name", "role", "is_active", "created_at", "updated_at" from "u
+sers" where "users"."username" = $1 limit $2
+params: admin,1
+    at NodePgPreparedQuery.queryWithCache (file:///D:/ClassMate/Latest/classmate-deploy/classmate-deploy/api-dist/index.mjs:46016:15)
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at async file:///D:/ClassMate/Latest/classmate-deploy/classmate-deploy/api-dist/index.mjs:46249:22
+    at async file:///D:/ClassMate/Latest/classmate-deploy/classmate-deploy/api-dist/index.mjs:59744:18
+
+
+PS C:\Windows\system32> # See what's actually on port 8080
+Write-Host "=== PID 4716 ===" -ForegroundColor Cyan
+Get-Process -Id 4716
+
+# Read the Node.js startup log
+Write-Host "`n=== Node.js startup log ===" -ForegroundColor Cyan
+Get-Content C:\Logs\classmate-api.log -Tail 30
