@@ -1,0 +1,1 @@
+- [NSSM DB password encoding](nssm-db-password-encoding.md) — NSSM doesn't percent-decode env vars; use plain alphanumeric DB passwords to avoid pg auth failures that surface as Drizzle "Failed query".

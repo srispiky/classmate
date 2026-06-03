@@ -83,33 +83,33 @@ Write-Ok "API files copied to $apiDistDst"
 
 # ----------------------------------------------------------------
 Write-Step "Updating service environment variables"
-$envLine = (nssm get $ServiceName AppEnvironmentExtra 2>$null) -join "`n"
 
-$changed = $false
-
-# Add PASSWORD_ENCRYPTION_KEY if not already set
-if ($envLine -notlike "*PASSWORD_ENCRYPTION_KEY*") {
-    $envLine = ($envLine.TrimEnd("`n") + "`nPASSWORD_ENCRYPTION_KEY=$EncryptionKey").TrimStart("`n")
-    $changed = $true
+# Preserve existing SESSION_SECRET so active sessions survive upgrades
+$existingEnv = (nssm get $ServiceName AppEnvironmentExtra 2>$null) -join "`n"
+$sessionSecret = $null
+foreach ($line in $existingEnv -split "`n") {
+    if ($line -match "^SESSION_SECRET=(.+)$") {
+        $sessionSecret = $Matches[1].Trim()
+        break
+    }
 }
 
-# Add SESSION_SECRET if not already set — generate a random one if needed
-if ($envLine -notlike "*SESSION_SECRET*") {
+# Generate a new SESSION_SECRET only if one does not exist yet
+if (-not $sessionSecret) {
     $rng = [System.Security.Cryptography.RandomNumberGenerator]::Create()
     $bytes = New-Object byte[] 32
     $rng.GetBytes($bytes)
     $sessionSecret = [BitConverter]::ToString($bytes) -replace '-',''
-    $envLine = ($envLine.TrimEnd("`n") + "`nSESSION_SECRET=$sessionSecret").TrimStart("`n")
-    $changed = $true
     Write-Warn "SESSION_SECRET was not set — a new random secret has been generated"
 }
 
-if ($changed) {
-    nssm set $ServiceName AppEnvironmentExtra $envLine
-    Write-Ok "Environment variables updated"
-} else {
-    Write-Ok "Environment variables already correct — no changes needed"
-}
+# DATABASE_URL uses a password without special characters to avoid
+# NSSM/pg-library percent-encoding issues (classmate-upgrade.sql sets this password)
+$dbUrl = "postgresql://classmate_user:ClassmateDB2026@localhost:5432/classmate_db"
+
+$envBlock = "NODE_ENV=production`nPORT=3001`nDATABASE_URL=$dbUrl`nPASSWORD_ENCRYPTION_KEY=$EncryptionKey`nSESSION_SECRET=$sessionSecret"
+nssm set $ServiceName AppEnvironmentExtra $envBlock
+Write-Ok "Environment variables updated (DATABASE_URL, NODE_ENV, PORT, keys)"
 
 # ----------------------------------------------------------------
 Write-Step "Updating frontend files"
