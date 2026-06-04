@@ -6,5 +6,10 @@ declare module "express-session" {
     username: string;
     displayName: string;
     role: string;
+    permissions: string[];
+    permissionsVersion: number;
+    studentId: number;
+    enrolledCourseIds: number[];
+    childStudentIds: number[];
   }
 }

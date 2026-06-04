@@ -2,6 +2,7 @@ import { Router, type IRouter } from "express";
 import { db, users } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { hashPassword, verifyPassword } from "../lib/password";
+import { SessionEnricherService } from "../lib/session-enricher";
 
 const router: IRouter = Router();
 
@@ -30,6 +31,8 @@ router.post("/auth/login", async (req, res): Promise<void> => {
   req.session.username = user.username;
   req.session.displayName = user.displayName;
   req.session.role = user.role;
+
+  await SessionEnricherService.enrich(req.session, user.id, user.role);
 
   res.json({
     id: user.id,
