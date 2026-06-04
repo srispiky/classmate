@@ -24,3 +24,9 @@ id = "NaEA9NSO-D2wslD94gvKz"
 uri = "file://ARCHITECTURE-REVIEW.md"
 type = "text"
 title = "Classmate Connect — Architecture Review Report v1.0"
+
+[[outputs]]
+id = "6jEdWurKmVZYfTPdGHjLN"
+uri = "file://PHASE2-SPRINT1.md"
+type = "text"
+title = "Classmate Connect — Phase 2 Sprint 1: RBAC Database Foundation"
