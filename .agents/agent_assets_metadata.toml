@@ -18,3 +18,9 @@ id = "Wf85QKiYzjNgpowfeoH0k"
 uri = "file://API-AUTH-DESIGN.md"
 type = "text"
 title = "Classmate Connect — API Authorization & Navigation Design v1.0"
+
+[[outputs]]
+id = "NaEA9NSO-D2wslD94gvKz"
+uri = "file://ARCHITECTURE-REVIEW.md"
+type = "text"
+title = "Classmate Connect — Architecture Review Report v1.0"
