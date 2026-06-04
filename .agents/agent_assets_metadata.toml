@@ -30,3 +30,9 @@ id = "6jEdWurKmVZYfTPdGHjLN"
 uri = "file://PHASE2-SPRINT1.md"
 type = "text"
 title = "Classmate Connect — Phase 2 Sprint 1: RBAC Database Foundation"
+
+[[outputs]]
+id = "b2QedK0msvrxJQRtsC2_G"
+uri = "file://PHASE2-SPRINT2.md"
+type = "text"
+title = "Classmate Connect — Phase 2 Sprint 2: Authorization Architecture"
