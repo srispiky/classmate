@@ -6,3 +6,9 @@ id = "XQWKIx1F3TBsi6Cd1zczF"
 uri = "file://ARCHITECTURE.md"
 type = "text"
 title = "Classmate Connect — Architecture & Design Document"
+
+[[outputs]]
+id = "cSZtTZCsVIzmfb_jp2dav"
+uri = "file://RBAC-DESIGN.md"
+type = "text"
+title = "Classmate Connect — RBAC Design v1.0"
