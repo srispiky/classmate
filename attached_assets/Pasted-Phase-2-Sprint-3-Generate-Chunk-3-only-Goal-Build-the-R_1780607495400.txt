@@ -1,0 +1,110 @@
+Phase 2 Sprint 3
+
+Generate Chunk 3 only.
+
+Goal:
+Build the Row-Level Security Query Foundation.
+
+Source of truth:
+- Architecture v1.0
+- RBAC Design v1.0
+- API Auth Design v1.0
+- Sprint 3 Row-Level Security Design (approved)
+- Chunk 1 completed
+- Chunk 2 completed
+
+Requirements:
+
+A. Create Query Scope Infrastructure
+
+Implement the shared foundation used by all query builders.
+
+Include:
+
+1. ScopeFilter utilities
+2. Ownership evaluation helpers
+3. Student scope helpers
+4. Parent scope helpers
+5. Global scope helpers
+6. Course enrollment scope helpers
+7. Shared authorization query utilities
+
+B. Query Builder Contracts
+
+Create the interfaces/types/contracts that all resource query builders must follow.
+
+Resources that will use these contracts later:
+
+- students
+- assignments
+- assessments
+- notes
+- courses
+- activity
+
+C. Ownership Validation Layer
+
+Implement reusable ownership validation helpers for:
+
+- student-owned resources
+- parent-child resources
+- course-scoped resources
+
+Must support:
+
+- Layer 2 Query Filtering
+- Layer 3 Post-Fetch Ownership Checks
+
+D. Scope-Aware Query Specifications
+
+Create reusable query specifications/patterns for:
+
+- Global scope
+- Student scope
+- Parent scope
+- Course enrollment scope
+- Child enrollment scope
+
+No resource implementation yet.
+
+E. Unit Tests
+
+Create tests covering:
+
+- admin scope
+- teacher scope
+- student scope
+- parent scope
+- empty enrollment arrays
+- empty child arrays
+- ownership allowed
+- ownership denied
+
+Output:
+
+1. Files created
+2. Files modified
+3. Complete file contents
+4. Test files
+5. Dependency diagram
+
+Do NOT modify route handlers.
+
+Do NOT modify assignments queries.
+
+Do NOT modify assessments queries.
+
+Do NOT modify notes queries.
+
+Do NOT modify courses queries.
+
+Do NOT generate portal routes.
+
+Do NOT generate integration tests yet.
+
+Only create the reusable Row-Level Security foundation that future chunks will consume.
+
+Code must compile successfully after this chunk.
+No TODOs.
+No placeholders.
+No pseudocode.
