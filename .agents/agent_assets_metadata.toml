@@ -36,3 +36,9 @@ id = "b2QedK0msvrxJQRtsC2_G"
 uri = "file://PHASE2-SPRINT2.md"
 type = "text"
 title = "Classmate Connect — Phase 2 Sprint 2: Authorization Architecture"
+
+[[outputs]]
+id = "6CS8nyacOWblnoScUIYxw"
+uri = "file://PHASE2-SPRINT3.md"
+type = "text"
+title = "Classmate Connect — Phase 2 Sprint 3: Row-Level Security"
