@@ -1670,6 +1670,93 @@ export const useCreateAssessment = <
 };
 
 /**
+ * @summary Get assessment by ID
+ */
+export const getGetAssessmentUrl = (id: number) => {
+  return `/api/assessments/${id}`;
+};
+
+export const getAssessment = async (
+  id: number,
+  options?: RequestInit,
+): Promise<Assessment> => {
+  return customFetch<Assessment>(getGetAssessmentUrl(id), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetAssessmentQueryKey = (id: number) => {
+  return [`/api/assessments/${id}`] as const;
+};
+
+export const getGetAssessmentQueryOptions = <
+  TData = Awaited<ReturnType<typeof getAssessment>>,
+  TError = ErrorType<unknown>,
+>(
+  id: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getAssessment>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetAssessmentQueryKey(id);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getAssessment>>> = ({
+    signal,
+  }) => getAssessment(id, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!id,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof getAssessment>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetAssessmentQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getAssessment>>
+>;
+export type GetAssessmentQueryError = ErrorType<unknown>;
+
+/**
+ * @summary Get assessment by ID
+ */
+
+export function useGetAssessment<
+  TData = Awaited<ReturnType<typeof getAssessment>>,
+  TError = ErrorType<unknown>,
+>(
+  id: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getAssessment>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetAssessmentQueryOptions(id, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
  * @summary Get AI-powered improvement suggestions for a student based on assessment
  */
 export const getGetAiSuggestionsUrl = (id: number) => {

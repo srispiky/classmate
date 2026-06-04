@@ -1,8 +1,10 @@
 import { Router, type IRouter } from "express";
-import { eq, and } from "drizzle-orm";
-import { db, assessmentsTable, studentsTable, coursesTable, activityTable } from "@workspace/db";
+import { eq } from "drizzle-orm";
+import { db, assessmentsTable, studentsTable, activityTable } from "@workspace/db";
 import {
   CreateAssessmentBody,
+  GetAssessmentParams,
+  GetAssessmentResponse,
   GetAiSuggestionsParams,
   GetAiSuggestionsResponse,
   GetStudentAiSuggestionsParams,
@@ -10,37 +12,47 @@ import {
   ListAssessmentsQueryParams,
   ListAssessmentsResponse,
 } from "@workspace/api-zod";
+import { buildScopeContext, type ClassmateSession } from "../lib/scope-context";
+import { canAccessStudentResource } from "../lib/ownership";
+import { ownershipDenied } from "../lib/query-contracts";
+import {
+  listAssessments,
+  getAssessmentById,
+  listAssessmentsForStudent,
+  type AssessmentRow,
+} from "../lib/assessments.queries";
 
 const router: IRouter = Router();
 
-function serializeAssessment(
-  a: typeof assessmentsTable.$inferSelect,
-  studentName: string,
-  courseName: string
-) {
+function serializeAssessment(a: AssessmentRow) {
   const percentage = Math.round((a.score / a.maxScore) * 100 * 10) / 10;
   return {
-    ...a,
-    studentName,
-    courseName,
+    id: a.id,
+    studentId: a.studentId,
+    studentName: a.studentName,
+    courseId: a.courseId,
+    courseName: a.courseName,
+    title: a.title,
+    score: a.score,
+    maxScore: a.maxScore,
     percentage,
-    strengths: a.strengths as string[],
-    weaknesses: a.weaknesses as string[],
+    strengths: a.strengths,
+    weaknesses: a.weaknesses,
     createdAt: a.createdAt.toISOString(),
   };
 }
 
 function generateAiSuggestions(
-  assessments: Array<typeof assessmentsTable.$inferSelect>,
+  assessments: AssessmentRow[],
   studentName: string,
-  studentId: number
+  studentId: number,
 ) {
   const allWeaknesses: string[] = [];
   const allStrengths: string[] = [];
 
   for (const a of assessments) {
-    allWeaknesses.push(...(a.weaknesses as string[]));
-    allStrengths.push(...(a.strengths as string[]));
+    allWeaknesses.push(...a.weaknesses);
+    allStrengths.push(...a.strengths);
   }
 
   const avgScore =
@@ -51,13 +63,17 @@ function generateAiSuggestions(
   const uniqueWeaknesses = [...new Set(allWeaknesses)];
   const uniqueStrengths = [...new Set(allStrengths)];
 
-  const suggestions: Array<{ area: string; priority: string; suggestion: string; relatedTopic: string | null }> =
-    uniqueWeaknesses.slice(0, 5).map((area, i) => ({
-      area,
-      priority: i === 0 ? "high" : i <= 2 ? "medium" : "low",
-      suggestion: `Focus on improving your understanding of ${area}. Review the relevant lesson notes and practice exercises.`,
-      relatedTopic: area,
-    }));
+  const suggestions: Array<{
+    area: string;
+    priority: string;
+    suggestion: string;
+    relatedTopic: string | null;
+  }> = uniqueWeaknesses.slice(0, 5).map((area, i) => ({
+    area,
+    priority: i === 0 ? "high" : i <= 2 ? "medium" : "low",
+    suggestion: `Focus on improving your understanding of ${area}. Review the relevant lesson notes and practice exercises.`,
+    relatedTopic: area,
+  }));
 
   if (avgScore < 60) {
     suggestions.unshift({
@@ -98,41 +114,26 @@ function generateAiSuggestions(
   };
 }
 
+// ── GET /api/assessments ─────────────────────────────────────────────────────
+
 router.get("/assessments", async (req, res): Promise<void> => {
+  const scope = buildScopeContext(req.session as ClassmateSession);
+
   const queryParams = ListAssessmentsQueryParams.safeParse(req.query);
   if (!queryParams.success) {
     res.status(400).json({ error: queryParams.error.message });
     return;
   }
 
-  const conditions = [];
-  if (queryParams.data.studentId)
-    conditions.push(eq(assessmentsTable.studentId, queryParams.data.studentId));
-  if (queryParams.data.courseId)
-    conditions.push(eq(assessmentsTable.courseId, queryParams.data.courseId));
+  const assessments = await listAssessments(scope, {
+    studentId: queryParams.data.studentId,
+    courseId: queryParams.data.courseId,
+  });
 
-  const assessments = await db
-    .select()
-    .from(assessmentsTable)
-    .where(conditions.length > 0 ? and(...conditions) : undefined)
-    .orderBy(assessmentsTable.createdAt);
-
-  const enriched = await Promise.all(
-    assessments.map(async (a) => {
-      const [student] = await db
-        .select({ name: studentsTable.name })
-        .from(studentsTable)
-        .where(eq(studentsTable.id, a.studentId));
-      const [course] = await db
-        .select({ name: coursesTable.name })
-        .from(coursesTable)
-        .where(eq(coursesTable.id, a.courseId));
-      return serializeAssessment(a, student?.name ?? "Unknown", course?.name ?? "Unknown");
-    })
-  );
-
-  res.json(ListAssessmentsResponse.parse(enriched));
+  res.json(ListAssessmentsResponse.parse(assessments.map(serializeAssessment)));
 });
+
+// ── POST /api/assessments ────────────────────────────────────────────────────
 
 router.post("/assessments", async (req, res): Promise<void> => {
   const parsed = CreateAssessmentBody.safeParse(req.body);
@@ -145,10 +146,11 @@ router.post("/assessments", async (req, res): Promise<void> => {
     .select({ name: studentsTable.name })
     .from(studentsTable)
     .where(eq(studentsTable.id, parsed.data.studentId));
+
   const [course] = await db
-    .select({ name: coursesTable.name })
-    .from(coursesTable)
-    .where(eq(coursesTable.id, parsed.data.courseId));
+    .select({ name: studentsTable.name })
+    .from(studentsTable)
+    .where(eq(studentsTable.id, parsed.data.courseId));
 
   const [assessment] = await db.insert(assessmentsTable).values(parsed.data).returning();
 
@@ -160,44 +162,83 @@ router.post("/assessments", async (req, res): Promise<void> => {
   });
 
   res.status(201).json(
-    serializeAssessment(assessment, student?.name ?? "Unknown", course?.name ?? "Unknown")
+    serializeAssessment({
+      ...assessment,
+      studentName: student?.name ?? "Unknown",
+      courseName: course?.name ?? "Unknown",
+      deletedAt: null,
+    }),
   );
 });
 
+// ── GET /api/assessments/:id ─────────────────────────────────────────────────
+
+router.get("/assessments/:id", async (req, res): Promise<void> => {
+  const scope = buildScopeContext(req.session as ClassmateSession);
+
+  const params = GetAssessmentParams.safeParse(req.params);
+  if (!params.success) {
+    res.status(400).json({ error: params.error.message });
+    return;
+  }
+
+  const assessment = await getAssessmentById(params.data.id);
+  if (!assessment) {
+    res.status(404).json({ error: "Assessment not found" });
+    return;
+  }
+
+  const ownership = canAccessStudentResource(assessment.studentId, scope);
+  if (ownership === "denied") {
+    res.status(403).json(ownershipDenied("assessment", params.data.id));
+    return;
+  }
+
+  res.json(GetAssessmentResponse.parse(serializeAssessment(assessment)));
+});
+
+// ── GET /api/assessments/:id/ai-suggestions ──────────────────────────────────
+
 router.get("/assessments/:id/ai-suggestions", async (req, res): Promise<void> => {
+  const scope = buildScopeContext(req.session as ClassmateSession);
+
   const params = GetAiSuggestionsParams.safeParse(req.params);
   if (!params.success) {
     res.status(400).json({ error: params.error.message });
     return;
   }
 
-  const [assessment] = await db
-    .select()
-    .from(assessmentsTable)
-    .where(eq(assessmentsTable.id, params.data.id));
+  const assessment = await getAssessmentById(params.data.id);
   if (!assessment) {
     res.status(404).json({ error: "Assessment not found" });
     return;
   }
 
-  const [student] = await db
-    .select({ name: studentsTable.name })
-    .from(studentsTable)
-    .where(eq(studentsTable.id, assessment.studentId));
+  const ownership = canAccessStudentResource(assessment.studentId, scope);
+  if (ownership === "denied") {
+    res.status(403).json(ownershipDenied("assessment", params.data.id));
+    return;
+  }
 
-  const allAssessments = await db
-    .select()
-    .from(assessmentsTable)
-    .where(eq(assessmentsTable.studentId, assessment.studentId));
-
-  const suggestions = generateAiSuggestions(allAssessments, student?.name ?? "Unknown", assessment.studentId);
+  const allAssessments = await listAssessmentsForStudent(assessment.studentId);
+  const suggestions = generateAiSuggestions(allAssessments, assessment.studentName, assessment.studentId);
   res.json(GetAiSuggestionsResponse.parse(suggestions));
 });
 
+// ── GET /api/students/:id/ai-suggestions ─────────────────────────────────────
+
 router.get("/students/:id/ai-suggestions", async (req, res): Promise<void> => {
+  const scope = buildScopeContext(req.session as ClassmateSession);
+
   const params = GetStudentAiSuggestionsParams.safeParse(req.params);
   if (!params.success) {
     res.status(400).json({ error: params.error.message });
+    return;
+  }
+
+  const ownership = canAccessStudentResource(params.data.id, scope);
+  if (ownership === "denied") {
+    res.status(403).json(ownershipDenied("student", params.data.id));
     return;
   }
 
@@ -210,11 +251,7 @@ router.get("/students/:id/ai-suggestions", async (req, res): Promise<void> => {
     return;
   }
 
-  const assessments = await db
-    .select()
-    .from(assessmentsTable)
-    .where(eq(assessmentsTable.studentId, params.data.id));
-
+  const assessments = await listAssessmentsForStudent(params.data.id);
   const suggestions = generateAiSuggestions(assessments, student.name, params.data.id);
   res.json(GetStudentAiSuggestionsResponse.parse(suggestions));
 });

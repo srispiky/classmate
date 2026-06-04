@@ -337,6 +337,28 @@ export const CreateAssessmentBody = zod.object({
 });
 
 /**
+ * @summary Get assessment by ID
+ */
+export const GetAssessmentParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const GetAssessmentResponse = zod.object({
+  id: zod.number(),
+  studentId: zod.number(),
+  studentName: zod.string(),
+  courseId: zod.number(),
+  courseName: zod.string(),
+  title: zod.string(),
+  score: zod.number(),
+  maxScore: zod.number(),
+  percentage: zod.number(),
+  strengths: zod.array(zod.string()),
+  weaknesses: zod.array(zod.string()),
+  createdAt: zod.string(),
+});
+
+/**
  * @summary Get AI-powered improvement suggestions for a student based on assessment
  */
 export const GetAiSuggestionsParams = zod.object({

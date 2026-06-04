@@ -1,0 +1,272 @@
+Phase 2 Sprint 3
+
+Generate Chunk 5 only.
+
+Goal:
+Implement Row-Level Security for Assessments.
+
+Source of truth:
+
+- Architecture v1.0
+- RBAC Design v1.0
+- API Auth Design v1.0
+- Sprint 3 Row-Level Security Design (approved)
+- Chunk 1 completed
+- Chunk 2 completed
+- Chunk 3 completed
+- Chunk 4 completed
+
+Reuse existing ScopeContext, ScopeFilter, Query Builder contracts, and Ownership Validation infrastructure.
+
+Do not introduce duplicate authorization logic.
+
+--------------------------------------------------
+A. Assessments Query Builder
+--------------------------------------------------
+
+Implement scope-aware assessment query builders.
+
+Required operations:
+
+1. listAssessments()
+2. getAssessmentById()
+
+Apply Layer 2 Row-Level Security filtering.
+
+Rules:
+
+Admin:
+- Global access
+- No row filtering
+
+Teacher:
+- Global access
+- No row filtering
+
+Student:
+- assessments.student_id = scope.studentId
+
+Parent:
+- assessments.student_id IN scope.childStudentIds
+
+Must support:
+
+- pagination
+- sorting
+- existing filters
+- soft-delete filtering
+
+Scope filtering must occur before pagination.
+
+--------------------------------------------------
+B. Assessment Ownership Validation
+--------------------------------------------------
+
+Implement Layer 3 ownership validation.
+
+Rules:
+
+Student:
+- assessment.student_id === scope.studentId
+
+Parent:
+- assessment.student_id IN scope.childStudentIds
+
+Teacher/Admin:
+- always allowed
+
+Must use Chunk 3 ownership infrastructure.
+
+Do not create assessment-specific ownership frameworks.
+
+--------------------------------------------------
+C. Assessment Route Refactoring
+--------------------------------------------------
+
+Refactor assessment routes to use:
+
+- ScopeContext
+- Assessment Query Builder
+- Ownership Validation
+
+No direct req.session access inside query logic.
+
+Follow Sprint 3 route handler pattern.
+
+--------------------------------------------------
+D. Assessment Detail Endpoint
+--------------------------------------------------
+
+Implement:
+
+GET /api/assessments/:id
+
+Requirements:
+
+- scope-aware lookup
+- ownership validation
+- soft-delete awareness
+- proper error handling
+
+Expected behavior:
+
+Admin:
+- access any assessment
+
+Teacher:
+- access any assessment
+
+Student:
+- access own assessment only
+
+Parent:
+- access child assessment only
+
+Unauthorized:
+- OWNERSHIP_DENIED response
+
+--------------------------------------------------
+E. Assessment List Endpoint
+--------------------------------------------------
+
+Implement:
+
+GET /api/assessments
+
+Requirements:
+
+- scope filtering
+- pagination
+- sorting
+- existing filter compatibility
+
+Verify:
+
+Student:
+- sees only own assessments
+
+Parent:
+- sees only children assessments
+
+Teacher/Admin:
+- see all assessments
+
+--------------------------------------------------
+F. Integration Tests
+--------------------------------------------------
+
+Create tests for:
+
+Student:
+
+✓ own assessments returned
+
+✓ other students excluded
+
+✓ own assessment detail allowed
+
+✓ other student assessment denied
+
+Parent:
+
+✓ child assessments returned
+
+✓ non-child assessments excluded
+
+✓ child assessment detail allowed
+
+✓ non-child assessment denied
+
+Teacher:
+
+✓ all assessments returned
+
+✓ any detail allowed
+
+Admin:
+
+✓ all assessments returned
+
+✓ any detail allowed
+
+Edge Cases:
+
+✓ studentId null
+
+✓ childStudentIds empty
+
+✓ deleted assessment excluded
+
+✓ pagination still works
+
+✓ filters still work
+
+--------------------------------------------------
+G. Security Tests
+--------------------------------------------------
+
+Create explicit IDOR tests.
+
+Student:
+
+GET /api/assessments/{other_student_assessment}
+
+Expected:
+
+403 OWNERSHIP_DENIED
+
+No assessment data leaked.
+
+Parent:
+
+GET /api/assessments/{non_child_assessment}
+
+Expected:
+
+403 OWNERSHIP_DENIED
+
+No assessment data leaked.
+
+Verify response body contains no protected fields.
+
+--------------------------------------------------
+H. Regression Tests
+--------------------------------------------------
+
+Verify Chunk 4 assignment tests still pass.
+
+Verify no regressions in:
+
+- authentication
+- permissions
+- ScopeContext
+- ownership validation
+
+--------------------------------------------------
+Output
+--------------------------------------------------
+
+Provide:
+
+1. Files created
+2. Files modified
+3. Complete file contents
+4. Test files
+5. Manual verification checklist
+6. Updated dependency diagram
+
+Do NOT implement:
+
+- notes
+- courses
+- activity
+- student portal routes
+- parent portal routes
+
+Assessments only.
+
+Code must compile successfully.
+
+No TODOs.
+No placeholders.
+No pseudocode.
