@@ -42,3 +42,9 @@ id = "6CS8nyacOWblnoScUIYxw"
 uri = "file://PHASE2-SPRINT3.md"
 type = "text"
 title = "Classmate Connect — Phase 2 Sprint 3: Row-Level Security"
+
+[[outputs]]
+id = "L_1tfkSts7WioWqD51Eu1"
+uri = "file://PHASE2-SPRINT3-BLUEPRINT.md"
+type = "text"
+title = "Classmate Connect — Phase 2 Sprint 3: Implementation Blueprint"
