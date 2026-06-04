@@ -12,3 +12,9 @@ id = "cSZtTZCsVIzmfb_jp2dav"
 uri = "file://RBAC-DESIGN.md"
 type = "text"
 title = "Classmate Connect — RBAC Design v1.0"
+
+[[outputs]]
+id = "Wf85QKiYzjNgpowfeoH0k"
+uri = "file://API-AUTH-DESIGN.md"
+type = "text"
+title = "Classmate Connect — API Authorization & Navigation Design v1.0"
