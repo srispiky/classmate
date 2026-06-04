@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { eq, and } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { db, assignmentsTable, studentsTable, coursesTable, activityTable } from "@workspace/db";
 import {
   CreateAssignmentBody,
@@ -11,43 +11,51 @@ import {
   ListAssignmentsQueryParams,
   ListAssignmentsResponse,
 } from "@workspace/api-zod";
+import { buildScopeContext, type ClassmateSession } from "../lib/scope-context";
+import { canAccessStudentResource } from "../lib/ownership";
+import { ownershipDenied } from "../lib/query-contracts";
+import { listAssignments, getAssignmentById, type AssignmentRow } from "../lib/assignments.queries";
 
 const router: IRouter = Router();
 
-function serializeAssignment(a: typeof assignmentsTable.$inferSelect, studentName: string, courseName: string) {
+function serializeAssignment(a: AssignmentRow) {
   return {
-    ...a,
-    studentName,
-    courseName,
+    id: a.id,
+    title: a.title,
+    description: a.description,
+    courseId: a.courseId,
+    courseName: a.courseName,
+    studentId: a.studentId,
+    studentName: a.studentName,
+    dueDate: a.dueDate,
+    status: a.status,
     score: a.score ?? null,
+    maxScore: a.maxScore,
     feedback: a.feedback ?? null,
     createdAt: a.createdAt.toISOString(),
   };
 }
 
+// ── GET /api/assignments ─────────────────────────────────────────────────────
+
 router.get("/assignments", async (req, res): Promise<void> => {
+  const scope = buildScopeContext(req.session as ClassmateSession);
+
   const queryParams = ListAssignmentsQueryParams.safeParse(req.query);
   if (!queryParams.success) {
     res.status(400).json({ error: queryParams.error.message });
     return;
   }
 
-  const conditions = [];
-  if (queryParams.data.courseId) conditions.push(eq(assignmentsTable.courseId, queryParams.data.courseId));
-  if (queryParams.data.studentId) conditions.push(eq(assignmentsTable.studentId, queryParams.data.studentId));
+  const assignments = await listAssignments(scope, {
+    courseId: queryParams.data.courseId,
+    studentId: queryParams.data.studentId,
+  });
 
-  const assignments = await db.select().from(assignmentsTable)
-    .where(conditions.length > 0 ? and(...conditions) : undefined)
-    .orderBy(assignmentsTable.dueDate);
-
-  const enriched = await Promise.all(assignments.map(async (a) => {
-    const [student] = await db.select({ name: studentsTable.name }).from(studentsTable).where(eq(studentsTable.id, a.studentId));
-    const [course] = await db.select({ name: coursesTable.name }).from(coursesTable).where(eq(coursesTable.id, a.courseId));
-    return serializeAssignment(a, student?.name ?? "Unknown", course?.name ?? "Unknown");
-  }));
-
-  res.json(ListAssignmentsResponse.parse(enriched));
+  res.json(ListAssignmentsResponse.parse(assignments.map(serializeAssignment)));
 });
+
+// ── POST /api/assignments ────────────────────────────────────────────────────
 
 router.post("/assignments", async (req, res): Promise<void> => {
   const parsed = CreateAssignmentBody.safeParse(req.body);
@@ -56,13 +64,20 @@ router.post("/assignments", async (req, res): Promise<void> => {
     return;
   }
 
-  const [student] = await db.select({ name: studentsTable.name }).from(studentsTable).where(eq(studentsTable.id, parsed.data.studentId));
-  const [course] = await db.select({ name: coursesTable.name }).from(coursesTable).where(eq(coursesTable.id, parsed.data.courseId));
+  const [student] = await db
+    .select({ name: studentsTable.name })
+    .from(studentsTable)
+    .where(eq(studentsTable.id, parsed.data.studentId));
 
-  const [assignment] = await db.insert(assignmentsTable).values({
-    ...parsed.data,
-    status: "pending",
-  }).returning();
+  const [course] = await db
+    .select({ name: coursesTable.name })
+    .from(coursesTable)
+    .where(eq(coursesTable.id, parsed.data.courseId));
+
+  const [assignment] = await db
+    .insert(assignmentsTable)
+    .values({ ...parsed.data, status: "pending" })
+    .returning();
 
   await db.insert(activityTable).values({
     type: "assignment_submitted",
@@ -71,24 +86,45 @@ router.post("/assignments", async (req, res): Promise<void> => {
     courseName: course?.name ?? "Unknown",
   });
 
-  res.status(201).json(GetAssignmentResponse.parse(serializeAssignment(assignment, student?.name ?? "Unknown", course?.name ?? "Unknown")));
+  res.status(201).json(
+    GetAssignmentResponse.parse(
+      serializeAssignment({
+        ...assignment,
+        studentName: student?.name ?? "Unknown",
+        courseName: course?.name ?? "Unknown",
+        deletedAt: null,
+      }),
+    ),
+  );
 });
 
+// ── GET /api/assignments/:id ─────────────────────────────────────────────────
+
 router.get("/assignments/:id", async (req, res): Promise<void> => {
+  const scope = buildScopeContext(req.session as ClassmateSession);
+
   const params = GetAssignmentParams.safeParse(req.params);
   if (!params.success) {
     res.status(400).json({ error: params.error.message });
     return;
   }
-  const [a] = await db.select().from(assignmentsTable).where(eq(assignmentsTable.id, params.data.id));
-  if (!a) {
+
+  const assignment = await getAssignmentById(params.data.id);
+  if (!assignment) {
     res.status(404).json({ error: "Assignment not found" });
     return;
   }
-  const [student] = await db.select({ name: studentsTable.name }).from(studentsTable).where(eq(studentsTable.id, a.studentId));
-  const [course] = await db.select({ name: coursesTable.name }).from(coursesTable).where(eq(coursesTable.id, a.courseId));
-  res.json(GetAssignmentResponse.parse(serializeAssignment(a, student?.name ?? "Unknown", course?.name ?? "Unknown")));
+
+  const ownership = canAccessStudentResource(assignment.studentId, scope);
+  if (ownership === "denied") {
+    res.status(403).json(ownershipDenied("assignment", params.data.id));
+    return;
+  }
+
+  res.json(GetAssignmentResponse.parse(serializeAssignment(assignment)));
 });
+
+// ── PATCH /api/assignments/:id ───────────────────────────────────────────────
 
 router.patch("/assignments/:id", async (req, res): Promise<void> => {
   const params = UpdateAssignmentParams.safeParse(req.params);
@@ -96,31 +132,51 @@ router.patch("/assignments/:id", async (req, res): Promise<void> => {
     res.status(400).json({ error: params.error.message });
     return;
   }
+
   const parsed = UpdateAssignmentBody.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.message });
     return;
   }
 
-  const [a] = await db.update(assignmentsTable).set(parsed.data).where(eq(assignmentsTable.id, params.data.id)).returning();
-  if (!a) {
+  const existing = await getAssignmentById(params.data.id);
+  if (!existing) {
     res.status(404).json({ error: "Assignment not found" });
     return;
   }
 
-  const [student] = await db.select({ name: studentsTable.name }).from(studentsTable).where(eq(studentsTable.id, a.studentId));
-  const [course] = await db.select({ name: coursesTable.name }).from(coursesTable).where(eq(coursesTable.id, a.courseId));
+  const [updated] = await db
+    .update(assignmentsTable)
+    .set(parsed.data)
+    .where(eq(assignmentsTable.id, params.data.id))
+    .returning();
+
+  if (!updated) {
+    res.status(404).json({ error: "Assignment not found" });
+    return;
+  }
 
   if (parsed.data.status === "graded") {
     await db.insert(activityTable).values({
       type: "assignment_graded",
-      description: `Assignment "${a.title}" graded${parsed.data.score != null ? ` with score ${parsed.data.score}/${a.maxScore}` : ""}`,
-      studentName: student?.name ?? "Unknown",
-      courseName: course?.name ?? "Unknown",
+      description: `Assignment "${updated.title}" graded${
+        parsed.data.score != null ? ` with score ${parsed.data.score}/${updated.maxScore}` : ""
+      }`,
+      studentName: existing.studentName,
+      courseName: existing.courseName,
     });
   }
 
-  res.json(UpdateAssignmentResponse.parse(serializeAssignment(a, student?.name ?? "Unknown", course?.name ?? "Unknown")));
+  res.json(
+    UpdateAssignmentResponse.parse(
+      serializeAssignment({
+        ...updated,
+        studentName: existing.studentName,
+        courseName: existing.courseName,
+        deletedAt: updated.deletedAt ?? null,
+      }),
+    ),
+  );
 });
 
 export default router;

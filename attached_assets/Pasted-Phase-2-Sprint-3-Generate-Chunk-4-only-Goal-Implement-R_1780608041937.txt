@@ -1,0 +1,229 @@
+Phase 2 Sprint 3
+
+Generate Chunk 4 only.
+
+Goal:
+Implement Row-Level Security for Assignments.
+
+Source of truth:
+
+- Architecture v1.0
+- RBAC Design v1.0
+- API Auth Design v1.0
+- Sprint 3 Row-Level Security Design (approved)
+- Chunk 1 completed
+- Chunk 2 completed
+- Chunk 3 completed
+
+Requirements:
+
+A. Assignments Query Builder
+
+Implement scope-aware assignment query builders using the Chunk 3 foundation.
+
+Required operations:
+
+1. listAssignments()
+2. getAssignmentById()
+
+Rules:
+
+Admin:
+- Global access
+- No row filtering
+
+Teacher:
+- Global access
+- No row filtering
+
+Student:
+- Only assignments where:
+  assignments.student_id = session.studentId
+
+Parent:
+- Only assignments where:
+  assignments.student_id IN session.childStudentIds
+
+Must implement Layer 2 query filtering exactly as defined in Sprint 3.
+
+---
+
+B. Assignment Ownership Validation
+
+Implement Layer 3 post-fetch ownership validation.
+
+Rules:
+
+Student:
+- assignment.student_id === scope.studentId
+
+Parent:
+- assignment.student_id IN scope.childStudentIds
+
+Teacher/Admin:
+- always allowed
+
+Ownership helper must use Chunk 3 foundation.
+
+---
+
+C. Update Assignment Routes
+
+Refactor existing assignment routes to use:
+
+- ScopeContext
+- Assignment Query Builder
+- Ownership Validation
+
+Do not access req.session directly inside query logic.
+
+Route handlers must follow Sprint 3 handler pattern.
+
+---
+
+D. Assignment Detail Endpoint
+
+Implement:
+
+GET /api/assignments/:id
+
+Requirements:
+
+- Scope-aware fetch
+- Ownership validation
+- Soft-delete awareness
+- Proper error handling
+
+Expected outcomes:
+
+Admin/Teacher:
+- Can access any assignment
+
+Student:
+- Can access own assignment only
+
+Parent:
+- Can access child's assignment only
+
+Unauthorized:
+- Return OWNERSHIP_DENIED response
+
+---
+
+E. Assignment List Endpoint
+
+Implement:
+
+GET /api/assignments
+
+Requirements:
+
+- Scope filtering
+- Existing filters continue working
+- Existing pagination continues working
+- Existing sorting continues working
+
+Scope filtering must be applied BEFORE pagination.
+
+---
+
+F. Integration Tests
+
+Create tests for:
+
+Student:
+
+✓ own assignments returned
+
+✓ other students excluded
+
+✓ detail endpoint allowed for own assignment
+
+✓ detail endpoint denied for other student
+
+Parent:
+
+✓ child assignments returned
+
+✓ non-child assignments excluded
+
+✓ child detail allowed
+
+✓ non-child detail denied
+
+Teacher:
+
+✓ all assignments returned
+
+✓ any detail allowed
+
+Admin:
+
+✓ all assignments returned
+
+✓ any detail allowed
+
+Edge Cases:
+
+✓ studentId null
+
+✓ childStudentIds empty
+
+✓ deleted assignment excluded
+
+✓ pagination still works
+
+✓ filters still work
+
+---
+
+G. Security Tests
+
+Add explicit IDOR tests:
+
+Student attempts:
+
+GET /api/assignments/{other_student_assignment}
+
+Expected:
+
+403 OWNERSHIP_DENIED
+
+Verify no assignment data leaked.
+
+Parent attempts:
+
+GET /api/assignments/{non_child_assignment}
+
+Expected:
+
+403 OWNERSHIP_DENIED
+
+Verify no assignment data leaked.
+
+---
+
+Output:
+
+1. Files created
+2. Files modified
+3. Complete file contents
+4. Test files
+5. Manual verification checklist
+
+Do NOT implement:
+
+- assessments
+- notes
+- courses
+- activity
+- student portal routes
+- parent portal routes
+
+Assignments only.
+
+Code must compile successfully after this chunk.
+
+No TODOs.
+No placeholders.
+No pseudocode.
