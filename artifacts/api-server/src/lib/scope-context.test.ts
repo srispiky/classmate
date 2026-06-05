@@ -61,7 +61,7 @@ describe("buildScopeContext", () => {
     expect(scope.childCourseIds).toEqual([]);
   });
 
-  it("teacher session — isGlobal=true, all scoped arrays empty", () => {
+  it("teacher session — isGlobal=true, all scoped arrays empty, teacherId/ownedCourseIds null/[]", () => {
     const session = makeSession({ role: "teacher" });
 
     const scope = buildScopeContext(session);
@@ -72,10 +72,46 @@ describe("buildScopeContext", () => {
     expect(scope.enrolledCourseIds).toEqual([]);
     expect(scope.childStudentIds).toEqual([]);
     expect(scope.childCourseIds).toEqual([]);
+    expect(scope.teacherId).toBeNull();
+    expect(scope.ownedCourseIds).toEqual([]);
     expect(scope.userId).toBe(1);
   });
 
-  it("admin session — isGlobal=true, all scoped arrays empty", () => {
+  it("teacher session — teacherId populated from session", () => {
+    const session = makeSession({ role: "teacher", teacherId: 42 });
+
+    const scope = buildScopeContext(session);
+
+    expect(scope.teacherId).toBe(42);
+    expect(scope.ownedCourseIds).toEqual([]);
+  });
+
+  it("teacher session — ownedCourseIds populated from session", () => {
+    const session = makeSession({ role: "teacher", teacherId: 7, ownedCourseIds: [1, 3, 5] });
+
+    const scope = buildScopeContext(session);
+
+    expect(scope.teacherId).toBe(7);
+    expect(scope.ownedCourseIds).toEqual([1, 3, 5]);
+  });
+
+  it("teacher session — ownedCourseIds undefined in session normalises to []", () => {
+    const session = makeSession({ role: "teacher", teacherId: 7, ownedCourseIds: undefined });
+
+    const scope = buildScopeContext(session);
+
+    expect(scope.ownedCourseIds).toEqual([]);
+  });
+
+  it("teacher session — teacherId undefined in session normalises to null", () => {
+    const session = makeSession({ role: "teacher", teacherId: undefined });
+
+    const scope = buildScopeContext(session);
+
+    expect(scope.teacherId).toBeNull();
+  });
+
+  it("admin session — isGlobal=true, all scoped arrays empty, no teacher fields", () => {
     const session = makeSession({ role: "admin", userId: 99 });
 
     const scope = buildScopeContext(session);
@@ -86,6 +122,8 @@ describe("buildScopeContext", () => {
     expect(scope.enrolledCourseIds).toEqual([]);
     expect(scope.childStudentIds).toEqual([]);
     expect(scope.childCourseIds).toEqual([]);
+    expect(scope.teacherId).toBeNull();
+    expect(scope.ownedCourseIds).toEqual([]);
     expect(scope.userId).toBe(99);
   });
 
@@ -146,5 +184,15 @@ describe("buildScopeContext", () => {
     const scope = buildScopeContext(session);
 
     expect(scope.childCourseIds).toEqual([]);
+  });
+
+  it("non-teacher roles — teacherId always null, ownedCourseIds always []", () => {
+    const roles = ["admin", "student", "parent", "guest"] as const;
+    roles.forEach((role) => {
+      const session = makeSession({ role, teacherId: 99, ownedCourseIds: [1, 2] });
+      const scope = buildScopeContext(session);
+      expect(scope.teacherId).toBeNull();
+      expect(scope.ownedCourseIds).toEqual([]);
+    });
   });
 });

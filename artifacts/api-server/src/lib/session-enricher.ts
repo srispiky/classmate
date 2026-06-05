@@ -1,5 +1,5 @@
-import { db, studentsTable, courseEnrollmentsTable, studentGuardiansTable } from "@workspace/db";
-import { eq, and, inArray } from "drizzle-orm";
+import { db, studentsTable, courseEnrollmentsTable, studentGuardiansTable, coursesTable } from "@workspace/db";
+import { eq, and, inArray, isNull } from "drizzle-orm";
 import type { Session, SessionData } from "express-session";
 
 type AppSession = Session & Partial<SessionData>;
@@ -15,9 +15,12 @@ export class SessionEnricherService {
    * course-scoped RLS filters can use inArray(courseId, childCourseIds) without a
    * per-request JOIN chain (parent → child → enrollment → course). Sprint 3 §9e.
    *
-   * DEPLOYMENT ORDER: course_enrollments migration (Chunk 1) must run in production
-   * before this code is deployed. Students will have empty enrolledCourseIds until
-   * the migration back-fills the table.
+   * Teacher enrichment populates teacherId and ownedCourseIds so that ownership
+   * checks are O(1) array lookups at request time — no per-request DB queries.
+   * Only active, non-deleted courses are included. Sprint 4 Chunk 4.
+   *
+   * DEPLOYMENT ORDER: course_enrollments migration must run in production before this
+   * code is deployed. Students will have empty enrolledCourseIds until back-filled.
    */
   static async enrich(session: AppSession, userId: number, role: string): Promise<void> {
     session.permissions = [];
@@ -26,11 +29,15 @@ export class SessionEnricherService {
     session.enrolledCourseIds = undefined;
     session.childStudentIds = undefined;
     session.childCourseIds = undefined;
+    session.teacherId = undefined;
+    session.ownedCourseIds = undefined;
 
     if (role === "student") {
       await SessionEnricherService.enrichStudent(session, userId);
     } else if (role === "parent") {
       await SessionEnricherService.enrichParent(session, userId);
+    } else if (role === "teacher") {
+      await SessionEnricherService.enrichTeacher(session, userId);
     }
   }
 
@@ -94,6 +101,46 @@ export class SessionEnricherService {
     const seen = new Set<number>();
     session.childCourseIds = enrollmentRows
       .map((r) => r.courseId)
+      .filter((id) => {
+        if (seen.has(id)) return false;
+        seen.add(id);
+        return true;
+      });
+  }
+
+  /**
+   * Enriches a teacher session with ownership scope.
+   *
+   * Teacher identity: courses.teacher_id references users.id directly — there is
+   * no separate teacher record table. The logged-in user's ID IS the teacher identifier.
+   *
+   * Ownership resolution:
+   *   - Only courses with status = 'active' are included.
+   *   - Soft-deleted courses (deleted_at IS NOT NULL) are excluded.
+   *   - Deduplication is applied defensively (schema constraints make true
+   *     duplicates impossible, but we guard against future schema changes).
+   *
+   * Result is stored in session for O(1) lookups at request time.
+   * No additional DB queries occur during authorization checks.
+   */
+  private static async enrichTeacher(session: AppSession, userId: number): Promise<void> {
+    // Teacher identity maps directly to users.id — store it for downstream helpers.
+    session.teacherId = userId;
+
+    const courseRows = await db
+      .select({ id: coursesTable.id })
+      .from(coursesTable)
+      .where(
+        and(
+          eq(coursesTable.teacherId, userId),
+          eq(coursesTable.status, "active"),
+          isNull(coursesTable.deletedAt),
+        ),
+      );
+
+    const seen = new Set<number>();
+    session.ownedCourseIds = courseRows
+      .map((r) => r.id)
       .filter((id) => {
         if (seen.has(id)) return false;
         seen.add(id);

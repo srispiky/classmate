@@ -12,5 +12,7 @@ declare module "express-session" {
     enrolledCourseIds: number[];
     childStudentIds: number[];
     childCourseIds: number[];
+    teacherId: number;
+    ownedCourseIds: number[];
   }
 }

@@ -10,8 +10,10 @@ export interface ClassmateSession {
   role: string;
   permissions: string[];
   permissionsVersion: number;
+  // ── student fields ─────────────────────────────────────────────────────────
   studentId?: number;
   enrolledCourseIds?: number[];
+  // ── parent fields ──────────────────────────────────────────────────────────
   childStudentIds?: number[];
   /**
    * Pre-computed set of course IDs accessible through any linked child's active enrollments.
@@ -20,6 +22,18 @@ export interface ClassmateSession {
    * per-request JOIN chains: parent → child → enrollment → course.
    */
   childCourseIds?: number[];
+  // ── teacher fields ─────────────────────────────────────────────────────────
+  /**
+   * The ID of the logged-in teacher (= users.id for teacher-role accounts).
+   * Maps directly to courses.teacher_id. Populated by SessionEnricherService.enrichTeacher().
+   */
+  teacherId?: number;
+  /**
+   * Pre-computed list of course IDs owned by this teacher (active, non-deleted).
+   * Populated by SessionEnricherService.enrichTeacher(). Empty array when the teacher
+   * owns no courses. Never undefined after enrichment.
+   */
+  ownedCourseIds?: number[];
 }
 
 /**
@@ -45,6 +59,18 @@ export interface ScopeContext {
    * a runtime subquery on course_enrollments, aligning with Sprint 3 §9e.
    */
   childCourseIds: number[];
+  /**
+   * The teacher's identity (= users.id for teacher-role accounts).
+   * Set for teacher role only; null for all other roles.
+   * Maps directly to courses.teacher_id for ownership queries.
+   */
+  teacherId: number | null;
+  /**
+   * Pre-computed course IDs owned by this teacher (active, non-deleted).
+   * Set for teacher role only; always an empty array for all other roles.
+   * Never null, never undefined — always a valid array.
+   */
+  ownedCourseIds: number[];
   userId: number;
 }
 
@@ -68,6 +94,8 @@ export function buildScopeContext(session: ClassmateSession): ScopeContext {
     enrolledCourseIds: role === "student" ? (session.enrolledCourseIds ?? []) : [],
     childStudentIds: role === "parent" ? (session.childStudentIds ?? []) : [],
     childCourseIds: role === "parent" ? (session.childCourseIds ?? []) : [],
+    teacherId: role === "teacher" ? (session.teacherId ?? null) : null,
+    ownedCourseIds: role === "teacher" ? (session.ownedCourseIds ?? []) : [],
     userId: session.userId,
   };
 }

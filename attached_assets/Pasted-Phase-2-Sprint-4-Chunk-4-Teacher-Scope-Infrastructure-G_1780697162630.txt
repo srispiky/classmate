@@ -1,0 +1,362 @@
+Phase 2 – Sprint 4
+
+Chunk 4 – Teacher Scope Infrastructure
+
+# Goal
+
+Introduce Teacher Ownership Scope into the authorization framework.
+
+This chunk establishes the foundation for teacher-bound access control across the platform.
+
+# Current State
+
+Current authorization model:
+
+Admin
+
+* Global access
+
+Teacher
+
+* Global access
+
+Student
+
+* Own records / enrolled courses
+
+Parent
+
+* Child records / child courses
+
+# Target State
+
+Admin
+
+* Global access
+
+Teacher
+
+* Access only owned courses
+
+Student
+
+* Access only enrolled courses
+
+Parent
+
+* Access only child courses
+
+This chunk introduces the infrastructure required to support teacher ownership boundaries.
+
+Do not modify existing resource policies yet.
+
+Do not modify Assignments, Assessments, Notes, or Announcements behavior yet.
+
+Only build the scope infrastructure.
+
+# Objectives
+
+1. Extend ScopeContext
+2. Extend SessionEnricher
+3. Resolve Teacher identity
+4. Resolve owned courses
+5. Add teacher ownership helpers
+6. Add tests
+
+# ScopeContext Changes
+
+Extend ScopeContext.
+
+Current examples:
+
+```ts
+studentId?: string;
+
+childStudentIds: string[];
+
+enrolledCourseIds: string[];
+
+childCourseIds: string[];
+```
+
+Add:
+
+```ts
+teacherId?: string;
+
+ownedCourseIds: string[];
+```
+
+Requirements:
+
+* ownedCourseIds must always exist
+* default empty array
+* never null
+* never undefined
+
+# Teacher Identity Resolution
+
+Review existing user-role relationships.
+
+Determine how a Teacher user maps to a Teacher record.
+
+Resolve and populate:
+
+```ts
+teacherId
+```
+
+during scope construction.
+
+Requirements:
+
+* support users without teacher records
+* fail safely
+* return undefined when teacher not found
+
+# SessionEnricher Updates
+
+During Teacher login:
+
+Flow:
+
+```text
+User
+  ↓
+Teacher Record
+  ↓
+Owned Courses
+  ↓
+ScopeContext
+```
+
+Populate:
+
+```ts
+scope.teacherId
+
+scope.ownedCourseIds
+```
+
+Rules:
+
+* only active courses
+* exclude soft-deleted courses
+* distinct course ids
+* remove duplicates
+* empty array when no courses exist
+
+# Course Ownership Resolution
+
+Determine ownership using:
+
+```ts
+courses.teacher_id
+```
+
+Requirements:
+
+Include:
+
+* active courses
+
+Exclude:
+
+* soft-deleted courses
+
+Use existing repository/query patterns.
+
+Avoid raw SQL unless project conventions require it.
+
+# Ownership Helper Utilities
+
+Create reusable helpers.
+
+Suggested location:
+
+```text
+src/shared/auth/teacher-scope/
+```
+
+Create:
+
+```ts
+isOwnedCourse(
+  scope: ScopeContext,
+  courseId: string
+): boolean
+```
+
+Behavior:
+
+Admin
+
+* true
+
+Teacher
+
+* courseId exists in ownedCourseIds
+
+Student
+
+* false
+
+Parent
+
+* false
+
+---
+
+Create:
+
+```ts
+hasOwnedCourses(
+  scope: ScopeContext
+): boolean
+```
+
+Behavior:
+
+Returns:
+
+```ts
+scope.ownedCourseIds.length > 0
+```
+
+---
+
+Create:
+
+```ts
+getOwnedCourseIds(
+  scope: ScopeContext
+): string[]
+```
+
+Returns:
+
+```ts
+scope.ownedCourseIds
+```
+
+These helpers are infrastructure only.
+
+Do not create authorization decisions yet.
+
+# Future Usage
+
+This infrastructure will later power:
+
+* CourseScopePolicy
+* AssignmentScopePolicy
+* AssessmentScopePolicy
+* NotesScopePolicy
+* AnnouncementScopePolicy
+
+Do not refactor those policies yet.
+
+# Performance Requirements
+
+Scope creation must occur once per session.
+
+Authorization checks must not trigger additional database queries.
+
+All owned course information must come from:
+
+```ts
+scope.ownedCourseIds
+```
+
+No runtime ownership lookups.
+
+No per-request course queries.
+
+No N+1 patterns.
+
+# Testing
+
+Add unit tests.
+
+ScopeContext Tests
+
+Verify:
+
+* teacherId populated correctly
+* ownedCourseIds populated correctly
+* duplicates removed
+* empty arrays handled
+* no teacher record handled safely
+
+SessionEnricher Tests
+
+Verify:
+
+Teacher with courses
+
+```ts
+ownedCourseIds.length > 0
+```
+
+Teacher without courses
+
+```ts
+ownedCourseIds = []
+```
+
+Deleted course
+
+```ts
+excluded
+```
+
+Inactive course
+
+```ts
+excluded
+```
+
+Helper Tests
+
+Verify:
+
+```ts
+isOwnedCourse()
+```
+
+for:
+
+* Admin
+* Teacher
+* Student
+* Parent
+
+# Backward Compatibility
+
+Assignments
+
+Assessments
+
+Notes
+
+Announcements
+
+must continue working exactly as they do today.
+
+Teacher access remains global for now.
+
+No policy behavior changes in this chunk.
+
+# Acceptance Criteria
+
+1. ScopeContext extended
+2. teacherId populated
+3. ownedCourseIds populated
+4. SessionEnricher updated
+5. Ownership helper utilities created
+6. Unit tests added
+7. Existing tests remain green
+8. No policy changes introduced
+9. No API changes introduced
+10. No behavior changes outside scope enrichment
+
+Deliver complete Teacher Scope Infrastructure implementation.
