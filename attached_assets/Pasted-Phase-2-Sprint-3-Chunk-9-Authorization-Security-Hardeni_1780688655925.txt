@@ -1,0 +1,280 @@
+Phase 2 – Sprint 3
+
+Chunk 9 – Authorization Security Hardening & Regression Suite
+
+# Goal
+
+Strengthen the authorization platform and create a comprehensive regression test suite for all Row-Level Security implementations.
+
+This chunk does not introduce new business features.
+
+The objective is to ensure future development cannot accidentally weaken authorization controls.
+
+# Current Coverage
+
+Existing RLS resources:
+
+* Assignments
+* Assessments
+* Notes
+* Announcements
+
+Existing Infrastructure:
+
+* ScopeContext
+* SessionEnricher
+* CourseScopeValidator
+* ResourceScopePolicy
+* AssignmentScopePolicy
+* AssessmentScopePolicy
+* NotesScopePolicy
+* AnnouncementScopePolicy
+
+# Objectives
+
+1. Centralized Authorization Test Utilities
+2. Cross-Role Security Regression Tests
+3. IDOR Regression Suite
+4. Scope Boundary Tests
+5. Soft Delete Security Tests
+6. Authorization Audit Coverage
+
+# Part 1 – Test Infrastructure
+
+Create reusable authorization testing helpers.
+
+Suggested location:
+
+```text
+tests/helpers/authorization/
+```
+
+Examples:
+
+```ts
+createAdminSession()
+createTeacherSession()
+createStudentSession()
+createParentSession()
+```
+
+Add reusable assertions:
+
+```ts
+expectAuthorized(...)
+expectForbidden(...)
+expectNotFound(...)
+```
+
+Avoid duplicated authorization test code.
+
+# Part 2 – Cross-Role Regression Matrix
+
+Create a role/resource access matrix.
+
+Validate:
+
+Assignments
+
+Assessments
+
+Notes
+
+Announcements
+
+For each role:
+
+Admin
+
+Teacher
+
+Student
+
+Parent
+
+Verify expected access behavior.
+
+Goal:
+
+Future changes should immediately reveal authorization regressions.
+
+# Part 3 – IDOR Regression Suite
+
+Create dedicated IDOR coverage.
+
+Verify:
+
+Assignments
+
+Assessments
+
+Notes
+
+Announcements
+
+Test direct identifier access.
+
+Examples:
+
+```http
+GET /resource/100
+GET /resource/101
+GET /resource/102
+```
+
+Unauthorized users must never retrieve data.
+
+Expected:
+
+```http
+403 Forbidden
+```
+
+or project-standard authorization response.
+
+# Part 4 – Scope Boundary Tests
+
+Student Scope Tests
+
+Verify:
+
+* own records accessible
+* unrelated records inaccessible
+
+Parent Scope Tests
+
+Verify:
+
+* child resources accessible
+* non-child resources inaccessible
+
+Course Scope Tests
+
+Verify:
+
+* enrolled course resources accessible
+* non-enrolled course resources inaccessible
+
+Teacher Scope Tests
+
+Verify:
+
+* global access retained
+
+Admin Scope Tests
+
+Verify:
+
+* global access retained
+
+# Part 5 – Soft Delete Security
+
+Verify all RLS-enabled resources respect soft deletes.
+
+Resources:
+
+* Assignments
+* Assessments
+* Notes
+* Announcements
+
+Deleted records must never be exposed.
+
+Expected:
+
+```http
+404 Not Found
+```
+
+not:
+
+```http
+403 Forbidden
+```
+
+Avoid resource enumeration.
+
+# Part 6 – Policy Validation Tests
+
+Add dedicated tests for:
+
+AssignmentScopePolicy
+
+AssessmentScopePolicy
+
+NotesScopePolicy
+
+AnnouncementScopePolicy
+
+Verify:
+
+```ts
+applyFilter()
+validateAccess()
+```
+
+Behavior for all supported roles.
+
+# Part 7 – Query-Level Security Validation
+
+Verify Layer 2 protection.
+
+Ensure unauthorized resources are filtered at query time.
+
+Tests should confirm:
+
+Unauthorized records never enter result sets.
+
+No post-processing array filtering.
+
+# Part 8 – Defense-in-Depth Validation
+
+Verify Layer 3 protection.
+
+Simulate direct service calls.
+
+Confirm:
+
+```ts
+policy.validateAccess(...)
+```
+
+prevents unauthorized access even when Layer 2 filtering is bypassed.
+
+# Part 9 – Performance Validation
+
+Review authorization implementation.
+
+Confirm:
+
+* no N+1 queries
+* no per-record enrollment lookups
+* no repeated scope resolution
+* no unnecessary joins
+
+Add tests where practical.
+
+# Deliverables
+
+1. Authorization test helpers
+2. Role access matrix tests
+3. IDOR regression suite
+4. Scope boundary tests
+5. Soft delete security tests
+6. Policy validation tests
+7. Layer 2 validation tests
+8. Layer 3 validation tests
+9. Performance review notes
+
+# Acceptance Criteria
+
+1. All existing RLS resources covered
+2. Authorization regression suite implemented
+3. IDOR protections verified
+4. Soft delete protections verified
+5. Policy framework fully tested
+6. Existing functionality unchanged
+7. All tests pass
+8. No production behavior changes
+
+This chunk focuses entirely on security hardening and long-term maintainability.
