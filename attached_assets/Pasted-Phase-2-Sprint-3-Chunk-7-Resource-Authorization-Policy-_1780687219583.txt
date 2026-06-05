@@ -1,0 +1,263 @@
+Phase 2 – Sprint 3
+
+Chunk 7 – Resource Authorization Policy Framework
+
+# Goal
+
+Introduce a reusable Resource Authorization Policy framework.
+
+# Current Status
+
+RLS is implemented for:
+
+* Assignments
+* Assessments
+* Notes
+
+Current authorization logic exists in multiple resource implementations.
+
+Before implementing additional course-scoped resources, create a centralized policy layer.
+
+# Objectives
+
+Create a reusable authorization abstraction that can support:
+
+* Assignments
+* Assessments
+* Notes
+* Announcements (future)
+* Study Materials (future)
+* Recorded Classes (future)
+* Discussions (future)
+
+The goal is to prevent authorization logic from being duplicated across services.
+
+# Architecture
+
+Create a shared authorization policy contract.
+
+Suggested location:
+
+```text
+src/shared/auth/policies/
+```
+
+Create:
+
+```ts
+ResourceScopePolicy<T>
+```
+
+Responsibilities:
+
+* Apply Layer 2 filtering
+* Perform Layer 3 validation
+* Encapsulate resource-specific ownership rules
+
+# Policy Contract
+
+Example:
+
+```ts
+interface ResourceScopePolicy<T> {
+  applyFilter(
+    query: unknown,
+    scope: ScopeContext
+  ): unknown;
+
+  validateAccess(
+    scope: ScopeContext,
+    resource: T
+  ): void;
+}
+```
+
+Exact implementation may vary.
+
+Keep contract simple.
+
+# Assignment Policy
+
+Create:
+
+```ts
+AssignmentScopePolicy
+```
+
+Rules:
+
+Admin
+
+* global
+
+Teacher
+
+* global
+
+Student
+
+* assignment.studentId === scope.studentId
+
+Parent
+
+* assignment.studentId IN scope.childStudentIds
+
+Move existing logic into policy.
+
+No behavior changes.
+
+# Assessment Policy
+
+Create:
+
+```ts
+AssessmentScopePolicy
+```
+
+Rules identical to existing implementation.
+
+Move existing authorization logic into policy.
+
+No behavior changes.
+
+# Notes Policy
+
+Create:
+
+```ts
+NotesScopePolicy
+```
+
+Rules:
+
+Admin
+
+* global
+
+Teacher
+
+* global
+
+Student
+
+* note.courseId IN scope.enrolledCourseIds
+
+Parent
+
+* note.courseId IN scope.childCourseIds
+
+Reuse:
+
+```ts
+validateCourseAccess()
+applyCourseScopeFilter()
+```
+
+No behavior changes.
+
+# Service Refactor
+
+Refactor services to use policies.
+
+Current pattern:
+
+```ts
+if (...)
+```
+
+Replace with:
+
+```ts
+policy.applyFilter(...)
+policy.validateAccess(...)
+```
+
+Goal:
+
+Services should not contain authorization rules.
+
+Services should delegate authorization decisions to policies.
+
+# Layer 2
+
+Policy must support query-level filtering.
+
+Example:
+
+```ts
+policy.applyFilter(
+  query,
+  scope
+);
+```
+
+# Layer 3
+
+Policy must support post-fetch validation.
+
+Example:
+
+```ts
+policy.validateAccess(
+  scope,
+  resource
+);
+```
+
+# Error Handling
+
+Reuse existing:
+
+* AuthorizationError
+* ForbiddenError
+
+Do not introduce new authorization exception types.
+
+# Testing
+
+Add unit tests for:
+
+AssignmentScopePolicy
+
+AssessmentScopePolicy
+
+NotesScopePolicy
+
+Verify:
+
+* Admin access
+* Teacher access
+* Student access
+* Parent access
+* Unauthorized access
+
+# Regression Tests
+
+Existing integration tests must remain green.
+
+Assignments behavior unchanged.
+
+Assessments behavior unchanged.
+
+Notes behavior unchanged.
+
+# Performance
+
+No additional database queries.
+
+No additional joins.
+
+Policy layer should be lightweight.
+
+# Acceptance Criteria
+
+1. ResourceScopePolicy abstraction exists
+2. AssignmentScopePolicy implemented
+3. AssessmentScopePolicy implemented
+4. NotesScopePolicy implemented
+5. Services use policies
+6. Existing behavior unchanged
+7. Existing tests remain green
+8. No additional database calls introduced
+
+Deliver complete implementation with tests.

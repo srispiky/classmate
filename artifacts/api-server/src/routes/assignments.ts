@@ -12,9 +12,9 @@ import {
   ListAssignmentsResponse,
 } from "@workspace/api-zod";
 import { buildScopeContext, type ClassmateSession } from "../lib/scope-context";
-import { canAccessStudentResource } from "../lib/ownership";
 import { ownershipDenied } from "../lib/query-contracts";
 import { listAssignments, getAssignmentById, type AssignmentRow } from "../lib/assignments.queries";
+import { assignmentPolicy, PolicyAuthorizationError } from "../lib/policies";
 
 const router: IRouter = Router();
 
@@ -47,6 +47,7 @@ router.get("/assignments", async (req, res): Promise<void> => {
     return;
   }
 
+  // Layer 2 applied inside listAssignments() via assignmentPolicy.getScopeCondition()
   const assignments = await listAssignments(scope, {
     courseId: queryParams.data.courseId,
     studentId: queryParams.data.studentId,
@@ -115,10 +116,16 @@ router.get("/assignments/:id", async (req, res): Promise<void> => {
     return;
   }
 
-  const ownership = canAccessStudentResource(assignment.studentId, scope);
-  if (ownership === "denied") {
-    res.status(403).json(ownershipDenied("assignment", params.data.id));
-    return;
+  // Layer 3: delegate ownership check to AssignmentScopePolicy.
+  // Services do not contain authorization rules — policies own that logic.
+  try {
+    assignmentPolicy.validateAccess(scope, assignment);
+  } catch (err) {
+    if (err instanceof PolicyAuthorizationError) {
+      res.status(403).json(ownershipDenied("assignment", params.data.id));
+      return;
+    }
+    throw err;
   }
 
   res.json(GetAssignmentResponse.parse(serializeAssignment(assignment)));

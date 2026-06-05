@@ -13,7 +13,6 @@ import {
   ListAssessmentsResponse,
 } from "@workspace/api-zod";
 import { buildScopeContext, type ClassmateSession } from "../lib/scope-context";
-import { canAccessStudentResource } from "../lib/ownership";
 import { ownershipDenied } from "../lib/query-contracts";
 import {
   listAssessments,
@@ -21,6 +20,7 @@ import {
   listAssessmentsForStudent,
   type AssessmentRow,
 } from "../lib/assessments.queries";
+import { assessmentPolicy, PolicyAuthorizationError } from "../lib/policies";
 
 const router: IRouter = Router();
 
@@ -125,6 +125,7 @@ router.get("/assessments", async (req, res): Promise<void> => {
     return;
   }
 
+  // Layer 2 applied inside listAssessments() via assessmentPolicy.getScopeCondition()
   const assessments = await listAssessments(scope, {
     studentId: queryParams.data.studentId,
     courseId: queryParams.data.courseId,
@@ -188,10 +189,16 @@ router.get("/assessments/:id", async (req, res): Promise<void> => {
     return;
   }
 
-  const ownership = canAccessStudentResource(assessment.studentId, scope);
-  if (ownership === "denied") {
-    res.status(403).json(ownershipDenied("assessment", params.data.id));
-    return;
+  // Layer 3: delegate ownership check to AssessmentScopePolicy.
+  // Services do not contain authorization rules — policies own that logic.
+  try {
+    assessmentPolicy.validateAccess(scope, assessment);
+  } catch (err) {
+    if (err instanceof PolicyAuthorizationError) {
+      res.status(403).json(ownershipDenied("assessment", params.data.id));
+      return;
+    }
+    throw err;
   }
 
   res.json(GetAssessmentResponse.parse(serializeAssessment(assessment)));
@@ -214,10 +221,16 @@ router.get("/assessments/:id/ai-suggestions", async (req, res): Promise<void> =>
     return;
   }
 
-  const ownership = canAccessStudentResource(assessment.studentId, scope);
-  if (ownership === "denied") {
-    res.status(403).json(ownershipDenied("assessment", params.data.id));
-    return;
+  // Layer 3: same policy as the detail endpoint — access to AI suggestions
+  // is gated by the same student-ownership rules as the assessment itself.
+  try {
+    assessmentPolicy.validateAccess(scope, assessment);
+  } catch (err) {
+    if (err instanceof PolicyAuthorizationError) {
+      res.status(403).json(ownershipDenied("assessment", params.data.id));
+      return;
+    }
+    throw err;
   }
 
   const allAssessments = await listAssessmentsForStudent(assessment.studentId);
@@ -236,10 +249,17 @@ router.get("/students/:id/ai-suggestions", async (req, res): Promise<void> => {
     return;
   }
 
-  const ownership = canAccessStudentResource(params.data.id, scope);
-  if (ownership === "denied") {
-    res.status(403).json(ownershipDenied("student", params.data.id));
-    return;
+  // Layer 3: student-level access check via assessmentPolicy.
+  // Uses the structural { studentId } interface — the policy delegates to
+  // canAccessStudentResource which checks scope.studentId / childStudentIds.
+  try {
+    assessmentPolicy.validateAccess(scope, { studentId: params.data.id });
+  } catch (err) {
+    if (err instanceof PolicyAuthorizationError) {
+      res.status(403).json(ownershipDenied("student", params.data.id));
+      return;
+    }
+    throw err;
   }
 
   const [student] = await db

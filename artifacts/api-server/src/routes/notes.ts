@@ -12,10 +12,7 @@ import {
   ListNotesResponse,
 } from "@workspace/api-zod";
 import { buildScopeContext, type ClassmateSession } from "../lib/scope-context";
-import {
-  validateCourseAccess,
-  CourseAuthorizationError,
-} from "../lib/course-scope-validator";
+import { notesPolicy, PolicyAuthorizationError } from "../lib/policies";
 import { listNotes, getNoteById, type NoteRow } from "../lib/notes.queries";
 
 const router: IRouter = Router();
@@ -44,7 +41,7 @@ router.get("/notes", async (req, res): Promise<void> => {
     return;
   }
 
-  // Layer 2: applyCourseScopeFilter() applied inside listNotes().
+  // Layer 2: notesPolicy.getScopeCondition() applied inside listNotes().
   // Admin/teacher see all notes; student filtered to enrolledCourseIds;
   // parent filtered to childCourseIds. No in-memory filtering.
   const notes = await listNotes(scope, { courseId: queryParams.data.courseId });
@@ -101,21 +98,20 @@ router.get("/notes/:id", async (req, res): Promise<void> => {
   }
 
   // Step 1: fetch by ID + soft-delete guard only. No scope filter in the query —
-  //         Layer 3 below is the defence-in-depth safeguard for IDOR protection.
+  //         Layer 3 below is the defence-in-depth IDOR safeguard.
   const note = await getNoteById(params.data.id);
   if (!note) {
     res.status(404).json({ error: "Note not found" });
     return;
   }
 
-  // Step 2: Layer 3 — validate course access.
-  // Admin/teacher: always pass. Student: courseId ∈ enrolledCourseIds.
-  // Parent: courseId ∈ childCourseIds (pre-computed at login, Sprint 3 §9e).
-  // Throws CourseAuthorizationError when denied → 403, note content never serialised.
+  // Step 2: Layer 3 — delegate course-access check to NotesScopePolicy.
+  // Services do not contain authorization rules — policies own that logic.
+  // Throws CourseAuthorizationError (extends PolicyAuthorizationError) on denial.
   try {
-    validateCourseAccess(scope, note.courseId);
+    notesPolicy.validateAccess(scope, note);
   } catch (err) {
-    if (err instanceof CourseAuthorizationError) {
+    if (err instanceof PolicyAuthorizationError) {
       res.status(403).json({ error: "Access denied", code: "COURSE_ACCESS_DENIED" });
       return;
     }

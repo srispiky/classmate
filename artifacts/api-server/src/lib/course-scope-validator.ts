@@ -1,18 +1,23 @@
 import type { SQL, Column } from "drizzle-orm";
 import type { ScopeContext } from "./scope-context";
 import { courseIdScopeFilter } from "./scope-filter";
+import { PolicyAuthorizationError } from "./policies/resource-scope-policy";
 
 /**
  * Thrown by validateCourseAccess() when a requester's scope does not include
- * the requested course. Route handlers catch this and return 403.
+ * the requested course.
+ *
+ * Extends PolicyAuthorizationError so route handlers that catch the base class
+ * also catch this subtype — enabling a single catch block for all policy errors.
  */
-export class CourseAuthorizationError extends Error {
+export class CourseAuthorizationError extends PolicyAuthorizationError {
   readonly courseId: number;
 
   constructor(courseId: number) {
     super(`Access denied to course ${courseId}`);
     this.name = "CourseAuthorizationError";
     this.courseId = courseId;
+    Object.setPrototypeOf(this, new.target.prototype);
   }
 }
 
