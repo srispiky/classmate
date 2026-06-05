@@ -134,6 +134,8 @@ router.get("/assignments/:id", async (req, res): Promise<void> => {
 // ── PATCH /api/assignments/:id ───────────────────────────────────────────────
 
 router.patch("/assignments/:id", async (req, res): Promise<void> => {
+  const scope = buildScopeContext(req.session as ClassmateSession);
+
   const params = UpdateAssignmentParams.safeParse(req.params);
   if (!params.success) {
     res.status(400).json({ error: params.error.message });
@@ -150,6 +152,20 @@ router.patch("/assignments/:id", async (req, res): Promise<void> => {
   if (!existing) {
     res.status(404).json({ error: "Assignment not found" });
     return;
+  }
+
+  // Layer 3: enforce ownership before mutating.
+  // A student must own the assignment; a parent must be a guardian of the student;
+  // admin/teacher have global write access. Without this check a student
+  // could PATCH any assignment ID they enumerate.
+  try {
+    assignmentPolicy.validateAccess(scope, existing);
+  } catch (err) {
+    if (err instanceof PolicyAuthorizationError) {
+      res.status(403).json(ownershipDenied("assignment", params.data.id));
+      return;
+    }
+    throw err;
   }
 
   const [updated] = await db

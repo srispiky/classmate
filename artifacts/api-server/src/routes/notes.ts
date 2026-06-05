@@ -124,6 +124,8 @@ router.get("/notes/:id", async (req, res): Promise<void> => {
 // ── PATCH /api/notes/:id ─────────────────────────────────────────────────────
 
 router.patch("/notes/:id", async (req, res): Promise<void> => {
+  const scope = buildScopeContext(req.session as ClassmateSession);
+
   const params = UpdateNoteParams.safeParse(req.params);
   if (!params.success) {
     res.status(400).json({ error: params.error.message });
@@ -134,6 +136,29 @@ router.patch("/notes/:id", async (req, res): Promise<void> => {
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.message });
     return;
+  }
+
+  // Pre-fetch with soft-delete guard so we (a) return 404 for deleted notes
+  // and (b) have the courseId required for Layer 3 authorization.
+  // Previously this went straight to UPDATE, which could mutate soft-deleted
+  // records and bypassed authorization entirely.
+  const existing = await getNoteById(params.data.id);
+  if (!existing) {
+    res.status(404).json({ error: "Note not found" });
+    return;
+  }
+
+  // Layer 3: enforce course-access before mutating.
+  // Students may only edit notes in courses they are enrolled in.
+  // Parents and guests are denied entirely (course notes are teacher-authored).
+  try {
+    notesPolicy.validateAccess(scope, existing);
+  } catch (err) {
+    if (err instanceof PolicyAuthorizationError) {
+      res.status(403).json({ error: "Access denied", code: "COURSE_ACCESS_DENIED" });
+      return;
+    }
+    throw err;
   }
 
   const [note] = await db
@@ -147,16 +172,11 @@ router.patch("/notes/:id", async (req, res): Promise<void> => {
     return;
   }
 
-  const [course] = await db
-    .select({ name: coursesTable.name })
-    .from(coursesTable)
-    .where(eq(coursesTable.id, note.courseId));
-
   res.json(
     UpdateNoteResponse.parse(
       serializeNote({
         ...note,
-        courseName: course?.name ?? "Unknown",
+        courseName: existing.courseName,
         deletedAt: note.deletedAt ?? null,
       }),
     ),

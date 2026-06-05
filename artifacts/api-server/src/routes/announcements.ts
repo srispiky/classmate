@@ -126,6 +126,8 @@ router.get("/announcements/:id", async (req, res): Promise<void> => {
 // ── PATCH /api/announcements/:id ──────────────────────────────────────────────
 
 router.patch("/announcements/:id", async (req, res): Promise<void> => {
+  const scope = buildScopeContext(req.session as ClassmateSession);
+
   const params = UpdateAnnouncementParams.safeParse(req.params);
   if (!params.success) {
     res.status(400).json({ error: params.error.message });
@@ -136,6 +138,26 @@ router.patch("/announcements/:id", async (req, res): Promise<void> => {
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.message });
     return;
+  }
+
+  // Pre-fetch with soft-delete guard so we (a) return 404 for deleted announcements
+  // and (b) have the courseId required for Layer 3 authorization.
+  const existing = await getAnnouncementById(params.data.id);
+  if (!existing) {
+    res.status(404).json({ error: "Announcement not found" });
+    return;
+  }
+
+  // Layer 3: enforce course-access before mutating.
+  // Announcements are course-owned; editing is restricted to the course scope.
+  try {
+    announcementPolicy.validateAccess(scope, existing);
+  } catch (err) {
+    if (err instanceof PolicyAuthorizationError) {
+      res.status(403).json({ error: "Access denied", code: "COURSE_ACCESS_DENIED" });
+      return;
+    }
+    throw err;
   }
 
   const [announcement] = await db
@@ -149,16 +171,11 @@ router.patch("/announcements/:id", async (req, res): Promise<void> => {
     return;
   }
 
-  const [course] = await db
-    .select({ name: coursesTable.name })
-    .from(coursesTable)
-    .where(eq(coursesTable.id, announcement.courseId));
-
   res.json(
     UpdateAnnouncementResponse.parse(
       serializeAnnouncement({
         ...announcement,
-        courseName: course?.name ?? "Unknown",
+        courseName: existing.courseName,
         deletedAt: announcement.deletedAt ?? null,
       }),
     ),
