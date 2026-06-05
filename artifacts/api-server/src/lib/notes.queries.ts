@@ -2,7 +2,7 @@ import { eq, and, isNull } from "drizzle-orm";
 import type { SQL } from "drizzle-orm";
 import { db, notesTable, coursesTable } from "@workspace/db";
 import type { ScopeContext } from "./scope-context";
-import { courseIdScopeFilter, parentCourseEnrollmentFilter } from "./scope-filter";
+import { applyCourseScopeFilter } from "./course-scope-validator";
 
 export interface NoteFilters {
   courseId?: number;
@@ -62,21 +62,20 @@ const JOIN_SELECT = {
  * Builds WHERE conditions for listing notes.
  * Exported for unit testing — contains no DB calls.
  *
- * Notes are course-scoped, not student-scoped. Layer 2 rules:
+ * Notes are course-scoped. Layer 2 filtering delegates entirely to
+ * applyCourseScopeFilter() from course-scope-validator — the canonical
+ * helper for all course-scoped resources.
  *
- * - admin/teacher:  no scope filter (deletedAt guard + optional courseId only)
- * - student:        inArray(course_id, enrolledCourseIds) — or SQL_FALSE if empty
- * - parent:         course_id IN (SELECT course_id FROM course_enrollments
- *                     WHERE student_id IN childStudentIds AND is_active = true)
- *                   — or SQL_FALSE if childStudentIds is empty
- * - other roles:    SQL_FALSE (zero rows)
+ * | Role    | Scope condition                                         |
+ * |---------|---------------------------------------------------------|
+ * | admin   | none — full table access                                |
+ * | teacher | none — full table access                                |
+ * | student | inArray(course_id, enrolledCourseIds) — or SQL_FALSE    |
+ * | parent  | inArray(course_id, childCourseIds) — or SQL_FALSE        |
+ * | other   | SQL_FALSE — zero rows                                   |
  *
- * The courseId query param is applied for all roles — it further narrows within the
- * scope, always safe to AND with the scope filter.
- *
- * Parent scope requires a subquery and CANNOT go through courseIdScopeFilter()
- * (that function deliberately returns undefined for parent). This function handles
- * parent explicitly by calling parentCourseEnrollmentFilter().
+ * The courseId query param is applied for all roles — it further narrows within
+ * the requester's scope and is always safe to AND with the scope filter.
  */
 export function buildNoteListConditions(
   scope: ScopeContext,
@@ -84,17 +83,8 @@ export function buildNoteListConditions(
 ): SQL[] {
   const conditions: SQL[] = [];
 
-  if (scope.role === "parent") {
-    // Parent: subquery against course_enrollments keyed on childStudentIds.
-    // parentCourseEnrollmentFilter() returns SQL_FALSE when childStudentIds is empty.
-    conditions.push(parentCourseEnrollmentFilter(notesTable.courseId, scope.childStudentIds));
-  } else {
-    // admin/teacher: undefined (no push) → full table access
-    // student: inArray(courseId, enrolledCourseIds) or SQL_FALSE
-    // other: SQL_FALSE
-    const scopeFilter = courseIdScopeFilter(notesTable.courseId, scope);
-    if (scopeFilter !== undefined) conditions.push(scopeFilter);
-  }
+  const scopeFilter = applyCourseScopeFilter(notesTable.courseId, scope);
+  if (scopeFilter !== undefined) conditions.push(scopeFilter);
 
   if (filters.courseId != null) {
     conditions.push(eq(notesTable.courseId, filters.courseId));
@@ -130,24 +120,18 @@ export async function listNotes(
 /**
  * Fetches a single note by ID with scope filtering and soft-delete awareness.
  *
- * Unlike student-owned resources (assignments, assessments) where the detail
- * query fetches without scope so the route can return 403 for IDOR, notes are
- * course-scoped — returning 404 for out-of-scope access is the correct behaviour
- * (no IDOR concern; the route simply does not expose notes outside the requester's
- * enrolled courses). Scope is applied in the query for both list and detail.
+ * Notes are course-scoped — scope filter is applied in the detail query (not post-fetch)
+ * because there is no IDOR concern at the course level. Out-of-scope access yields 404,
+ * which does not reveal whether the note exists in another course scope.
  *
- * Parent scope uses parentCourseEnrollmentFilter() — a subquery on course_enrollments —
- * because childStudentIds' enrolled course IDs are not cached in scope.
+ * Uses applyCourseScopeFilter() — the same Layer 2 mechanism as the list endpoint.
+ * Parent scope uses scope.childCourseIds (pre-computed at login, Sprint 3 §9e).
  */
 export async function getNoteById(id: number, scope: ScopeContext): Promise<NoteRow | null> {
   const conditions: SQL[] = [eq(notesTable.id, id)];
 
-  if (scope.role === "parent") {
-    conditions.push(parentCourseEnrollmentFilter(notesTable.courseId, scope.childStudentIds));
-  } else {
-    const scopeFilter = courseIdScopeFilter(notesTable.courseId, scope);
-    if (scopeFilter !== undefined) conditions.push(scopeFilter);
-  }
+  const scopeFilter = applyCourseScopeFilter(notesTable.courseId, scope);
+  if (scopeFilter !== undefined) conditions.push(scopeFilter);
 
   conditions.push(isNull(notesTable.deletedAt));
 

@@ -1,0 +1,253 @@
+Phase 2 – Sprint 3
+
+Pre-Chunk 6 Refactor
+
+Goal:
+Introduce reusable course-scoped authorization infrastructure before implementing Notes RLS.
+
+# Background
+
+Current RLS implementation supports:
+
+* Assignments (student-scoped)
+* Assessments (student-scoped)
+
+Current ScopeContext contains:
+
+* userId
+* role
+* studentId
+* childStudentIds
+* enrolledCourseIds
+
+We are now introducing course-scoped resources.
+
+Upcoming resources include:
+
+* Notes
+* Announcements
+* Study Materials
+* Recorded Classes
+* Course Discussions
+
+To avoid duplicating authorization logic, implement a reusable CourseScopeValidator and enrich ScopeContext with childCourseIds.
+
+# Requirements
+
+1. ScopeContext Enhancement
+
+Extend ScopeContext to include:
+
+```ts
+childCourseIds: string[];
+```
+
+Purpose:
+
+Parent authorization should not require repeated joins:
+
+Parent
+-> Child
+-> Enrollment
+-> Course
+
+during every request.
+
+Instead, SessionEnricher should precompute accessible course ids.
+
+---
+
+2. SessionEnricher Updates
+
+During scope creation:
+
+Current:
+
+```ts
+scope.childStudentIds
+scope.enrolledCourseIds
+```
+
+Add:
+
+```ts
+scope.childCourseIds
+```
+
+Logic:
+
+For Parent users:
+
+1. Resolve linked children
+2. Query active course_enrollments
+3. Collect distinct course ids
+4. Populate scope.childCourseIds
+
+Requirements:
+
+* Only active enrollments
+* Remove duplicates
+* Return empty array when no children exist
+* Keep existing behavior unchanged
+
+---
+
+3. CourseScopeValidator
+
+Create new authorization utility:
+
+Suggested location:
+
+```text
+src/shared/auth/course-scope-validator.ts
+```
+
+Create reusable helpers:
+
+```ts
+canAccessCourse(
+  scope: ScopeContext,
+  courseId: string
+): boolean
+```
+
+Rules:
+
+Admin:
+
+* true
+
+Teacher:
+
+* true
+
+Student:
+
+* courseId exists in scope.enrolledCourseIds
+
+Parent:
+
+* courseId exists in scope.childCourseIds
+
+Otherwise:
+
+* false
+
+---
+
+Add:
+
+```ts
+validateCourseAccess(
+  scope: ScopeContext,
+  courseId: string
+): void
+```
+
+Behavior:
+
+* Calls canAccessCourse()
+* Throws AuthorizationError when access denied
+
+Pattern should match existing ownership validators.
+
+---
+
+4. Query Filter Helper
+
+Create reusable query helper:
+
+Example:
+
+```ts
+applyCourseScopeFilter(
+  query,
+  scope,
+  courseIdColumn
+)
+```
+
+Behavior:
+
+Admin:
+
+* no filter
+
+Teacher:
+
+* no filter
+
+Student:
+
+* WHERE course_id IN scope.enrolledCourseIds
+
+Parent:
+
+* WHERE course_id IN scope.childCourseIds
+
+Requirements:
+
+* Generic and reusable
+* No Notes-specific logic
+* Can be reused by future course-scoped resources
+
+---
+
+5. Unit Tests
+
+Add tests for:
+
+canAccessCourse()
+
+Scenarios:
+
+Admin:
+
+* any course
+
+Teacher:
+
+* any course
+
+Student:
+
+* enrolled course
+* non-enrolled course
+
+Parent:
+
+* child course
+* unrelated course
+
+Edge cases:
+
+* empty arrays
+* duplicate course ids
+* undefined course id
+
+---
+
+6. Backward Compatibility
+
+Do NOT modify:
+
+* Assignments RLS
+* Assessments RLS
+* Existing routes
+
+This refactor only introduces reusable infrastructure.
+
+No functional behavior changes outside ScopeContext enrichment.
+
+# Deliverables
+
+1. ScopeContext updated
+2. SessionEnricher populates childCourseIds
+3. CourseScopeValidator created
+4. applyCourseScopeFilter helper created
+5. Unit tests added
+6. Existing tests remain green
+
+Do not start Notes RLS implementation yet.
+
+Only complete the reusable course-scoped authorization foundation.

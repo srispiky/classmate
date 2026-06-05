@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { notesTable } from "@workspace/db";
 import { buildScopeContext, type ClassmateSession } from "./scope-context";
-import { canAccessCourseResource } from "./ownership";
+import { canAccessCourse } from "./course-scope-validator";
 import { SQL_FALSE } from "./scope-filter";
 import { buildNoteListConditions } from "./notes.queries";
 
@@ -15,6 +15,7 @@ function session(overrides: Partial<ClassmateSession> = {}): ClassmateSession {
     role: "admin",
     studentId: undefined,
     childStudentIds: undefined,
+    childCourseIds: undefined,
     enrolledCourseIds: undefined,
     ...overrides,
   } as ClassmateSession;
@@ -85,7 +86,7 @@ describe("buildNoteListConditions — student scope", () => {
     expect(conditions[0]).not.toBe(SQL_FALSE);
   });
 
-  it("courseId filter applied even for non-enrolled course (AND produces zero rows — correct)", () => {
+  it("courseId filter applied even for non-enrolled course — AND produces zero rows (correct)", () => {
     const scope = buildScopeContext(session({ role: "student", enrolledCourseIds: [2, 4] }));
     const conditions = buildNoteListConditions(scope, { courseId: 9 });
     // [inArray(courseId, [2,4]), eq(courseId, 9), isNull(deletedAt)] — impossible AND, zero rows
@@ -95,32 +96,49 @@ describe("buildNoteListConditions — student scope", () => {
 });
 
 describe("buildNoteListConditions — parent scope", () => {
-  it("adds parentCourseEnrollmentFilter subquery when childStudentIds is populated", () => {
-    const scope = buildScopeContext(session({ role: "parent", childStudentIds: [2, 5] }));
+  it("adds inArray(course_id, childCourseIds) when childCourseIds is populated", () => {
+    // Parent scope now uses pre-computed childCourseIds (Sprint 3 §9e).
+    // No subquery at query time — childCourseIds was resolved by SessionEnricher at login.
+    const scope = buildScopeContext(
+      session({ role: "parent", childStudentIds: [2, 5], childCourseIds: [1, 3, 7] }),
+    );
     const conditions = buildNoteListConditions(scope, {});
-    // [parentEnrollFilter (subquery), isNull(deletedAt)]
+    // [inArray(courseId, [1,3,7]), isNull(deletedAt)]
     expect(conditions).toHaveLength(2);
     expect(conditions[0]).not.toBe(SQL_FALSE);
   });
 
-  it("returns SQL_FALSE when childStudentIds is empty", () => {
-    const scope = buildScopeContext(session({ role: "parent", childStudentIds: [] }));
+  it("returns SQL_FALSE when childCourseIds is empty", () => {
+    const scope = buildScopeContext(
+      session({ role: "parent", childStudentIds: [3], childCourseIds: [] }),
+    );
     const conditions = buildNoteListConditions(scope, {});
     expect(conditions).toHaveLength(2);
     expect(conditions[0]).toBe(SQL_FALSE);
   });
 
-  it("returns SQL_FALSE when childStudentIds is undefined", () => {
-    const scope = buildScopeContext(session({ role: "parent", childStudentIds: undefined }));
+  it("returns SQL_FALSE when childCourseIds is undefined (no children or unlinked parent)", () => {
+    const scope = buildScopeContext(
+      session({ role: "parent", childStudentIds: [3], childCourseIds: undefined }),
+    );
     const conditions = buildNoteListConditions(scope, {});
     expect(conditions).toHaveLength(2);
     expect(conditions[0]).toBe(SQL_FALSE);
   });
 
-  it("applies courseId filter alongside parent subquery", () => {
-    const scope = buildScopeContext(session({ role: "parent", childStudentIds: [3] }));
-    const conditions = buildNoteListConditions(scope, { courseId: 1 });
-    // [parentEnrollFilter, eq(courseId, 1), isNull(deletedAt)]
+  it("returns SQL_FALSE when both childStudentIds and childCourseIds are absent", () => {
+    const scope = buildScopeContext(session({ role: "parent" }));
+    const conditions = buildNoteListConditions(scope, {});
+    expect(conditions).toHaveLength(2);
+    expect(conditions[0]).toBe(SQL_FALSE);
+  });
+
+  it("applies courseId filter alongside inArray scope condition", () => {
+    const scope = buildScopeContext(
+      session({ role: "parent", childCourseIds: [3, 5] }),
+    );
+    const conditions = buildNoteListConditions(scope, { courseId: 3 });
+    // [inArray(courseId, [3,5]), eq(courseId, 3), isNull(deletedAt)]
     expect(conditions).toHaveLength(3);
     expect(conditions[0]).not.toBe(SQL_FALSE);
   });
@@ -168,64 +186,62 @@ describe("notesTable schema — deletedAt and courseId columns", () => {
   });
 });
 
-// ── canAccessCourseResource — Layer 3 ownership (note context) ────────────────
+// ── canAccessCourse — Layer 3 ownership (note context) ───────────────────────
 
-describe("canAccessCourseResource — admin and teacher", () => {
+describe("canAccessCourse — admin and teacher (note context)", () => {
   it("admin can access any note regardless of course_id", () => {
     const scope = buildScopeContext(session({ role: "admin" }));
-    expect(canAccessCourseResource(5, scope)).toBe("allowed");
-    expect(canAccessCourseResource(99, scope)).toBe("allowed");
+    expect(canAccessCourse(scope, 5)).toBe(true);
+    expect(canAccessCourse(scope, 99)).toBe(true);
   });
 
   it("teacher can access any note regardless of course_id", () => {
     const scope = buildScopeContext(session({ role: "teacher" }));
-    expect(canAccessCourseResource(3, scope)).toBe("allowed");
+    expect(canAccessCourse(scope, 3)).toBe(true);
   });
 });
 
-describe("canAccessCourseResource — student enrollment-based access", () => {
+describe("canAccessCourse — student enrollment-based access (note context)", () => {
   it("student can access note from enrolled course", () => {
     const scope = buildScopeContext(session({ role: "student", enrolledCourseIds: [2, 4, 6] }));
-    expect(canAccessCourseResource(4, scope)).toBe("allowed");
+    expect(canAccessCourse(scope, 4)).toBe(true);
   });
 
-  it("student CANNOT access note from non-enrolled course", () => {
+  it("student CANNOT access note from non-enrolled course (IDOR denied)", () => {
     const scope = buildScopeContext(session({ role: "student", enrolledCourseIds: [2, 4, 6] }));
-    expect(canAccessCourseResource(9, scope)).toBe("denied");
+    expect(canAccessCourse(scope, 9)).toBe(false);
   });
 
-  it("student with empty enrolledCourseIds is always denied", () => {
+  it("student with empty enrolledCourseIds cannot access any note", () => {
     const scope = buildScopeContext(session({ role: "student", enrolledCourseIds: [] }));
-    expect(canAccessCourseResource(1, scope)).toBe("denied");
-  });
-
-  it("student with undefined enrolledCourseIds is always denied", () => {
-    const scope = buildScopeContext(session({ role: "student", enrolledCourseIds: undefined }));
-    expect(canAccessCourseResource(1, scope)).toBe("denied");
+    expect(canAccessCourse(scope, 1)).toBe(false);
   });
 });
 
-describe("canAccessCourseResource — parent scope", () => {
-  it("parent Layer 3 returns allowed — enforcement deferred to Layer 2 subquery (Sprint 3 §9e)", () => {
-    // For parent, canAccessCourseResource always returns "allowed" because
-    // childStudentIds' enrolled course IDs are not cached in scope.
-    // The parentCourseEnrollmentFilter() subquery in the query builder is the
-    // enforcement mechanism. This test documents the known behaviour.
-    const scope = buildScopeContext(session({ role: "parent", childStudentIds: [1, 3] }));
-    expect(canAccessCourseResource(5, scope)).toBe("allowed");
+describe("canAccessCourse — parent childCourseIds (note context)", () => {
+  it("parent can access note from a child-enrolled course", () => {
+    const scope = buildScopeContext(
+      session({ role: "parent", childCourseIds: [2, 6, 9] }),
+    );
+    expect(canAccessCourse(scope, 6)).toBe(true);
   });
 
-  it("parent with empty childStudentIds still returns allowed at Layer 3", () => {
-    // Empty childStudentIds means SQL_FALSE in Layer 2, so getNoteById returns null → 404.
-    // Layer 3 is never reached. This test confirms the Layer 3 contract is stable.
-    const scope = buildScopeContext(session({ role: "parent", childStudentIds: [] }));
-    expect(canAccessCourseResource(1, scope)).toBe("allowed");
+  it("parent CANNOT access note from a non-child course (IDOR denied)", () => {
+    const scope = buildScopeContext(
+      session({ role: "parent", childCourseIds: [2, 6, 9] }),
+    );
+    expect(canAccessCourse(scope, 10)).toBe(false);
+  });
+
+  it("parent with empty childCourseIds cannot access any note", () => {
+    const scope = buildScopeContext(session({ role: "parent", childCourseIds: [] }));
+    expect(canAccessCourse(scope, 1)).toBe(false);
   });
 });
 
-describe("canAccessCourseResource — guest scope", () => {
+describe("canAccessCourse — guest (note context)", () => {
   it("guest is always denied", () => {
     const scope = buildScopeContext(session({ role: "guest" }));
-    expect(canAccessCourseResource(1, scope)).toBe("denied");
+    expect(canAccessCourse(scope, 1)).toBe(false);
   });
 });

@@ -1,5 +1,5 @@
 import { db, studentsTable, courseEnrollmentsTable, studentGuardiansTable } from "@workspace/db";
-import { eq, and } from "drizzle-orm";
+import { eq, and, inArray } from "drizzle-orm";
 import type { Session, SessionData } from "express-session";
 
 type AppSession = Session & Partial<SessionData>;
@@ -11,6 +11,10 @@ export class SessionEnricherService {
    * Student enrichment reads enrolledCourseIds from the course_enrollments table
    * (Sprint 3 migration) — NOT from the deprecated students.enrolled_course_ids JSON column.
    *
+   * Parent enrichment populates both childStudentIds and childCourseIds so that
+   * course-scoped RLS filters can use inArray(courseId, childCourseIds) without a
+   * per-request JOIN chain (parent → child → enrollment → course). Sprint 3 §9e.
+   *
    * DEPLOYMENT ORDER: course_enrollments migration (Chunk 1) must run in production
    * before this code is deployed. Students will have empty enrolledCourseIds until
    * the migration back-fills the table.
@@ -21,6 +25,7 @@ export class SessionEnricherService {
     session.studentId = undefined;
     session.enrolledCourseIds = undefined;
     session.childStudentIds = undefined;
+    session.childCourseIds = undefined;
 
     if (role === "student") {
       await SessionEnricherService.enrichStudent(session, userId);
@@ -65,6 +70,34 @@ export class SessionEnricherService {
       .from(studentGuardiansTable)
       .where(eq(studentGuardiansTable.userId, userId));
 
-    session.childStudentIds = guardianRows.map((r) => r.studentId);
+    const childStudentIds = guardianRows.map((r) => r.studentId);
+    session.childStudentIds = childStudentIds;
+
+    if (childStudentIds.length === 0) {
+      session.childCourseIds = [];
+      return;
+    }
+
+    // Query all active enrollments for any linked child — uses the
+    // course_enrollments.student_id index (Chunk 1 migration) for an efficient index scan.
+    // Multiple children enrolled in the same course produce duplicate rows; deduplicate before storing.
+    const enrollmentRows = await db
+      .select({ courseId: courseEnrollmentsTable.courseId })
+      .from(courseEnrollmentsTable)
+      .where(
+        and(
+          inArray(courseEnrollmentsTable.studentId, childStudentIds),
+          eq(courseEnrollmentsTable.isActive, true),
+        ),
+      );
+
+    const seen = new Set<number>();
+    session.childCourseIds = enrollmentRows
+      .map((r) => r.courseId)
+      .filter((id) => {
+        if (seen.has(id)) return false;
+        seen.add(id);
+        return true;
+      });
   }
 }

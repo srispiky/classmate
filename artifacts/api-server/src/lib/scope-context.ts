@@ -13,6 +13,13 @@ export interface ClassmateSession {
   studentId?: number;
   enrolledCourseIds?: number[];
   childStudentIds?: number[];
+  /**
+   * Pre-computed set of course IDs accessible through any linked child's active enrollments.
+   * Populated by SessionEnricherService.enrichParent(). Empty array when parent has no children
+   * or no children are enrolled. Used by course-scoped resources (notes, etc.) to avoid
+   * per-request JOIN chains: parent → child → enrollment → course.
+   */
+  childCourseIds?: number[];
 }
 
 /**
@@ -32,6 +39,12 @@ export interface ScopeContext {
   enrolledCourseIds: number[];
   /** set for parent role only; empty array if no children are linked */
   childStudentIds: number[];
+  /**
+   * Pre-computed course IDs reachable through child enrollments (parent role only).
+   * Empty array for all other roles. Used by course-scoped RLS filters instead of
+   * a runtime subquery on course_enrollments, aligning with Sprint 3 §9e.
+   */
+  childCourseIds: number[];
   userId: number;
 }
 
@@ -54,6 +67,7 @@ export function buildScopeContext(session: ClassmateSession): ScopeContext {
     studentId: role === "student" ? (session.studentId ?? null) : null,
     enrolledCourseIds: role === "student" ? (session.enrolledCourseIds ?? []) : [],
     childStudentIds: role === "parent" ? (session.childStudentIds ?? []) : [],
+    childCourseIds: role === "parent" ? (session.childCourseIds ?? []) : [],
     userId: session.userId,
   };
 }

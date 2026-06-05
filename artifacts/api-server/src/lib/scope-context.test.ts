@@ -26,13 +26,15 @@ describe("buildScopeContext", () => {
     expect(scope.studentId).toBe(5);
     expect(scope.enrolledCourseIds).toEqual([1, 3]);
     expect(scope.childStudentIds).toEqual([]);
+    expect(scope.childCourseIds).toEqual([]);
     expect(scope.userId).toBe(1);
   });
 
-  it("parent session — sets childStudentIds, isGlobal=false, clears student fields", () => {
+  it("parent session — sets childStudentIds and childCourseIds, isGlobal=false, clears student fields", () => {
     const session = makeSession({
       role: "parent",
       childStudentIds: [7, 12],
+      childCourseIds: [2, 5, 9],
     });
 
     const scope = buildScopeContext(session);
@@ -42,7 +44,21 @@ describe("buildScopeContext", () => {
     expect(scope.studentId).toBeNull();
     expect(scope.enrolledCourseIds).toEqual([]);
     expect(scope.childStudentIds).toEqual([7, 12]);
+    expect(scope.childCourseIds).toEqual([2, 5, 9]);
     expect(scope.userId).toBe(1);
+  });
+
+  it("parent session — childCourseIds undefined normalises to []", () => {
+    const session = makeSession({
+      role: "parent",
+      childStudentIds: [7],
+      // childCourseIds intentionally absent — enrichment may not have populated it yet
+    });
+
+    const scope = buildScopeContext(session);
+
+    expect(scope.childStudentIds).toEqual([7]);
+    expect(scope.childCourseIds).toEqual([]);
   });
 
   it("teacher session — isGlobal=true, all scoped arrays empty", () => {
@@ -55,6 +71,7 @@ describe("buildScopeContext", () => {
     expect(scope.studentId).toBeNull();
     expect(scope.enrolledCourseIds).toEqual([]);
     expect(scope.childStudentIds).toEqual([]);
+    expect(scope.childCourseIds).toEqual([]);
     expect(scope.userId).toBe(1);
   });
 
@@ -68,6 +85,7 @@ describe("buildScopeContext", () => {
     expect(scope.studentId).toBeNull();
     expect(scope.enrolledCourseIds).toEqual([]);
     expect(scope.childStudentIds).toEqual([]);
+    expect(scope.childCourseIds).toEqual([]);
     expect(scope.userId).toBe(99);
   });
 
@@ -82,6 +100,7 @@ describe("buildScopeContext", () => {
 
     expect(scope.studentId).toBeNull();
     expect(scope.enrolledCourseIds).toEqual([]);
+    expect(scope.childCourseIds).toEqual([]);
     expect(scope.isGlobal).toBe(false);
   });
 
@@ -89,11 +108,13 @@ describe("buildScopeContext", () => {
     const session = makeSession({
       role: "parent",
       childStudentIds: [],
+      childCourseIds: [],
     });
 
     const scope = buildScopeContext(session);
 
     expect(scope.childStudentIds).toEqual([]);
+    expect(scope.childCourseIds).toEqual([]);
     expect(scope.isGlobal).toBe(false);
     expect(scope.studentId).toBeNull();
   });
@@ -109,6 +130,21 @@ describe("buildScopeContext", () => {
 
     expect(scope.studentId).toBe(8);
     expect(scope.enrolledCourseIds).toEqual([]);
+    expect(scope.childCourseIds).toEqual([]);
     expect(scope.isGlobal).toBe(false);
+  });
+
+  it("student session — childCourseIds always [] regardless of session value", () => {
+    // childCourseIds is only populated for parent role — ignored for other roles
+    const session = makeSession({
+      role: "student",
+      studentId: 3,
+      enrolledCourseIds: [1],
+      childCourseIds: [99], // should be ignored
+    });
+
+    const scope = buildScopeContext(session);
+
+    expect(scope.childCourseIds).toEqual([]);
   });
 });

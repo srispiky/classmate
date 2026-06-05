@@ -44,20 +44,22 @@ export function studentIdScopeFilter(column: Column, scope: ScopeContext): SQL |
 }
 
 /**
- * WHERE clause for student access to course-scoped resources.
+ * WHERE clause for course-scoped resources (notes, announcements, study materials, etc.).
  *
- * Used by: notes (student role), courses (student role).
+ * Used by: notes. Prefer applyCourseScopeFilter() from course-scope-validator for
+ * application-layer query builders — it is the canonical public API. This function is
+ * the primitive implementation it delegates to.
  *
- * Parent course scope requires a correlated subquery — use parentCourseEnrollmentFilter() instead.
- * When role === 'parent' this function returns undefined so the caller can compose the subquery.
+ * | Role    | Condition                                               |
+ * |---------|--------------------------------------------------------|
+ * | admin   | undefined — no filter                                   |
+ * | teacher | undefined — no filter                                   |
+ * | student | inArray(column, enrolledCourseIds) — or SQL_FALSE        |
+ * | parent  | inArray(column, childCourseIds) — or SQL_FALSE           |
+ * | other   | SQL_FALSE                                                |
  *
- * | Role    | Condition                                             |
- * |---------|-------------------------------------------------------|
- * | admin   | undefined — no filter                                 |
- * | teacher | undefined — no filter                                 |
- * | student | inArray(column, enrolledCourseIds) — or SQL_FALSE     |
- * | parent  | undefined — caller MUST apply parentCourseEnrollmentFilter() |
- * | other   | SQL_FALSE                                             |
+ * Parent scope uses scope.childCourseIds (pre-computed by SessionEnricher at login).
+ * This avoids a per-request subquery on course_enrollments. Sprint 3 §9e.
  *
  * @param column  - The course_id FK column of the resource table.
  * @param scope   - The ScopeContext built from req.session at route entry.
@@ -71,16 +73,16 @@ export function courseIdScopeFilter(column: Column, scope: ScopeContext): SQL | 
   }
 
   if (scope.role === "parent") {
-    // Parent course scope is resolved with a subquery against course_enrollments.
-    // Returning undefined so the caller knows to apply parentCourseEnrollmentFilter().
-    return undefined;
+    if (scope.childCourseIds.length === 0) return SQL_FALSE;
+    return inArray(column, scope.childCourseIds);
   }
 
   return SQL_FALSE;
 }
 
 /**
- * WHERE clause for parent access to course-scoped resources.
+ * Low-level WHERE clause that restricts a course_id column to courses attended
+ * by any of the supplied child students.
  *
  * Generates a correlated subquery against course_enrollments:
  *   column IN (
@@ -90,11 +92,16 @@ export function courseIdScopeFilter(column: Column, scope: ScopeContext): SQL | 
  *     AND ce.is_active = true
  *   )
  *
- * Returns SQL_FALSE when childStudentIds is empty — zero rows returned, correct by design.
+ * Returns SQL_FALSE when childStudentIds is empty.
  * child IDs are guaranteed integers (number[]) — sql.raw() is safe here (no user-supplied strings).
  *
+ * NOTE: This function is retained as a low-level primitive. Application-layer query builders
+ * should use courseIdScopeFilter() (or applyCourseScopeFilter from course-scope-validator)
+ * which reads pre-computed childCourseIds from scope rather than issuing a subquery.
+ * Use this function only when you need a runtime subquery and cannot rely on session data.
+ *
  * @param courseColumn     - The course_id FK column of the resource table.
- * @param childStudentIds  - From scope.childStudentIds.
+ * @param childStudentIds  - The child student IDs to resolve enrollments for.
  */
 export function parentCourseEnrollmentFilter(courseColumn: Column, childStudentIds: number[]): SQL {
   if (childStudentIds.length === 0) return SQL_FALSE;

@@ -80,9 +80,18 @@ describe("courseIdScopeFilter", () => {
     expect(courseIdScopeFilter(MOCK_COLUMN, scope)).toBe(SQL_FALSE);
   });
 
-  it("parent scope — returns undefined (caller must use parentCourseEnrollmentFilter)", () => {
-    const scope = buildScopeContext(session({ role: "parent", childStudentIds: [7] }));
-    expect(courseIdScopeFilter(MOCK_COLUMN, scope)).toBeUndefined();
+  it("parent scope with childCourseIds — returns SQL condition (inArray, not SQL_FALSE)", () => {
+    // childCourseIds is now pre-computed by SessionEnricher (Sprint 3 §9e refactor).
+    // courseIdScopeFilter handles parent directly — no subquery needed at query time.
+    const scope = buildScopeContext(session({ role: "parent", childStudentIds: [7], childCourseIds: [2, 5] }));
+    const filter = courseIdScopeFilter(MOCK_COLUMN, scope);
+    expect(filter).toBeDefined();
+    expect(filter).not.toBe(SQL_FALSE);
+  });
+
+  it("parent scope with empty childCourseIds — returns SQL_FALSE", () => {
+    const scope = buildScopeContext(session({ role: "parent", childStudentIds: [7], childCourseIds: [] }));
+    expect(courseIdScopeFilter(MOCK_COLUMN, scope)).toBe(SQL_FALSE);
   });
 
   it("parentCourseEnrollmentFilter with empty childStudentIds — returns SQL_FALSE", () => {
