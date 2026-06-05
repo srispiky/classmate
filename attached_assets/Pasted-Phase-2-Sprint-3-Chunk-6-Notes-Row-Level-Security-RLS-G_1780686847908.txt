@@ -1,0 +1,345 @@
+Phase 2 – Sprint 3
+
+Chunk 6 – Notes Row-Level Security (RLS)
+
+# Goal
+
+Implement Row-Level Security for Notes.
+
+Notes are COURSE-SCOPED resources.
+
+Unlike Assignments and Assessments, Notes are NOT owned by individual students.
+
+Authorization must be based on course enrollment.
+
+# Existing Infrastructure
+
+Already available:
+
+* ScopeContext
+* buildScopeContext()
+* SessionEnricher
+* ScopeFilter utilities
+* Ownership validation helpers
+* CourseScopeValidator
+* applyCourseScopeFilter()
+* course_enrollments table
+* childCourseIds support
+
+Reuse existing infrastructure.
+
+Do not duplicate authorization logic.
+
+# Authorization Rules
+
+Admin
+
+* Global access
+
+Teacher
+
+* Global access
+
+Student
+
+* Can access notes where:
+
+```text
+notes.course_id IN scope.enrolledCourseIds
+```
+
+Parent
+
+* Can access notes where:
+
+```text
+notes.course_id IN scope.childCourseIds
+```
+
+# Notes
+
+Notes are course-scoped content.
+
+Authorization is based on course access, not student ownership.
+
+Never use:
+
+```ts
+note.studentId
+```
+
+for Notes authorization.
+
+Always use:
+
+```ts
+note.courseId
+```
+
+# Endpoints In Scope
+
+Implement RLS for:
+
+```ts
+listNotes()
+```
+
+and
+
+```ts
+getNoteById()
+```
+
+Only these endpoints.
+
+Do not implement create/update/delete changes.
+
+Do not implement student portal routes.
+
+Do not implement parent portal routes.
+
+Do not implement Courses module.
+
+# Layer 2 Requirements
+
+Apply query-level filtering.
+
+List endpoint must use:
+
+```ts
+applyCourseScopeFilter(...)
+```
+
+Behavior:
+
+Admin:
+
+* no filtering
+
+Teacher:
+
+* no filtering
+
+Student:
+
+* filter by enrolledCourseIds
+
+Parent:
+
+* filter by childCourseIds
+
+Filtering must happen inside query construction.
+
+No in-memory filtering.
+
+No post-processing arrays.
+
+Use database-level filtering.
+
+# Layer 3 Requirements
+
+Implement post-fetch validation.
+
+For:
+
+```ts
+getNoteById()
+```
+
+Flow:
+
+1. Fetch note
+2. Validate existence
+3. Validate course access
+4. Return result
+
+Example:
+
+```ts
+validateCourseAccess(
+  scope,
+  note.courseId
+);
+```
+
+Do not rely solely on query filtering.
+
+Layer 3 must remain a defense-in-depth safeguard.
+
+# Soft Delete Requirements
+
+Ensure Notes queries continue honoring soft deletes.
+
+Deleted notes must not be visible.
+
+Expected behavior:
+
+Deleted note:
+
+```http
+404 Not Found
+```
+
+not:
+
+```http
+403 Forbidden
+```
+
+Avoid resource enumeration.
+
+# Implementation Requirements
+
+Create or update:
+
+NotesQueryBuilder
+
+Add reusable scope support.
+
+Suggested pattern:
+
+```ts
+NotesQueryBuilder
+  .applyCourseScope(scope)
+  .applySearch(...)
+  .applyPagination(...)
+```
+
+Avoid role-specific logic scattered across services.
+
+Centralize authorization behavior.
+
+# Integration Tests
+
+Add integration tests covering:
+
+Admin
+
+* list notes
+* get note by id
+
+Teacher
+
+* list notes
+* get note by id
+
+Student
+
+* enrolled course note => 200
+* non-enrolled course note => denied
+
+Parent
+
+* child course note => 200
+* unrelated course note => denied
+
+# Layer 2 Security Tests
+
+Verify list endpoint only returns authorized notes.
+
+Student:
+
+```text
+Course A note -> visible
+Course B note -> hidden
+```
+
+Parent:
+
+```text
+Child Course note -> visible
+Other Course note -> hidden
+```
+
+# Layer 3 Security Tests
+
+Verify direct ID access protection.
+
+Examples:
+
+```http
+GET /notes/:id
+```
+
+Student attempts:
+
+* own course note => 200
+* unrelated course note => denied
+
+Parent attempts:
+
+* child course note => 200
+* unrelated course note => denied
+
+# IDOR Tests
+
+Add explicit IDOR coverage.
+
+Examples:
+
+Student increments note id:
+
+```text
+note/100
+note/101
+note/102
+```
+
+Unauthorized notes must never be returned.
+
+Expected:
+
+```http
+403 Forbidden
+```
+
+or existing project authorization behavior.
+
+# Performance Requirements
+
+Do not introduce N+1 queries.
+
+Do not load all notes into memory.
+
+Use SQL filtering.
+
+Use existing scope values:
+
+```ts
+scope.enrolledCourseIds
+scope.childCourseIds
+```
+
+Do not perform enrollment lookups per note.
+
+No additional joins after scope creation.
+
+# Code Quality Requirements
+
+Reuse:
+
+* CourseScopeValidator
+* applyCourseScopeFilter
+* existing authorization patterns
+
+Keep implementation consistent with:
+
+* Assignments RLS
+* Assessments RLS
+
+Avoid Notes-specific authorization helpers unless absolutely necessary.
+
+# Acceptance Criteria
+
+1. Notes list endpoint protected by Layer 2 filtering
+2. Notes detail endpoint protected by Layer 3 validation
+3. Student access based on enrolled courses
+4. Parent access based on childCourseIds
+5. Admin and Teacher retain global access
+6. Soft deletes continue working
+7. Integration tests pass
+8. IDOR tests pass
+9. No N+1 queries introduced
+10. Existing Assignments and Assessments tests remain green
+
+Deliver complete implementation with tests.

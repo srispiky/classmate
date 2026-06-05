@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { notesTable } from "@workspace/db";
 import { buildScopeContext, type ClassmateSession } from "./scope-context";
-import { canAccessCourse } from "./course-scope-validator";
+import { canAccessCourse, validateCourseAccess, CourseAuthorizationError } from "./course-scope-validator";
 import { SQL_FALSE } from "./scope-filter";
 import { buildNoteListConditions } from "./notes.queries";
 
@@ -89,7 +89,6 @@ describe("buildNoteListConditions — student scope", () => {
   it("courseId filter applied even for non-enrolled course — AND produces zero rows (correct)", () => {
     const scope = buildScopeContext(session({ role: "student", enrolledCourseIds: [2, 4] }));
     const conditions = buildNoteListConditions(scope, { courseId: 9 });
-    // [inArray(courseId, [2,4]), eq(courseId, 9), isNull(deletedAt)] — impossible AND, zero rows
     expect(conditions).toHaveLength(3);
     expect(conditions[0]).not.toBe(SQL_FALSE);
   });
@@ -97,8 +96,6 @@ describe("buildNoteListConditions — student scope", () => {
 
 describe("buildNoteListConditions — parent scope", () => {
   it("adds inArray(course_id, childCourseIds) when childCourseIds is populated", () => {
-    // Parent scope now uses pre-computed childCourseIds (Sprint 3 §9e).
-    // No subquery at query time — childCourseIds was resolved by SessionEnricher at login.
     const scope = buildScopeContext(
       session({ role: "parent", childStudentIds: [2, 5], childCourseIds: [1, 3, 7] }),
     );
@@ -117,7 +114,7 @@ describe("buildNoteListConditions — parent scope", () => {
     expect(conditions[0]).toBe(SQL_FALSE);
   });
 
-  it("returns SQL_FALSE when childCourseIds is undefined (no children or unlinked parent)", () => {
+  it("returns SQL_FALSE when childCourseIds is undefined", () => {
     const scope = buildScopeContext(
       session({ role: "parent", childStudentIds: [3], childCourseIds: undefined }),
     );
@@ -186,62 +183,160 @@ describe("notesTable schema — deletedAt and courseId columns", () => {
   });
 });
 
-// ── canAccessCourse — Layer 3 ownership (note context) ───────────────────────
+// ── Layer 3: canAccessCourse — post-fetch validation (note detail endpoint) ───
+//
+// getNoteById() fetches WITHOUT scope filter. The route calls validateCourseAccess()
+// after the fetch as a defense-in-depth safeguard (Sprint 3 Chunk 6 Layer 3 requirement).
+// These tests document the Layer 3 decision logic applied to notes.
 
-describe("canAccessCourse — admin and teacher (note context)", () => {
-  it("admin can access any note regardless of course_id", () => {
+describe("Layer 3 — admin and teacher note access", () => {
+  it("admin: canAccessCourse returns true for any courseId (global access)", () => {
     const scope = buildScopeContext(session({ role: "admin" }));
     expect(canAccessCourse(scope, 5)).toBe(true);
     expect(canAccessCourse(scope, 99)).toBe(true);
   });
 
-  it("teacher can access any note regardless of course_id", () => {
+  it("teacher: canAccessCourse returns true for any courseId (global access)", () => {
     const scope = buildScopeContext(session({ role: "teacher" }));
     expect(canAccessCourse(scope, 3)).toBe(true);
   });
+
+  it("admin: validateCourseAccess does not throw", () => {
+    const scope = buildScopeContext(session({ role: "admin" }));
+    expect(() => validateCourseAccess(scope, 42)).not.toThrow();
+  });
 });
 
-describe("canAccessCourse — student enrollment-based access (note context)", () => {
-  it("student can access note from enrolled course", () => {
+describe("Layer 3 — student note detail access (enrollment-based)", () => {
+  it("student accessing enrolled course note: canAccessCourse returns true → 200", () => {
     const scope = buildScopeContext(session({ role: "student", enrolledCourseIds: [2, 4, 6] }));
     expect(canAccessCourse(scope, 4)).toBe(true);
   });
 
-  it("student CANNOT access note from non-enrolled course (IDOR denied)", () => {
+  it("student IDOR — non-enrolled course note: canAccessCourse returns false → 403", () => {
     const scope = buildScopeContext(session({ role: "student", enrolledCourseIds: [2, 4, 6] }));
     expect(canAccessCourse(scope, 9)).toBe(false);
   });
 
-  it("student with empty enrolledCourseIds cannot access any note", () => {
+  it("student IDOR — validateCourseAccess throws CourseAuthorizationError for non-enrolled note", () => {
+    const scope = buildScopeContext(session({ role: "student", enrolledCourseIds: [2, 4, 6] }));
+    expect(() => validateCourseAccess(scope, 9)).toThrow(CourseAuthorizationError);
+  });
+
+  it("student IDOR — incrementing note IDs: each non-enrolled course yields 403 (never 200)", () => {
+    // Simulates the IDOR test: student enumerates note/100, note/101, note/102.
+    // All belong to courseId=7 which the student is NOT enrolled in.
+    const scope = buildScopeContext(session({ role: "student", enrolledCourseIds: [1, 2, 3] }));
+    const nonEnrolledCourseId = 7;
+    // Each incremented note ID would resolve to the same courseId in real data.
+    // The Layer 3 check fires on courseId, not noteId — so all are denied.
+    expect(canAccessCourse(scope, nonEnrolledCourseId)).toBe(false);
+    expect(() => validateCourseAccess(scope, nonEnrolledCourseId)).toThrow(CourseAuthorizationError);
+  });
+
+  it("student with empty enrolledCourseIds cannot access any note detail", () => {
     const scope = buildScopeContext(session({ role: "student", enrolledCourseIds: [] }));
     expect(canAccessCourse(scope, 1)).toBe(false);
+    expect(() => validateCourseAccess(scope, 1)).toThrow(CourseAuthorizationError);
   });
 });
 
-describe("canAccessCourse — parent childCourseIds (note context)", () => {
-  it("parent can access note from a child-enrolled course", () => {
+describe("Layer 3 — parent note detail access (childCourseIds-based)", () => {
+  it("parent accessing child-enrolled course note: canAccessCourse returns true → 200", () => {
     const scope = buildScopeContext(
       session({ role: "parent", childCourseIds: [2, 6, 9] }),
     );
     expect(canAccessCourse(scope, 6)).toBe(true);
   });
 
-  it("parent CANNOT access note from a non-child course (IDOR denied)", () => {
+  it("parent IDOR — non-child course note: canAccessCourse returns false → 403", () => {
     const scope = buildScopeContext(
       session({ role: "parent", childCourseIds: [2, 6, 9] }),
     );
     expect(canAccessCourse(scope, 10)).toBe(false);
   });
 
-  it("parent with empty childCourseIds cannot access any note", () => {
+  it("parent IDOR — validateCourseAccess throws CourseAuthorizationError for non-child note", () => {
+    const scope = buildScopeContext(
+      session({ role: "parent", childCourseIds: [2, 6, 9] }),
+    );
+    expect(() => validateCourseAccess(scope, 10)).toThrow(CourseAuthorizationError);
+  });
+
+  it("parent IDOR — enumerating notes outside childCourseIds: all denied", () => {
+    // Simulates parent incrementing note IDs. Notes belonging to courseId=15
+    // (not in childCourseIds) must be denied at Layer 3.
+    const scope = buildScopeContext(
+      session({ role: "parent", childCourseIds: [1, 3, 5] }),
+    );
+    const unrelatedCourseId = 15;
+    expect(canAccessCourse(scope, unrelatedCourseId)).toBe(false);
+    expect(() => validateCourseAccess(scope, unrelatedCourseId)).toThrow(CourseAuthorizationError);
+  });
+
+  it("parent with empty childCourseIds cannot access any note detail", () => {
     const scope = buildScopeContext(session({ role: "parent", childCourseIds: [] }));
     expect(canAccessCourse(scope, 1)).toBe(false);
+    expect(() => validateCourseAccess(scope, 1)).toThrow(CourseAuthorizationError);
   });
 });
 
-describe("canAccessCourse — guest (note context)", () => {
-  it("guest is always denied", () => {
+describe("Layer 3 — guest note detail access", () => {
+  it("guest: canAccessCourse always returns false", () => {
     const scope = buildScopeContext(session({ role: "guest" }));
     expect(canAccessCourse(scope, 1)).toBe(false);
+  });
+
+  it("guest: validateCourseAccess always throws", () => {
+    const scope = buildScopeContext(session({ role: "guest" }));
+    expect(() => validateCourseAccess(scope, 1)).toThrow(CourseAuthorizationError);
+  });
+});
+
+// ── Layer 2 + Layer 3 interaction documentation ───────────────────────────────
+//
+// For notes:
+//   LIST   → Layer 2 only (buildNoteListConditions → applyCourseScopeFilter)
+//   DETAIL → getNoteById(id) [no scope] → Layer 3 validateCourseAccess()
+//
+// This is different from Assignments/Assessments which use canAccessStudentResource
+// (studentId-based ownership). Notes use canAccessCourse (courseId-based enrollment).
+
+describe("Layer 2 + Layer 3 interaction — architectural contract", () => {
+  it("student: Layer 2 hides non-enrolled notes from list (SQL_FALSE when empty)", () => {
+    const scope = buildScopeContext(session({ role: "student", enrolledCourseIds: [] }));
+    const conditions = buildNoteListConditions(scope, {});
+    // Layer 2: student with no enrollments gets SQL_FALSE → empty result set
+    expect(conditions[0]).toBe(SQL_FALSE);
+  });
+
+  it("student: Layer 3 denies direct access to non-enrolled course note", () => {
+    // Even if a student bypasses the list and hits /notes/:id directly with
+    // a note from courseId=99, Layer 3 catches it.
+    const scope = buildScopeContext(session({ role: "student", enrolledCourseIds: [1, 2, 3] }));
+    const nonEnrolledCourse = 99;
+    expect(() => validateCourseAccess(scope, nonEnrolledCourse)).toThrow(CourseAuthorizationError);
+  });
+
+  it("parent: Layer 2 hides non-child courses from list (SQL_FALSE when no childCourseIds)", () => {
+    const scope = buildScopeContext(session({ role: "parent", childCourseIds: [] }));
+    const conditions = buildNoteListConditions(scope, {});
+    expect(conditions[0]).toBe(SQL_FALSE);
+  });
+
+  it("parent: Layer 3 denies direct access to non-child course note", () => {
+    const scope = buildScopeContext(session({ role: "parent", childCourseIds: [4, 5, 6] }));
+    const unrelatedCourse = 99;
+    expect(() => validateCourseAccess(scope, unrelatedCourse)).toThrow(CourseAuthorizationError);
+  });
+
+  it("admin: Layer 2 has no scope filter, Layer 3 always passes", () => {
+    const scope = buildScopeContext(session({ role: "admin" }));
+    const conditions = buildNoteListConditions(scope, {});
+    // No scope condition — only deletedAt guard
+    expect(conditions).toHaveLength(1);
+    expect(conditions[0]).not.toBe(SQL_FALSE);
+    // Layer 3: never throws
+    expect(() => validateCourseAccess(scope, 999)).not.toThrow();
   });
 });

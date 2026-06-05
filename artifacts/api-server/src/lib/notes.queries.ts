@@ -62,9 +62,8 @@ const JOIN_SELECT = {
  * Builds WHERE conditions for listing notes.
  * Exported for unit testing — contains no DB calls.
  *
- * Notes are course-scoped. Layer 2 filtering delegates entirely to
- * applyCourseScopeFilter() from course-scope-validator — the canonical
- * helper for all course-scoped resources.
+ * Layer 2 filtering uses applyCourseScopeFilter() — the canonical course-scope
+ * helper from course-scope-validator. Consistent with all future course-scoped resources.
  *
  * | Role    | Scope condition                                         |
  * |---------|---------------------------------------------------------|
@@ -98,8 +97,8 @@ export function buildNoteListConditions(
 /**
  * Layer 2 — scope-filtered note list.
  *
- * Uses a JOIN to resolve course name in a single query.
- * Scope filter is applied before ORDER BY.
+ * Uses a JOIN to resolve course name in a single query (no N+1).
+ * Scope filter applied at the database level — no in-memory filtering.
  */
 export async function listNotes(
   scope: ScopeContext,
@@ -118,28 +117,25 @@ export async function listNotes(
 }
 
 /**
- * Fetches a single note by ID with scope filtering and soft-delete awareness.
+ * Fetches a single note by ID with soft-delete awareness.
  *
- * Notes are course-scoped — scope filter is applied in the detail query (not post-fetch)
- * because there is no IDOR concern at the course level. Out-of-scope access yields 404,
- * which does not reveal whether the note exists in another course scope.
+ * Intentionally does NOT apply a scope filter — the route handler performs
+ * the Layer 3 validateCourseAccess() check after this call (Sprint 3 Chunk 6).
  *
- * Uses applyCourseScopeFilter() — the same Layer 2 mechanism as the list endpoint.
- * Parent scope uses scope.childCourseIds (pre-computed at login, Sprint 3 §9e).
+ * Separation of concerns:
+ *   - Layer 2 (applyCourseScopeFilter) narrows the LIST query at the DB level.
+ *   - Layer 3 (validateCourseAccess)  is the defense-in-depth guard on detail reads.
+ *
+ * Returning null means the note does not exist or has been soft-deleted.
+ * A found note whose courseId fails validateCourseAccess yields 403, not 404 —
+ * this is the explicit IDOR response required by Sprint 3 Chunk 6.
  */
-export async function getNoteById(id: number, scope: ScopeContext): Promise<NoteRow | null> {
-  const conditions: SQL[] = [eq(notesTable.id, id)];
-
-  const scopeFilter = applyCourseScopeFilter(notesTable.courseId, scope);
-  if (scopeFilter !== undefined) conditions.push(scopeFilter);
-
-  conditions.push(isNull(notesTable.deletedAt));
-
+export async function getNoteById(id: number): Promise<NoteRow | null> {
   const [row] = await db
     .select(JOIN_SELECT)
     .from(notesTable)
     .leftJoin(coursesTable, eq(notesTable.courseId, coursesTable.id))
-    .where(and(...conditions))
+    .where(and(eq(notesTable.id, id), isNull(notesTable.deletedAt)))
     .limit(1);
 
   return row ? toNoteRow(row) : null;

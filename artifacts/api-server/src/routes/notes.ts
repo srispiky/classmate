@@ -12,6 +12,10 @@ import {
   ListNotesResponse,
 } from "@workspace/api-zod";
 import { buildScopeContext, type ClassmateSession } from "../lib/scope-context";
+import {
+  validateCourseAccess,
+  CourseAuthorizationError,
+} from "../lib/course-scope-validator";
 import { listNotes, getNoteById, type NoteRow } from "../lib/notes.queries";
 
 const router: IRouter = Router();
@@ -40,6 +44,9 @@ router.get("/notes", async (req, res): Promise<void> => {
     return;
   }
 
+  // Layer 2: applyCourseScopeFilter() applied inside listNotes().
+  // Admin/teacher see all notes; student filtered to enrolledCourseIds;
+  // parent filtered to childCourseIds. No in-memory filtering.
   const notes = await listNotes(scope, { courseId: queryParams.data.courseId });
 
   res.json(ListNotesResponse.parse(notes.map(serializeNote)));
@@ -93,12 +100,26 @@ router.get("/notes/:id", async (req, res): Promise<void> => {
     return;
   }
 
-  // Scope filter is applied inside getNoteById (Layer 2) for both student and parent.
-  // Out-of-scope notes return null → 404 (no IDOR concern for course-scoped resources).
-  const note = await getNoteById(params.data.id, scope);
+  // Step 1: fetch by ID + soft-delete guard only. No scope filter in the query —
+  //         Layer 3 below is the defence-in-depth safeguard for IDOR protection.
+  const note = await getNoteById(params.data.id);
   if (!note) {
     res.status(404).json({ error: "Note not found" });
     return;
+  }
+
+  // Step 2: Layer 3 — validate course access.
+  // Admin/teacher: always pass. Student: courseId ∈ enrolledCourseIds.
+  // Parent: courseId ∈ childCourseIds (pre-computed at login, Sprint 3 §9e).
+  // Throws CourseAuthorizationError when denied → 403, note content never serialised.
+  try {
+    validateCourseAccess(scope, note.courseId);
+  } catch (err) {
+    if (err instanceof CourseAuthorizationError) {
+      res.status(403).json({ error: "Access denied", code: "COURSE_ACCESS_DENIED" });
+      return;
+    }
+    throw err;
   }
 
   res.json(GetNoteResponse.parse(serializeNote(note)));
