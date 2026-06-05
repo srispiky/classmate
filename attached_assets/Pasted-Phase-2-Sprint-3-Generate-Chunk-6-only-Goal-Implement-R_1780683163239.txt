@@ -1,0 +1,326 @@
+Phase 2 Sprint 3
+
+Generate Chunk 6 only.
+
+Goal:
+Implement Row-Level Security for Notes using enrollment-based scope.
+
+Source of truth:
+
+- Architecture v1.0
+- RBAC Design v1.0
+- API Auth Design v1.0
+- Sprint 3 Row-Level Security Design (approved)
+- Chunk 1 completed
+- Chunk 2 completed
+- Chunk 3 completed
+- Chunk 4 completed
+- Chunk 5 completed
+
+Reuse all existing ScopeContext, ScopeFilter, Ownership Validation, and Query Builder infrastructure.
+
+Do not duplicate authorization logic.
+
+==================================================
+A. Notes Query Builder
+==================================================
+
+Implement scope-aware notes query builders.
+
+Required operations:
+
+1. listNotes()
+2. getNoteById()
+
+Apply Layer 2 filtering exactly as defined in Sprint 3.
+
+--------------------------------------------------
+Admin
+--------------------------------------------------
+
+Global access.
+
+No row filtering.
+
+--------------------------------------------------
+Teacher
+--------------------------------------------------
+
+Global access.
+
+No row filtering.
+
+--------------------------------------------------
+Student
+--------------------------------------------------
+
+Can access notes only for enrolled courses.
+
+Apply:
+
+notes.course_id IN scope.enrolledCourseIds
+
+Use enrollment-based filtering.
+
+--------------------------------------------------
+Parent
+--------------------------------------------------
+
+Can access notes only for courses attended by children.
+
+Apply:
+
+notes.course_id IN (
+  SELECT DISTINCT course_id
+  FROM course_enrollments
+  WHERE student_id IN scope.childStudentIds
+    AND is_active = true
+)
+
+Follow Sprint 3 CHILD_ENROLLED pattern.
+
+==================================================
+B. Enrollment Scope Helpers
+==================================================
+
+Extend reusable enrollment-scope infrastructure where necessary.
+
+Must support:
+
+- student enrolled course filtering
+- parent child-enrolled course filtering
+
+Reuse existing foundation.
+
+Avoid resource-specific authorization code.
+
+==================================================
+C. Notes Detail Endpoint
+==================================================
+
+Implement:
+
+GET /api/notes/:id
+
+Requirements:
+
+- scope-aware retrieval
+- soft-delete awareness
+- enrollment validation
+
+Behavior:
+
+Admin:
+- access any note
+
+Teacher:
+- access any note
+
+Student:
+- only notes belonging to enrolled courses
+
+Parent:
+- only notes belonging to children's enrolled courses
+
+Unauthorized:
+
+Return according to Sprint 3 design.
+
+No note content leakage.
+
+==================================================
+D. Layer 3 Validation
+==================================================
+
+Implement post-fetch validation.
+
+Student:
+
+note.course_id must exist in scope.enrolledCourseIds
+
+Parent:
+
+note.course_id must exist in child enrolled course set
+
+Teacher/Admin:
+
+always allowed
+
+Must use reusable ownership framework.
+
+==================================================
+E. Notes List Endpoint
+==================================================
+
+Implement:
+
+GET /api/notes
+
+Requirements:
+
+- enrollment-based filtering
+- pagination support
+- sorting support
+- existing filters remain functional
+- soft-delete awareness
+
+Verify:
+
+Student:
+- only notes from enrolled courses
+
+Parent:
+- only notes from child-enrolled courses
+
+Teacher/Admin:
+- all notes
+
+==================================================
+F. Empty Enrollment Edge Cases
+==================================================
+
+Student:
+
+scope.enrolledCourseIds = []
+
+Expected:
+
+empty result set
+
+No full-table scans
+
+No accidental access
+
+Parent:
+
+childStudentIds = []
+
+Expected:
+
+empty result set
+
+No accidental access
+
+Implement safe handling before query execution if needed.
+
+==================================================
+G. Integration Tests
+==================================================
+
+Create tests for:
+
+Student:
+
+✓ enrolled course notes returned
+
+✓ non-enrolled course notes excluded
+
+✓ enrolled course note detail allowed
+
+✓ non-enrolled course note denied
+
+Parent:
+
+✓ child-enrolled notes returned
+
+✓ unrelated notes excluded
+
+✓ child-enrolled note detail allowed
+
+✓ unrelated note denied
+
+Teacher:
+
+✓ all notes returned
+
+✓ any note detail allowed
+
+Admin:
+
+✓ all notes returned
+
+✓ any note detail allowed
+
+==================================================
+H. Security Tests
+==================================================
+
+Create explicit course-scope IDOR tests.
+
+Student:
+
+Request note from non-enrolled course.
+
+Expected:
+
+Denied.
+
+No note content leaked.
+
+Parent:
+
+Request note from course not attended by any child.
+
+Expected:
+
+Denied.
+
+No note content leaked.
+
+Verify response contains no protected fields.
+
+==================================================
+I. Performance Validation
+==================================================
+
+Verify CHILD_ENROLLED query path uses:
+
+course_enrollments.student_id index
+
+Add test or verification guidance.
+
+Ensure implementation follows Sprint 3 performance requirements.
+
+Avoid N+1 queries.
+
+==================================================
+J. Regression Tests
+==================================================
+
+Verify previous chunks continue passing:
+
+Assignments RLS
+Assessments RLS
+ScopeContext
+Ownership validation
+SessionEnricher
+
+No regressions.
+
+==================================================
+Output
+==================================================
+
+Provide:
+
+1. Files created
+2. Files modified
+3. Complete file contents
+4. Test files
+5. Query flow diagram
+6. Manual verification checklist
+
+Do NOT implement:
+
+- courses
+- activity
+- student portal routes
+- parent portal routes
+
+Notes only.
+
+Code must compile successfully.
+
+No TODOs.
+No placeholders.
+No pseudocode.

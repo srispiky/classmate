@@ -10,8 +10,9 @@ export const notesTable = pgTable("notes", {
   topic: text("topic").notNull(),
   videoUrl: text("video_url"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  deletedAt: timestamp("deleted_at", { withTimezone: true }),
 });
 
-export const insertNoteSchema = createInsertSchema(notesTable).omit({ id: true, createdAt: true });
+export const insertNoteSchema = createInsertSchema(notesTable).omit({ id: true, createdAt: true, deletedAt: true });
 export type InsertNote = z.infer<typeof insertNoteSchema>;
 export type Note = typeof notesTable.$inferSelect;
