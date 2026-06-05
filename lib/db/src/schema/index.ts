@@ -12,3 +12,4 @@ export * from "./userRoles";
 export * from "./studentGuardians";
 export * from "./courseEnrollments";
 export * from "./rbacVersion";
+export * from "./announcements";

@@ -9,3 +9,6 @@ export type { AssessmentLike } from "./assessment-scope-policy";
 
 export { NotesScopePolicy, notesPolicy } from "./notes-scope-policy";
 export type { NoteLike } from "./notes-scope-policy";
+
+export { AnnouncementScopePolicy, announcementPolicy } from "./announcement-scope-policy";
+export type { AnnouncementLike } from "./announcement-scope-policy";

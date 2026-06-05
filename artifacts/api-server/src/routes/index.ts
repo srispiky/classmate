@@ -9,6 +9,7 @@ import assessmentsRouter from "./assessments";
 import dashboardRouter from "./dashboard";
 import downloadsRouter from "./downloads";
 import adminRouter from "./admin";
+import announcementsRouter from "./announcements";
 import { requireAuth } from "../middleware/auth";
 
 const router: IRouter = Router();
@@ -24,6 +25,7 @@ router.use(coursesRouter);
 router.use(assignmentsRouter);
 router.use(notesRouter);
 router.use(assessmentsRouter);
+router.use(announcementsRouter);
 router.use(dashboardRouter);
 router.use(adminRouter);
 

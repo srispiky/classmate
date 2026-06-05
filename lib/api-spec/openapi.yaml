@@ -22,6 +22,8 @@ tags:
     description: Notes and lesson content
   - name: assessments
     description: Assessment and AI suggestions
+  - name: announcements
+    description: Course announcements
   - name: dashboard
     description: Dashboard aggregations
 
@@ -352,6 +354,87 @@ paths:
               schema:
                 $ref: "#/components/schemas/Note"
 
+  # ---- ANNOUNCEMENTS ----
+  /announcements:
+    get:
+      operationId: listAnnouncements
+      tags: [announcements]
+      summary: List course announcements
+      parameters:
+        - name: courseId
+          in: query
+          required: false
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Announcements list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Announcement"
+    post:
+      operationId: createAnnouncement
+      tags: [announcements]
+      summary: Create a course announcement
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AnnouncementInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Announcement"
+
+  /announcements/{id}:
+    get:
+      operationId: getAnnouncement
+      tags: [announcements]
+      summary: Get an announcement by ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Announcement
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Announcement"
+    patch:
+      operationId: updateAnnouncement
+      tags: [announcements]
+      summary: Update an announcement
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AnnouncementUpdate"
+      responses:
+        "200":
+          description: Updated announcement
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Announcement"
+
   # ---- ASSESSMENTS ----
   /assessments:
     get:
@@ -670,6 +753,57 @@ components:
           type: number
         feedback:
           type: string
+
+    Announcement:
+      type: object
+      properties:
+        id:
+          type: integer
+        title:
+          type: string
+        content:
+          type: string
+        courseId:
+          type: integer
+        courseName:
+          type: string
+        authorName:
+          type: string
+        priority:
+          type: string
+          enum: [normal, urgent]
+        createdAt:
+          type: string
+      required: [id, title, content, courseId, courseName, authorName, priority, createdAt]
+
+    AnnouncementInput:
+      type: object
+      properties:
+        title:
+          type: string
+        content:
+          type: string
+        courseId:
+          type: integer
+        authorName:
+          type: string
+        priority:
+          type: string
+          enum: [normal, urgent]
+      required: [title, content, courseId, authorName]
+
+    AnnouncementUpdate:
+      type: object
+      properties:
+        title:
+          type: string
+        content:
+          type: string
+        authorName:
+          type: string
+        priority:
+          type: string
+          enum: [normal, urgent]
 
     Note:
       type: object

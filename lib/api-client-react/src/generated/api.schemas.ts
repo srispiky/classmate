@@ -111,6 +111,56 @@ export interface UpdateAssignmentBody {
   feedback?: string;
 }
 
+export type AnnouncementPriority =
+  (typeof AnnouncementPriority)[keyof typeof AnnouncementPriority];
+
+export const AnnouncementPriority = {
+  normal: "normal",
+  urgent: "urgent",
+} as const;
+
+export interface Announcement {
+  id: number;
+  title: string;
+  content: string;
+  courseId: number;
+  courseName: string;
+  authorName: string;
+  priority: AnnouncementPriority;
+  createdAt: string;
+}
+
+export type AnnouncementInputPriority =
+  (typeof AnnouncementInputPriority)[keyof typeof AnnouncementInputPriority];
+
+export const AnnouncementInputPriority = {
+  normal: "normal",
+  urgent: "urgent",
+} as const;
+
+export interface AnnouncementInput {
+  title: string;
+  content: string;
+  courseId: number;
+  authorName: string;
+  priority?: AnnouncementInputPriority;
+}
+
+export type AnnouncementUpdatePriority =
+  (typeof AnnouncementUpdatePriority)[keyof typeof AnnouncementUpdatePriority];
+
+export const AnnouncementUpdatePriority = {
+  normal: "normal",
+  urgent: "urgent",
+} as const;
+
+export interface AnnouncementUpdate {
+  title?: string;
+  content?: string;
+  authorName?: string;
+  priority?: AnnouncementUpdatePriority;
+}
+
 export interface Note {
   id: number;
   title: string;
@@ -241,6 +291,10 @@ export type ListAssignmentsParams = {
 };
 
 export type ListNotesParams = {
+  courseId?: number;
+};
+
+export type ListAnnouncementsParams = {
   courseId?: number;
 };
 

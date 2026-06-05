@@ -1,0 +1,293 @@
+Phase 2 – Sprint 3
+
+Chunk 8 – Announcements Row-Level Security (RLS)
+
+# Goal
+
+Implement Row-Level Security for Announcements using the new Resource Authorization Policy framework.
+
+This chunk serves as the first real-world consumer of the policy abstraction introduced in Chunk 7.
+
+Announcements are COURSE-SCOPED resources.
+
+Authorization must be enrollment-based.
+
+# Existing Infrastructure
+
+Already available:
+
+* ScopeContext
+* SessionEnricher
+* childCourseIds
+* enrolledCourseIds
+* CourseScopeValidator
+* applyCourseScopeFilter()
+* ResourceScopePolicy
+* NotesScopePolicy
+* AssignmentScopePolicy
+* AssessmentScopePolicy
+
+Reuse existing infrastructure.
+
+Do not duplicate authorization logic.
+
+# Authorization Rules
+
+Admin
+
+* Global access
+
+Teacher
+
+* Global access
+
+Student
+
+* Can access announcements where:
+
+```text
+announcement.course_id IN scope.enrolledCourseIds
+```
+
+Parent
+
+* Can access announcements where:
+
+```text
+announcement.course_id IN scope.childCourseIds
+```
+
+Announcements are COURSE-SCOPED.
+
+Never use student ownership checks.
+
+Always authorize using course access.
+
+# Endpoints In Scope
+
+Implement RLS for:
+
+```ts
+listAnnouncements()
+```
+
+and
+
+```ts
+getAnnouncementById()
+```
+
+Only these endpoints.
+
+Do not modify create/update/delete behavior.
+
+Do not implement portal-specific routes.
+
+# Layer 2 Requirements
+
+Apply query-level filtering.
+
+Use:
+
+```ts
+applyCourseScopeFilter(...)
+```
+
+Behavior:
+
+Admin:
+
+* no filtering
+
+Teacher:
+
+* no filtering
+
+Student:
+
+* filter by enrolledCourseIds
+
+Parent:
+
+* filter by childCourseIds
+
+Filtering must occur in SQL query construction.
+
+No in-memory filtering.
+
+# Layer 3 Requirements
+
+Implement post-fetch validation.
+
+For:
+
+```ts
+getAnnouncementById()
+```
+
+Flow:
+
+1. Fetch announcement
+2. Validate existence
+3. Validate course access
+4. Return result
+
+Example:
+
+```ts
+validateCourseAccess(
+  scope,
+  announcement.courseId
+);
+```
+
+Maintain defense-in-depth.
+
+# Announcement Policy
+
+Create:
+
+```ts
+AnnouncementScopePolicy
+```
+
+Implement:
+
+```ts
+applyFilter()
+validateAccess()
+```
+
+Reuse existing course-scoped authorization patterns.
+
+Avoid resource-specific authorization code in services.
+
+Services should delegate authorization decisions to the policy.
+
+# Soft Delete Requirements
+
+Ensure soft delete behavior remains enforced.
+
+Deleted announcements must not be visible.
+
+Expected:
+
+Deleted announcement:
+
+```http
+404 Not Found
+```
+
+not:
+
+```http
+403 Forbidden
+```
+
+# Integration Tests
+
+Admin
+
+* list announcements
+* get announcement by id
+
+Teacher
+
+* list announcements
+* get announcement by id
+
+Student
+
+* enrolled course announcement => 200
+* non-enrolled course announcement => denied
+
+Parent
+
+* child course announcement => 200
+* unrelated course announcement => denied
+
+# Layer 2 Security Tests
+
+Verify only authorized announcements are returned.
+
+Student:
+
+Course A announcement => visible
+
+Course B announcement => hidden
+
+Parent:
+
+Child course announcement => visible
+
+Other course announcement => hidden
+
+# Layer 3 Security Tests
+
+Verify direct ID access protection.
+
+Student:
+
+* authorized announcement => 200
+* unauthorized announcement => denied
+
+Parent:
+
+* authorized announcement => 200
+* unauthorized announcement => denied
+
+# IDOR Tests
+
+Explicitly verify enumeration resistance.
+
+Examples:
+
+```http
+GET /announcements/:id
+```
+
+Unauthorized resources must never be returned.
+
+# Performance Requirements
+
+No N+1 queries.
+
+No enrollment lookups per request.
+
+Use:
+
+```ts
+scope.enrolledCourseIds
+scope.childCourseIds
+```
+
+already populated by SessionEnricher.
+
+No additional authorization joins.
+
+# Code Quality Requirements
+
+Reuse:
+
+* CourseScopeValidator
+* applyCourseScopeFilter
+* ResourceScopePolicy framework
+
+Keep implementation consistent with:
+
+* NotesScopePolicy
+
+# Acceptance Criteria
+
+1. AnnouncementScopePolicy implemented
+2. List endpoint protected by Layer 2 filtering
+3. Detail endpoint protected by Layer 3 validation
+4. Student access based on enrolled courses
+5. Parent access based on childCourseIds
+6. Admin and Teacher retain global access
+7. Soft delete behavior preserved
+8. Integration tests pass
+9. IDOR tests pass
+10. No additional database queries introduced
+
+Deliver complete implementation with tests.

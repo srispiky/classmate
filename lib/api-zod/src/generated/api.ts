@@ -300,6 +300,81 @@ export const UpdateNoteResponse = zod.object({
 });
 
 /**
+ * @summary List course announcements
+ */
+export const ListAnnouncementsQueryParams = zod.object({
+  courseId: zod.coerce.number().optional(),
+});
+
+export const ListAnnouncementsResponseItem = zod.object({
+  id: zod.number(),
+  title: zod.string(),
+  content: zod.string(),
+  courseId: zod.number(),
+  courseName: zod.string(),
+  authorName: zod.string(),
+  priority: zod.enum(["normal", "urgent"]),
+  createdAt: zod.string(),
+});
+export const ListAnnouncementsResponse = zod.array(
+  ListAnnouncementsResponseItem,
+);
+
+/**
+ * @summary Create a course announcement
+ */
+export const CreateAnnouncementBody = zod.object({
+  title: zod.string(),
+  content: zod.string(),
+  courseId: zod.number(),
+  authorName: zod.string(),
+  priority: zod.enum(["normal", "urgent"]).optional(),
+});
+
+/**
+ * @summary Get an announcement by ID
+ */
+export const GetAnnouncementParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const GetAnnouncementResponse = zod.object({
+  id: zod.number(),
+  title: zod.string(),
+  content: zod.string(),
+  courseId: zod.number(),
+  courseName: zod.string(),
+  authorName: zod.string(),
+  priority: zod.enum(["normal", "urgent"]),
+  createdAt: zod.string(),
+});
+
+/**
+ * @summary Update an announcement
+ */
+export const UpdateAnnouncementParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const UpdateAnnouncementBody = zod.object({
+  title: zod.string().optional(),
+  content: zod.string().optional(),
+  authorName: zod.string().optional(),
+  priority: zod.enum(["normal", "urgent"]).optional(),
+});
+
+export const UpdateAnnouncementResponse = zod.object({
+  id: zod.number(),
+  title: zod.string(),
+  content: zod.string(),
+  courseId: zod.number(),
+  courseName: zod.string(),
+  authorName: zod.string(),
+  priority: zod.enum(["normal", "urgent"]),
+  createdAt: zod.string(),
+});
+
+/**
  * @summary List assessments
  */
 export const ListAssessmentsQueryParams = zod.object({
