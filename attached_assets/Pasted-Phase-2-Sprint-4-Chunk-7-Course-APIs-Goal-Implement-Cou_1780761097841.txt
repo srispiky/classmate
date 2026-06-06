@@ -1,0 +1,491 @@
+Phase 2 – Sprint 4
+
+Chunk 7 – Course APIs
+
+# Goal
+
+Implement Course API endpoints using the CourseService and CourseScopePolicy.
+
+This is the first public-facing implementation of:
+
+* Teacher ownership boundaries
+* Student course visibility
+* Parent course visibility
+* Course-level RLS
+
+Authorization must be enforced through:
+
+* Layer 1
+* Layer 2
+* Layer 3
+
+# Existing Infrastructure
+
+Already implemented:
+
+* Course domain
+* CourseRepository
+* CourseService
+* ScopeContext
+* SessionEnricher
+* TeacherScopeValidator
+* CourseScopePolicy
+* ResourceScopePolicy framework
+
+Reuse existing infrastructure.
+
+Do not duplicate authorization logic.
+
+Do not place ownership rules inside route handlers.
+
+# Objectives
+
+1. Create Course API endpoints
+2. Integrate CourseScopePolicy
+3. Enforce RLS
+4. Add integration tests
+5. Add IDOR tests
+6. Preserve performance
+
+# Endpoints
+
+Implement:
+
+```http
+GET    /courses
+GET    /courses/:id
+POST   /courses
+PUT    /courses/:id
+DELETE /courses/:id
+```
+
+Use existing routing conventions.
+
+# Layer 1 Requirements
+
+Apply:
+
+```ts
+requireAuth()
+```
+
+and existing permission middleware.
+
+Suggested permissions:
+
+```text
+course.read
+course.create
+course.update
+course.delete
+```
+
+Reuse existing permission patterns.
+
+# GET /courses
+
+Purpose:
+
+Return courses visible to current user.
+
+Authorization:
+
+Admin
+
+* all courses
+
+Teacher
+
+* owned courses only
+
+Student
+
+* enrolled courses only
+
+Parent
+
+* child courses only
+
+Implementation:
+
+Use:
+
+```ts
+CourseScopePolicy.applyFilter(...)
+```
+
+Requirements:
+
+* Layer 2 filtering required
+* No in-memory filtering
+* No post-processing arrays
+* Database filtering only
+
+# Pagination
+
+Support existing pagination patterns.
+
+If platform already supports:
+
+```http
+?page=
+&pageSize=
+```
+
+reuse them.
+
+# Search
+
+If course search already exists:
+
+* integrate with policy filtering
+
+Otherwise:
+
+* keep implementation simple
+
+# GET /courses/:id
+
+Purpose:
+
+Return single course.
+
+Flow:
+
+```text
+Find course
+  ↓
+Verify exists
+  ↓
+CourseScopePolicy.validateAccess()
+  ↓
+Return course
+```
+
+Requirements:
+
+Layer 3 validation mandatory.
+
+Do not rely solely on query filtering.
+
+# POST /courses
+
+Purpose:
+
+Create course.
+
+# Authorization
+
+Admin
+
+* allowed
+
+Teacher
+
+* allowed
+
+Student
+
+* denied
+
+Parent
+
+* denied
+
+# Validation
+
+Reuse existing Zod schemas.
+
+Requirements:
+
+* teacher_id valid
+* status valid
+* required fields validated
+
+# Audit Fields
+
+Populate:
+
+```ts
+createdBy
+createdAt
+```
+
+following existing platform conventions.
+
+# PUT /courses/:id
+
+Purpose:
+
+Update course.
+
+Authorization:
+
+Admin
+
+* any course
+
+Teacher
+
+* owned courses only
+
+Student
+
+* denied
+
+Parent
+
+* denied
+
+Flow:
+
+```text
+Find course
+  ↓
+validateAccess()
+  ↓
+Update
+```
+
+Layer 3 validation required.
+
+# DELETE /courses/:id
+
+Purpose:
+
+Soft delete course.
+
+Authorization:
+
+Admin
+
+* any course
+
+Teacher
+
+* owned courses only
+
+Student
+
+* denied
+
+Parent
+
+* denied
+
+Behavior:
+
+Use existing soft-delete conventions.
+
+Do not physically delete rows.
+
+Expected:
+
+```ts
+deletedAt
+deletedBy
+```
+
+updated.
+
+# Soft Delete Rules
+
+Deleted courses must not appear in:
+
+```http
+GET /courses
+GET /courses/:id
+```
+
+Expected response:
+
+```http
+404 Not Found
+```
+
+for deleted courses.
+
+Avoid resource enumeration.
+
+# Integration Tests
+
+GET /courses
+
+Admin
+
+* receives all courses
+
+Teacher
+
+* receives owned courses only
+
+Student
+
+* receives enrolled courses only
+
+Parent
+
+* receives child courses only
+
+GET /courses/:id
+
+Admin
+
+* accessible
+
+Teacher
+
+* owned course accessible
+* non-owned course denied
+
+Student
+
+* enrolled course accessible
+* non-enrolled course denied
+
+Parent
+
+* child course accessible
+* unrelated course denied
+
+POST /courses
+
+Admin
+
+* success
+
+Teacher
+
+* success
+
+Student
+
+* forbidden
+
+Parent
+
+* forbidden
+
+PUT /courses/:id
+
+Admin
+
+* success
+
+Teacher
+
+* owned course success
+* non-owned course forbidden
+
+DELETE /courses/:id
+
+Admin
+
+* success
+
+Teacher
+
+* owned course success
+* non-owned course forbidden
+
+# IDOR Tests
+
+Verify:
+
+```http
+GET /courses/:id
+PUT /courses/:id
+DELETE /courses/:id
+```
+
+Teacher attempts access to:
+
+```text
+Teacher B course
+```
+
+Expected:
+
+```http
+403 Forbidden
+```
+
+Student attempts access to:
+
+```text
+Non-enrolled course
+```
+
+Expected:
+
+```http
+403 Forbidden
+```
+
+Parent attempts access to:
+
+```text
+Non-child course
+```
+
+Expected:
+
+```http
+403 Forbidden
+```
+
+# Performance Requirements
+
+No N+1 queries.
+
+No runtime ownership lookups.
+
+Authorization decisions must use:
+
+```ts
+scope.ownedCourseIds
+scope.enrolledCourseIds
+scope.childCourseIds
+```
+
+already loaded into ScopeContext.
+
+No additional enrollment queries during authorization.
+
+# Code Quality
+
+Routes
+
+* thin
+* validation only
+
+Services
+
+* business logic
+
+CourseScopePolicy
+
+* authorization
+
+TeacherScopeValidator
+
+* ownership decisions
+
+Avoid mixing responsibilities.
+
+# Acceptance Criteria
+
+1. GET /courses implemented
+2. GET /courses/:id implemented
+3. POST /courses implemented
+4. PUT /courses/:id implemented
+5. DELETE /courses/:id implemented
+6. CourseScopePolicy integrated
+7. Layer 2 filtering enforced
+8. Layer 3 validation enforced
+9. Soft deletes respected
+10. Integration tests added
+11. IDOR tests added
+12. Existing tests remain green
+
+Deliver complete implementation with tests.

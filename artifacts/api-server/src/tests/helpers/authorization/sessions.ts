@@ -15,6 +15,11 @@
  */
 import { buildScopeContext, type ClassmateSession, type ScopeContext } from "../../../lib/scope-context";
 
+export interface TeacherScopeOptions {
+  teacherId?: number;
+  ownedCourseIds?: number[];
+}
+
 export interface StudentScopeOptions {
   studentId?: number;
   enrolledCourseIds?: number[];
@@ -42,9 +47,19 @@ export function createAdminScope(): ScopeContext {
   return buildScopeContext(makeRawSession({ role: "admin" }));
 }
 
-/** Teacher scope — isGlobal=true, no student/parent associations. */
-export function createTeacherScope(): ScopeContext {
-  return buildScopeContext(makeRawSession({ role: "teacher" }));
+/**
+ * Teacher scope — isGlobal=true for student/parent-scoped resources.
+ * For CourseScopePolicy (which enforces teacher ownership), pass explicit
+ * ownedCourseIds via options. Defaults to empty (no owned courses).
+ */
+export function createTeacherScope(options: TeacherScopeOptions = {}): ScopeContext {
+  return buildScopeContext(
+    makeRawSession({
+      role: "teacher",
+      teacherId: options.teacherId,
+      ownedCourseIds: options.ownedCourseIds,
+    }),
+  );
 }
 
 /**

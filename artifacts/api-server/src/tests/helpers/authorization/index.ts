@@ -8,6 +8,7 @@ export {
   ALL_SCOPES,
   GLOBAL_ROLES,
   SCOPED_ROLES,
+  type TeacherScopeOptions,
   type StudentScopeOptions,
   type ParentScopeOptions,
 } from "./sessions";
