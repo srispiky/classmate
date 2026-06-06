@@ -1,0 +1,358 @@
+Phase 2 – Sprint 4
+
+Chunk 8 – Enrollment Management
+
+# Goal
+
+Implement the official enrollment management workflow for Classmate Connect.
+
+This chunk establishes the authoritative mechanism for:
+
+* Student enrollment
+* Student unenrollment
+* Parent course inheritance
+* Enrollment auditing
+* Enrollment lifecycle management
+
+# Current State
+
+Already implemented:
+
+* courses
+* course_enrollments
+* ScopeContext
+* SessionEnricher
+* Teacher ownership boundaries
+* Course APIs
+* CourseScopePolicy
+
+Enrollment data already exists.
+
+This chunk introduces enrollment management operations.
+
+# Objectives
+
+1. Enroll student into course
+2. Unenroll student from course
+3. Prevent duplicate enrollments
+4. Maintain audit fields
+5. Maintain parent access inheritance
+6. Add integration tests
+7. Add security tests
+
+# Endpoints
+
+Implement:
+
+```http
+POST /courses/:courseId/enrollments
+```
+
+and
+
+```http
+DELETE /courses/:courseId/enrollments/:studentId
+```
+
+Use existing routing conventions.
+
+# Authorization Rules
+
+Admin
+
+* Can enroll students into any course
+* Can remove students from any course
+
+Teacher
+
+* Can enroll students only into owned courses
+* Can remove students only from owned courses
+
+Student
+
+* Forbidden
+
+Parent
+
+* Forbidden
+
+# Layer 1
+
+Require:
+
+```ts
+requireAuth()
+requirePermission()
+```
+
+Suggested permissions:
+
+```text
+course.enrollment.create
+course.enrollment.delete
+```
+
+Reuse existing authorization framework.
+
+# Layer 2
+
+Teacher ownership validation must use:
+
+```ts
+CourseScopePolicy
+TeacherScopeValidator
+```
+
+Do not duplicate ownership logic.
+
+# Layer 3
+
+Before enrollment operations:
+
+Validate teacher access to course.
+
+Teacher must not manage enrollments for courses they do not own.
+
+# Enrollment Creation
+
+Request example:
+
+```json
+{
+  "studentId": "..."
+}
+```
+
+Validation:
+
+* course exists
+* student exists
+* course active
+* student active
+* enrollment does not already exist
+
+Create:
+
+```text
+course_enrollments
+```
+
+record.
+
+Populate:
+
+```sql
+created_at
+created_by
+```
+
+following existing conventions.
+
+# Duplicate Enrollment Handling
+
+Reject:
+
+```text
+Student already enrolled
+```
+
+Use existing application error patterns.
+
+Do not create duplicate rows.
+
+# Enrollment Removal
+
+Preferred behavior:
+
+Soft unenrollment.
+
+Update:
+
+```sql
+is_active = false
+
+updated_at
+updated_by
+```
+
+instead of deleting rows.
+
+Historical enrollment records must be preserved.
+
+# Session Impact
+
+Enrollment changes affect:
+
+```ts
+scope.enrolledCourseIds
+scope.childCourseIds
+```
+
+Document expected behavior.
+
+No immediate session refresh required.
+
+Changes should appear on next authentication/session rebuild.
+
+# Parent Inheritance
+
+Existing parent-child relationships must continue to work.
+
+After student enrollment:
+
+```text
+Student
+  ↓
+Course Access
+
+Parent
+  ↓
+Inherited Course Access
+```
+
+No additional parent enrollment records should be created.
+
+Inheritance should continue using existing scope resolution logic.
+
+# Integration Tests
+
+Enrollment Creation
+
+Admin
+
+* success
+
+Teacher
+
+* owned course success
+
+Teacher
+
+* non-owned course forbidden
+
+Student
+
+* forbidden
+
+Parent
+
+* forbidden
+
+Duplicate enrollment
+
+* rejected
+
+Inactive student
+
+* rejected
+
+Inactive course
+
+* rejected
+
+---
+
+Enrollment Removal
+
+Admin
+
+* success
+
+Teacher
+
+* owned course success
+
+Teacher
+
+* non-owned course forbidden
+
+Student
+
+* forbidden
+
+Parent
+
+* forbidden
+
+---
+
+Post Enrollment Validation
+
+Verify:
+
+Student receives:
+
+```ts
+enrolledCourseIds
+```
+
+after session refresh.
+
+Verify:
+
+Parent receives:
+
+```ts
+childCourseIds
+```
+
+after session refresh.
+
+# Security Tests
+
+Verify IDOR protection.
+
+Teacher A attempts:
+
+```http
+POST /courses/B/enrollments
+```
+
+Expected:
+
+```http
+403
+```
+
+Teacher A attempts:
+
+```http
+DELETE /courses/B/enrollments/student
+```
+
+Expected:
+
+```http
+403
+```
+
+# Performance Requirements
+
+No N+1 queries.
+
+Use indexed lookups.
+
+Review indexes:
+
+```sql
+course_id
+student_id
+is_active
+```
+
+Ensure enrollment operations remain efficient.
+
+# Acceptance Criteria
+
+1. Enrollment creation endpoint implemented
+2. Enrollment removal endpoint implemented
+3. Duplicate prevention implemented
+4. Teacher ownership enforced
+5. Student access inheritance preserved
+6. Parent access inheritance preserved
+7. Audit fields populated
+8. Integration tests added
+9. Security tests added
+10. Existing tests remain green
+
+Deliver complete implementation with tests.
