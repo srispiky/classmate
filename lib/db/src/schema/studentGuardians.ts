@@ -2,7 +2,7 @@ import { pgTable, bigserial, integer, text, timestamp, uniqueIndex, index } from
 import { createInsertSchema, createSelectSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 import { studentsTable } from "./students";
-import { users } from "./users";
+import { usersTable } from "./users";
 
 export const studentGuardiansTable = pgTable(
   "student_guardians",
@@ -13,12 +13,12 @@ export const studentGuardiansTable = pgTable(
       .references(() => studentsTable.id, { onDelete: "cascade" }),
     userId: integer("user_id")
       .notNull()
-      .references(() => users.id, { onDelete: "cascade" }),
+      .references(() => usersTable.id, { onDelete: "cascade" }),
     relationship: text("relationship").notNull().default("guardian"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     createdBy: integer("created_by")
       .notNull()
-      .references(() => users.id, { onDelete: "restrict" }),
+      .references(() => usersTable.id, { onDelete: "restrict" }),
   },
   (table) => ({
     uniqueGuardian: uniqueIndex("uq_student_guardians").on(table.studentId, table.userId),

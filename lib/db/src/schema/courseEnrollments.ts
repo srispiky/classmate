@@ -12,7 +12,7 @@ import { createInsertSchema, createSelectSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 import { studentsTable } from "./students";
 import { coursesTable } from "./courses";
-import { users } from "./users";
+import { usersTable } from "./users";
 
 export const courseEnrollmentsTable = pgTable(
   "course_enrollments",
@@ -27,7 +27,7 @@ export const courseEnrollmentsTable = pgTable(
     enrolledAt: timestamp("enrolled_at", { withTimezone: true }).notNull().defaultNow(),
     enrolledBy: integer("enrolled_by")
       .notNull()
-      .references(() => users.id, { onDelete: "restrict" }),
+      .references(() => usersTable.id, { onDelete: "restrict" }),
     isActive: boolean("is_active").notNull().default(true),
     droppedAt: timestamp("dropped_at", { withTimezone: true }),
   },

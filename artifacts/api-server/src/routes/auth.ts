@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { db, users } from "@workspace/db";
+import { db, usersTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { hashPassword, verifyPassword } from "../lib/password";
 import { SessionEnricherService } from "../lib/session-enricher";
@@ -14,7 +14,7 @@ router.post("/auth/login", async (req, res): Promise<void> => {
     return;
   }
 
-  const [user] = await db.select().from(users).where(eq(users.username, username)).limit(1);
+  const [user] = await db.select().from(usersTable).where(eq(usersTable.username, username)).limit(1);
 
   if (!user || !user.isActive) {
     res.status(401).json({ error: "Invalid username or password" });

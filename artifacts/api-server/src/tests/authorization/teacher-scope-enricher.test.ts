@@ -14,7 +14,7 @@
  *   - Deduplication             → duplicate rows not propagated (defensive)
  */
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
-import { db, users, coursesTable } from "@workspace/db";
+import { db, usersTable as users, coursesTable } from "@workspace/db";
 import { eq, inArray } from "drizzle-orm";
 import { SessionEnricherService } from "../../lib/session-enricher";
 

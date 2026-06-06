@@ -7,6 +7,7 @@ import { ownershipDenied } from "../lib/query-contracts";
 import { PolicyAuthorizationError } from "../lib/policies";
 import { coursePolicy } from "../shared/auth/policies/course-scope-policy";
 import { listCourses, getCourseById, type CourseRow } from "../lib/courses.queries";
+import { requireRole } from "../middleware/require-role";
 
 const router: IRouter = Router();
 
@@ -75,14 +76,9 @@ router.get("/courses/:id", async (req, res): Promise<void> => {
 
 // ── POST /api/courses ─────────────────────────────────────────────────────────
 
-router.post("/courses", async (req, res): Promise<void> => {
+// Layer 1: only admin and teacher may create courses (enforced by requireRole middleware).
+router.post("/courses", requireRole("admin", "teacher"), async (req, res): Promise<void> => {
   const scope = buildScopeContext(req.session as ClassmateSession);
-
-  // Layer 1: only admin and teacher may create courses.
-  if (scope.role !== "admin" && scope.role !== "teacher") {
-    res.status(403).json({ error: "Access denied", code: "OWNERSHIP_DENIED" });
-    return;
-  }
 
   const parsed = createCourseInputSchema.safeParse(req.body);
   if (!parsed.success) {
@@ -100,14 +96,9 @@ router.post("/courses", async (req, res): Promise<void> => {
 
 // ── PUT /api/courses/:id ──────────────────────────────────────────────────────
 
-router.put("/courses/:id", async (req, res): Promise<void> => {
+// Layer 1: only admin and teacher may update courses (enforced by requireRole middleware).
+router.put("/courses/:id", requireRole("admin", "teacher"), async (req, res): Promise<void> => {
   const scope = buildScopeContext(req.session as ClassmateSession);
-
-  // Layer 1: only admin and teacher may update courses.
-  if (scope.role !== "admin" && scope.role !== "teacher") {
-    res.status(403).json({ error: "Access denied", code: "OWNERSHIP_DENIED" });
-    return;
-  }
 
   const params = GetCourseParams.safeParse(req.params);
   if (!params.success) {
@@ -156,14 +147,9 @@ router.put("/courses/:id", async (req, res): Promise<void> => {
 
 // ── DELETE /api/courses/:id — soft delete ─────────────────────────────────────
 
-router.delete("/courses/:id", async (req, res): Promise<void> => {
+// Layer 1: only admin and teacher may delete courses (enforced by requireRole middleware).
+router.delete("/courses/:id", requireRole("admin", "teacher"), async (req, res): Promise<void> => {
   const scope = buildScopeContext(req.session as ClassmateSession);
-
-  // Layer 1: only admin and teacher may delete courses.
-  if (scope.role !== "admin" && scope.role !== "teacher") {
-    res.status(403).json({ error: "Access denied", code: "OWNERSHIP_DENIED" });
-    return;
-  }
 
   const params = GetCourseParams.safeParse(req.params);
   if (!params.success) {

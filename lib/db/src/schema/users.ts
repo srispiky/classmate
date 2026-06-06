@@ -3,7 +3,7 @@ import { sql } from "drizzle-orm";
 import { createInsertSchema, createSelectSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 
-export const users = pgTable(
+export const usersTable = pgTable(
   "users",
   {
     id: serial("id").primaryKey(),
@@ -23,8 +23,8 @@ export const users = pgTable(
   }),
 );
 
-export const insertUserSchema = createInsertSchema(users);
-export const selectUserSchema = createSelectSchema(users);
+export const insertUserSchema = createInsertSchema(usersTable);
+export const selectUserSchema = createSelectSchema(usersTable);
 
-export type User = typeof users.$inferSelect;
-export type InsertUser = typeof users.$inferInsert;
+export type User = typeof usersTable.$inferSelect;
+export type InsertUser = typeof usersTable.$inferInsert;

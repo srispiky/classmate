@@ -1,7 +1,7 @@
 import { pgTable, text, serial, timestamp, integer } from "drizzle-orm/pg-core";
 import { createInsertSchema, createSelectSchema } from "drizzle-zod";
 import { z } from "zod/v4";
-import { users } from "./users";
+import { usersTable } from "./users";
 
 // ── Status enum ───────────────────────────────────────────────────────────────
 
@@ -18,7 +18,7 @@ export const coursesTable = pgTable("courses", {
   grade: text("grade"),
   academicYear: text("academic_year"),
   teacherName: text("teacher_name").notNull().default(""),
-  teacherId: integer("teacher_id").references(() => users.id, { onDelete: "restrict" }),
+  teacherId: integer("teacher_id").references(() => usersTable.id, { onDelete: "restrict" }),
   studentCount: integer("student_count").notNull().default(0),
   status: text("status").$type<CourseStatus>().notNull().default("active"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),

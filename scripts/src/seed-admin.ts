@@ -1,5 +1,5 @@
 import bcrypt from "bcryptjs";
-import { db, users } from "@workspace/db";
+import { db, usersTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
 
 const USERNAME = process.env["ADMIN_USER"] ?? "admin";
@@ -8,16 +8,16 @@ const DISPLAY  = process.env["ADMIN_NAME"] ?? "Administrator";
 
 const hash = await bcrypt.hash(PASSWORD, 12);
 
-const existing = await db.select().from(users).where(eq(users.username, USERNAME)).limit(1);
+const existing = await db.select().from(usersTable).where(eq(usersTable.username, USERNAME)).limit(1);
 
 if (existing.length > 0) {
   await db
-    .update(users)
+    .update(usersTable)
     .set({ passwordHash: hash, displayName: DISPLAY, isActive: true })
-    .where(eq(users.username, USERNAME));
+    .where(eq(usersTable.username, USERNAME));
   console.log(`Updated user '${USERNAME}'`);
 } else {
-  await db.insert(users).values({
+  await db.insert(usersTable).values({
     username: USERNAME,
     passwordHash: hash,
     displayName: DISPLAY,

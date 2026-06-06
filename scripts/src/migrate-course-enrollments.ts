@@ -1,13 +1,13 @@
-import { db, studentsTable, courseEnrollmentsTable, users } from "@workspace/db";
+import { db, studentsTable, courseEnrollmentsTable, usersTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
 
 const ENROLLED_BY_USER_ID = parseInt(process.env["ENROLLED_BY_USER_ID"] ?? "1", 10);
 
 async function verifyAdminUser(): Promise<void> {
   const rows = await db
-    .select({ id: users.id, username: users.username })
-    .from(users)
-    .where(eq(users.id, ENROLLED_BY_USER_ID))
+    .select({ id: usersTable.id, username: usersTable.username })
+    .from(usersTable)
+    .where(eq(usersTable.id, ENROLLED_BY_USER_ID))
     .limit(1);
 
   if (rows.length === 0) {

@@ -2,7 +2,7 @@ import { pgTable, text, serial, timestamp, integer, json, uniqueIndex } from "dr
 import { sql } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
-import { users } from "./users";
+import { usersTable } from "./users";
 
 export const studentsTable = pgTable(
   "students",
@@ -13,7 +13,7 @@ export const studentsTable = pgTable(
     grade: text("grade").notNull(),
     avatarUrl: text("avatar_url"),
     enrolledCourseIds: json("enrolled_course_ids").$type<number[]>().notNull().default([]),
-    userId: integer("user_id").references(() => users.id, { onDelete: "set null" }),
+    userId: integer("user_id").references(() => usersTable.id, { onDelete: "set null" }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => ({

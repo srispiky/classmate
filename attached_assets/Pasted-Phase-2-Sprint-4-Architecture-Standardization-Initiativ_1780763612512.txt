@@ -1,0 +1,390 @@
+Phase 2 – Sprint 4
+
+Architecture Standardization Initiative
+
+# Goal
+
+Standardize Classmate Connect around a single architecture, naming convention, database convention, and coding standard.
+
+This is an architecture governance task.
+
+Do not introduce new business features.
+
+Do not implement Enrollment Management.
+
+Do not implement new APIs.
+
+Focus on establishing and documenting standards, auditing the current implementation, and identifying deviations.
+
+# Background
+
+Classmate Connect uses:
+
+* Node.js
+* Express
+* TypeScript
+* PostgreSQL
+* Drizzle ORM
+* Zod
+
+Architecture style:
+
+* Enterprise architecture
+* Layered architecture
+* RBAC
+* RLS
+* Policy-based authorization
+* Soft deletes
+* Audit-ready design
+
+The project is adopting PostgreSQL-first conventions.
+
+# Target Standards
+
+## Database Standards
+
+Tables
+
+Use:
+
+```text
+snake_case
+plural
+```
+
+Examples:
+
+```sql
+courses
+students
+teachers
+course_enrollments
+assignments
+assessments
+notes
+announcements
+```
+
+Columns
+
+Use:
+
+```sql
+id
+
+course_id
+student_id
+teacher_id
+
+created_at
+updated_at
+deleted_at
+
+created_by
+updated_by
+deleted_by
+```
+
+Views
+
+Use:
+
+```sql
+v_course_summary
+v_student_progress
+```
+
+Functions
+
+Use:
+
+```sql
+fn_calculate_attendance
+fn_student_average_score
+```
+
+Indexes
+
+Use:
+
+```sql
+ix_courses_teacher_id
+
+ix_course_enrollments_course_id
+```
+
+Constraints
+
+Use:
+
+```sql
+pk_courses
+
+fk_courses_teacher_id
+
+uq_users_email
+
+ck_courses_status
+```
+
+Timestamps
+
+Use:
+
+```sql
+timestamptz
+```
+
+Store UTC only.
+
+IDs
+
+Use:
+
+```sql
+uuid
+```
+
+# TypeScript Standards
+
+Classes
+
+Use:
+
+```ts
+CourseService
+CourseRepository
+CourseScopePolicy
+TeacherScopeValidator
+```
+
+Methods
+
+Use verbs:
+
+```ts
+createCourse()
+updateCourse()
+getById()
+listCourses()
+softDelete()
+```
+
+Avoid:
+
+```ts
+courseManager()
+courseCreation()
+```
+
+Variables
+
+Use camelCase:
+
+```ts
+courseId
+studentId
+teacherId
+
+createdAt
+updatedAt
+deletedAt
+```
+
+# Architecture Standards
+
+Controllers
+
+Responsibilities:
+
+* request validation
+* service invocation
+* response mapping
+
+No business logic.
+
+No authorization logic.
+
+Repositories
+
+Responsibilities:
+
+* database access only
+
+No business rules.
+
+No authorization decisions.
+
+Services
+
+Responsibilities:
+
+* business logic
+
+Policies
+
+Responsibilities:
+
+* authorization only
+
+Validators
+
+Responsibilities:
+
+* scope and ownership decisions
+
+# Authorization Standards
+
+Authorization logic must exist only in:
+
+* Policies
+* Validators
+* Scope helpers
+
+Authorization logic must not exist in:
+
+* Controllers
+* Repositories
+
+All resource access must flow through:
+
+```text
+Layer 1
+Route authorization
+
+Layer 2
+Query filtering
+
+Layer 3
+Post-fetch validation
+```
+
+# Tasks
+
+1. Create Architecture Standards Documentation
+
+Create:
+
+```text
+docs/architecture/
+```
+
+Documents:
+
+```text
+coding-standards.md
+
+database-standards.md
+
+api-standards.md
+
+authorization-standards.md
+```
+
+---
+
+2. Create ADR Documents
+
+Create:
+
+```text
+docs/adr/
+```
+
+Documents:
+
+```text
+ADR-001-layered-architecture.md
+
+ADR-002-rbac-and-rls.md
+
+ADR-003-soft-delete-strategy.md
+
+ADR-004-policy-based-authorization.md
+
+ADR-005-postgresql-naming-conventions.md
+```
+
+---
+
+3. Audit Current Codebase
+
+Review:
+
+* schemas
+* repositories
+* services
+* policies
+* validators
+* routes
+* migrations
+
+Identify:
+
+* naming violations
+* architecture violations
+* authorization violations
+* PostgreSQL convention violations
+
+---
+
+4. Produce Architecture Audit Report
+
+Create:
+
+```text
+docs/architecture/audit-report.md
+```
+
+Include:
+
+Compliant Areas
+
+Non-Compliant Areas
+
+Risk Assessment
+
+Recommended Remediation
+
+---
+
+5. Safe Refactoring Only
+
+Perform only low-risk standardization.
+
+Examples:
+
+* file naming consistency
+* interface naming consistency
+* documentation improvements
+
+Do not perform high-risk database renames.
+
+Do not rename production tables.
+
+Do not rename columns.
+
+Instead:
+
+Document deviations for future migration planning.
+
+# Deliverables
+
+1. Architecture standards documents
+2. ADR documents
+3. Architecture audit report
+4. Safe standardization improvements
+5. Remediation recommendations
+
+# Acceptance Criteria
+
+1. Standards documented
+2. ADRs created
+3. Current implementation audited
+4. Naming convention documented
+5. Authorization standards documented
+6. Architecture deviations identified
+7. No business functionality changed
+8. No database-breaking changes introduced
+
+This initiative establishes the long-term engineering standards for Classmate Connect before Sprint 4 continues.

@@ -3,7 +3,7 @@ import { createInsertSchema, createSelectSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 import { rolesTable } from "./roles";
 import { permissionsTable } from "./permissions";
-import { users } from "./users";
+import { usersTable } from "./users";
 
 export const rolePermissionsTable = pgTable(
   "role_permissions",
@@ -18,7 +18,7 @@ export const rolePermissionsTable = pgTable(
     grantedAt: timestamp("granted_at", { withTimezone: true }).notNull().defaultNow(),
     grantedBy: integer("granted_by")
       .notNull()
-      .references(() => users.id, { onDelete: "restrict" }),
+      .references(() => usersTable.id, { onDelete: "restrict" }),
   },
   (table) => ({
     uniqueRolePermission: uniqueIndex("uq_role_permissions").on(table.roleId, table.permissionId),
