@@ -163,8 +163,14 @@ describe("Layer 2 — Notes: buildNoteListConditions", () => {
     expectLayer2Allows(c);
   });
 
-  it("teacher: 1 condition, allows all", () => {
-    expectLayer2Allows(buildNoteListConditions(createTeacherScope(), {}));
+  it("teacher with owned courses: 2 conditions, allows", () => {
+    const c = buildNoteListConditions(createTeacherScope({ ownedCourseIds: [1, 2] }), {});
+    expect(c).toHaveLength(2);
+    expectLayer2Allows(c);
+  });
+
+  it("teacher with no courses: SQL_FALSE at position 0", () => {
+    expectLayer2Blocks(buildNoteListConditions(createTeacherScope(), {}));
   });
 
   it("student with enrolled courses: 2 conditions, allows enrolled", () => {
@@ -213,8 +219,14 @@ describe("Layer 2 — Announcements: buildAnnouncementListConditions", () => {
     expectLayer2Allows(c);
   });
 
-  it("teacher: 1 condition, allows all", () => {
-    expectLayer2Allows(buildAnnouncementListConditions(createTeacherScope(), {}));
+  it("teacher with owned courses: 2 conditions, allows", () => {
+    const c = buildAnnouncementListConditions(createTeacherScope({ ownedCourseIds: [3, 4] }), {});
+    expect(c).toHaveLength(2);
+    expectLayer2Allows(c);
+  });
+
+  it("teacher with no courses: SQL_FALSE at position 0", () => {
+    expectLayer2Blocks(buildAnnouncementListConditions(createTeacherScope(), {}));
   });
 
   it("student with enrolled courses: 2 conditions, allows enrolled", () => {

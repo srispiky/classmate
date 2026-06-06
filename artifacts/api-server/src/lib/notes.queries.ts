@@ -2,7 +2,7 @@ import { eq, and, isNull } from "drizzle-orm";
 import type { SQL } from "drizzle-orm";
 import { db, notesTable, coursesTable } from "@workspace/db";
 import type { ScopeContext } from "./scope-context";
-import { applyCourseScopeFilter } from "./course-scope-validator";
+import { applyTeacherScopeFilter } from "../shared/auth/teacher-scope-validator";
 
 export interface NoteFilters {
   courseId?: number;
@@ -62,15 +62,15 @@ const JOIN_SELECT = {
  * Builds WHERE conditions for listing notes.
  * Exported for unit testing — contains no DB calls.
  *
- * Layer 2 filtering uses applyCourseScopeFilter() — the canonical course-scope
- * helper from course-scope-validator. Consistent with all future course-scoped resources.
+ * Layer 2 filtering uses applyTeacherScopeFilter() — enforces teacher ownership.
+ * Teachers see only notes for courses they own; global access is not granted.
  *
  * | Role    | Scope condition                                         |
  * |---------|---------------------------------------------------------|
  * | admin   | none — full table access                                |
- * | teacher | none — full table access                                |
+ * | teacher | inArray(course_id, ownedCourseIds) — or SQL_FALSE       |
  * | student | inArray(course_id, enrolledCourseIds) — or SQL_FALSE    |
- * | parent  | inArray(course_id, childCourseIds) — or SQL_FALSE        |
+ * | parent  | inArray(course_id, childCourseIds) — or SQL_FALSE       |
  * | other   | SQL_FALSE — zero rows                                   |
  *
  * The courseId query param is applied for all roles — it further narrows within
@@ -82,7 +82,7 @@ export function buildNoteListConditions(
 ): SQL[] {
   const conditions: SQL[] = [];
 
-  const scopeFilter = applyCourseScopeFilter(notesTable.courseId, scope);
+  const scopeFilter = applyTeacherScopeFilter(notesTable.courseId, scope);
   if (scopeFilter !== undefined) conditions.push(scopeFilter);
 
   if (filters.courseId != null) {

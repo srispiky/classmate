@@ -5,10 +5,14 @@
  * Classmate API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { CreateCourseBodyStatus } from "./createCourseBodyStatus";
 
 export interface CreateCourseBody {
   name: string;
-  description: string;
-  teacherName: string;
   subject: string;
+  grade: string;
+  academicYear: string;
+  teacherId: number;
+  status?: CreateCourseBodyStatus;
+  description?: string;
 }

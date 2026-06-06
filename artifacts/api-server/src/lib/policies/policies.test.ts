@@ -240,9 +240,16 @@ describe("NotesScopePolicy.getScopeCondition", () => {
     expect(notesPolicy.getScopeCondition(scope)).toBeUndefined();
   });
 
-  it("teacher → undefined", () => {
-    const scope = buildScopeContext(session({ role: "teacher" }));
-    expect(notesPolicy.getScopeCondition(scope)).toBeUndefined();
+  it("teacher with ownedCourseIds → SQL condition (inArray)", () => {
+    const scope = buildScopeContext(session({ role: "teacher", ownedCourseIds: [5, 10] }));
+    const cond = notesPolicy.getScopeCondition(scope);
+    expect(cond).toBeDefined();
+    expect(cond).not.toBe(SQL_FALSE);
+  });
+
+  it("teacher with empty ownedCourseIds → SQL_FALSE", () => {
+    const scope = buildScopeContext(session({ role: "teacher", ownedCourseIds: [] }));
+    expect(notesPolicy.getScopeCondition(scope)).toBe(SQL_FALSE);
   });
 
   it("student with enrolledCourseIds → SQL condition", () => {
@@ -281,9 +288,14 @@ describe("NotesScopePolicy.validateAccess", () => {
     expect(() => notesPolicy.validateAccess(scope, { courseId: 99 })).not.toThrow();
   });
 
-  it("teacher: does not throw for any courseId", () => {
-    const scope = buildScopeContext(session({ role: "teacher" }));
+  it("teacher: passes for owned course", () => {
+    const scope = buildScopeContext(session({ role: "teacher", ownedCourseIds: [42, 99] }));
     expect(() => notesPolicy.validateAccess(scope, { courseId: 42 })).not.toThrow();
+  });
+
+  it("teacher: throws PolicyAuthorizationError for non-owned course", () => {
+    const scope = buildScopeContext(session({ role: "teacher", ownedCourseIds: [1, 2] }));
+    expect(() => notesPolicy.validateAccess(scope, { courseId: 42 })).toThrow(PolicyAuthorizationError);
   });
 
   it("student: passes when courseId ∈ enrolledCourseIds", () => {

@@ -27,7 +27,7 @@ export const userRolesTable = pgTable(
     activeRoleUnique: uniqueIndex("uq_user_roles_active")
       .on(table.userId, table.roleId)
       .where(sql`${table.expiresAt} IS NULL AND ${table.revokedAt} IS NULL`),
-    userIdIdx: index("idx_user_roles_user_id").on(table.userId),
+    userIdIdx: index("ix_user_roles_user_id").on(table.userId),
   }),
 );
 

@@ -163,7 +163,7 @@ router.patch("/notes/:id", async (req, res): Promise<void> => {
 
   const [note] = await db
     .update(notesTable)
-    .set(parsed.data)
+    .set({ ...parsed.data, updatedAt: new Date() })
     .where(eq(notesTable.id, params.data.id))
     .returning();
 

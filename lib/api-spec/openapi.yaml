@@ -186,6 +186,42 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Course"
+    put:
+      operationId: updateCourse
+      tags: [courses]
+      summary: Update a course
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateCourseBody"
+      responses:
+        "200":
+          description: Updated course
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Course"
+    delete:
+      operationId: deleteCourse
+      tags: [courses]
+      summary: Soft-delete a course
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: No Content
 
   # ---- ASSIGNMENTS ----
   /assignments:
@@ -671,26 +707,66 @@ components:
           type: string
         teacherName:
           type: string
+        teacherId:
+          type: integer
+          nullable: true
         subject:
           type: string
+        grade:
+          type: string
+          nullable: true
+        academicYear:
+          type: string
+          nullable: true
         studentCount:
           type: integer
+        status:
+          type: string
+          enum: [active, archived]
         createdAt:
           type: string
-      required: [id, name, description, teacherName, subject, studentCount, createdAt]
+        updatedAt:
+          type: string
+      required: [id, name, description, teacherName, subject, studentCount, status, createdAt, updatedAt]
 
     CreateCourseBody:
       type: object
       properties:
         name:
           type: string
+        subject:
+          type: string
+        grade:
+          type: string
+        academicYear:
+          type: string
+        teacherId:
+          type: integer
+        status:
+          type: string
+          enum: [active, archived]
         description:
           type: string
-        teacherName:
+      required: [name, subject, grade, academicYear, teacherId]
+
+    UpdateCourseBody:
+      type: object
+      properties:
+        name:
           type: string
         subject:
           type: string
-      required: [name, description, teacherName, subject]
+        grade:
+          type: string
+        academicYear:
+          type: string
+        teacherId:
+          type: integer
+        status:
+          type: string
+          enum: [active, archived]
+        description:
+          type: string
 
     Assignment:
       type: object

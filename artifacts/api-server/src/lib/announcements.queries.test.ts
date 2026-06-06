@@ -42,11 +42,17 @@ describe("buildAnnouncementListConditions — admin scope", () => {
 });
 
 describe("buildAnnouncementListConditions — teacher scope", () => {
-  it("produces only the deletedAt guard for teacher (no scope filter)", () => {
+  it("teacher with owned courses: 2 conditions (scope + soft-delete)", () => {
+    const scope = buildScopeContext(session({ role: "teacher", ownedCourseIds: [1, 2] }));
+    const conditions = buildAnnouncementListConditions(scope, {});
+    expect(conditions).toHaveLength(2);
+    expect(conditions[0]).not.toBe(SQL_FALSE);
+  });
+  it("teacher with no courses: SQL_FALSE at position 0", () => {
     const scope = buildScopeContext(session({ role: "teacher" }));
     const conditions = buildAnnouncementListConditions(scope, {});
-    expect(conditions).toHaveLength(1);
-    expect(conditions[0]).not.toBe(SQL_FALSE);
+    expect(conditions).toHaveLength(2);
+    expect(conditions[0]).toBe(SQL_FALSE);
   });
 });
 
@@ -196,9 +202,15 @@ describe("AnnouncementScopePolicy.getScopeCondition", () => {
     expect(announcementPolicy.getScopeCondition(scope)).toBeUndefined();
   });
 
-  it("teacher → undefined (no filter)", () => {
+  it("teacher with courses → SQL condition (not SQL_FALSE)", () => {
+    const scope = buildScopeContext(session({ role: "teacher", ownedCourseIds: [1, 2] }));
+    const cond = announcementPolicy.getScopeCondition(scope);
+    expect(cond).toBeDefined();
+    expect(cond).not.toBe(SQL_FALSE);
+  });
+  it("teacher with no courses → SQL_FALSE", () => {
     const scope = buildScopeContext(session({ role: "teacher" }));
-    expect(announcementPolicy.getScopeCondition(scope)).toBeUndefined();
+    expect(announcementPolicy.getScopeCondition(scope)).toBe(SQL_FALSE);
   });
 
   it("student with enrolledCourseIds → SQL condition (not SQL_FALSE)", () => {
@@ -239,9 +251,13 @@ describe("AnnouncementScopePolicy.validateAccess — admin / teacher", () => {
     expect(() => announcementPolicy.validateAccess(scope, { courseId: 99 })).not.toThrow();
   });
 
-  it("teacher: does not throw for any courseId", () => {
-    const scope = buildScopeContext(session({ role: "teacher" }));
+  it("teacher: does not throw for owned courseId", () => {
+    const scope = buildScopeContext(session({ role: "teacher", ownedCourseIds: [42] }));
     expect(() => announcementPolicy.validateAccess(scope, { courseId: 42 })).not.toThrow();
+  });
+  it("teacher: throws for non-owned courseId", () => {
+    const scope = buildScopeContext(session({ role: "teacher", ownedCourseIds: [1] }));
+    expect(() => announcementPolicy.validateAccess(scope, { courseId: 99 })).toThrow();
   });
 });
 

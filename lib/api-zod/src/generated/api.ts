@@ -104,9 +104,14 @@ export const ListCoursesResponseItem = zod.object({
   name: zod.string(),
   description: zod.string(),
   teacherName: zod.string(),
+  teacherId: zod.number().nullish(),
   subject: zod.string(),
+  grade: zod.string().nullish(),
+  academicYear: zod.string().nullish(),
   studentCount: zod.number(),
+  status: zod.enum(["active", "archived"]),
   createdAt: zod.string(),
+  updatedAt: zod.string(),
 });
 export const ListCoursesResponse = zod.array(ListCoursesResponseItem);
 
@@ -115,9 +120,12 @@ export const ListCoursesResponse = zod.array(ListCoursesResponseItem);
  */
 export const CreateCourseBody = zod.object({
   name: zod.string(),
-  description: zod.string(),
-  teacherName: zod.string(),
   subject: zod.string(),
+  grade: zod.string(),
+  academicYear: zod.string(),
+  teacherId: zod.number(),
+  status: zod.enum(["active", "archived"]).optional(),
+  description: zod.string().optional(),
 });
 
 /**
@@ -132,9 +140,53 @@ export const GetCourseResponse = zod.object({
   name: zod.string(),
   description: zod.string(),
   teacherName: zod.string(),
+  teacherId: zod.number().nullish(),
   subject: zod.string(),
+  grade: zod.string().nullish(),
+  academicYear: zod.string().nullish(),
   studentCount: zod.number(),
+  status: zod.enum(["active", "archived"]),
   createdAt: zod.string(),
+  updatedAt: zod.string(),
+});
+
+/**
+ * @summary Update a course
+ */
+export const UpdateCourseParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const UpdateCourseBody = zod.object({
+  name: zod.string().optional(),
+  subject: zod.string().optional(),
+  grade: zod.string().optional(),
+  academicYear: zod.string().optional(),
+  teacherId: zod.number().optional(),
+  status: zod.enum(["active", "archived"]).optional(),
+  description: zod.string().optional(),
+});
+
+export const UpdateCourseResponse = zod.object({
+  id: zod.number(),
+  name: zod.string(),
+  description: zod.string(),
+  teacherName: zod.string(),
+  teacherId: zod.number().nullish(),
+  subject: zod.string(),
+  grade: zod.string().nullish(),
+  academicYear: zod.string().nullish(),
+  studentCount: zod.number(),
+  status: zod.enum(["active", "archived"]),
+  createdAt: zod.string(),
+  updatedAt: zod.string(),
+});
+
+/**
+ * @summary Soft-delete a course
+ */
+export const DeleteCourseParams = zod.object({
+  id: zod.coerce.number(),
 });
 
 /**

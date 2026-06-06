@@ -40,18 +40,25 @@ describe("buildNoteListConditions — admin scope", () => {
 });
 
 describe("buildNoteListConditions — teacher scope", () => {
-  it("produces only the deletedAt guard (no scope filter) for teacher", () => {
-    const scope = buildScopeContext(session({ role: "teacher" }));
+  it("teacher with owned courses: 2 conditions (scope + soft-delete)", () => {
+    const scope = buildScopeContext(session({ role: "teacher", ownedCourseIds: [1, 2] }));
     const conditions = buildNoteListConditions(scope, {});
-    expect(conditions).toHaveLength(1);
+    expect(conditions).toHaveLength(2);
     expect(conditions[0]).not.toBe(SQL_FALSE);
   });
 
-  it("applies courseId filter for teacher", () => {
+  it("teacher with no courses: SQL_FALSE at position 0", () => {
     const scope = buildScopeContext(session({ role: "teacher" }));
-    const conditions = buildNoteListConditions(scope, { courseId: 7 });
+    const conditions = buildNoteListConditions(scope, {});
     expect(conditions).toHaveLength(2);
-    expect(conditions).not.toContain(SQL_FALSE);
+    expect(conditions[0]).toBe(SQL_FALSE);
+  });
+
+  it("teacher with owned courses + courseId filter: 3 conditions", () => {
+    const scope = buildScopeContext(session({ role: "teacher", ownedCourseIds: [7] }));
+    const conditions = buildNoteListConditions(scope, { courseId: 7 });
+    expect(conditions).toHaveLength(3);
+    expect(conditions[0]).not.toBe(SQL_FALSE);
   });
 });
 

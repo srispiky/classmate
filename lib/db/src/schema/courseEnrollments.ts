@@ -35,10 +35,10 @@ export const courseEnrollmentsTable = pgTable(
     activeEnrollmentUnique: uniqueIndex("uq_course_enrollments_active")
       .on(table.studentId, table.courseId)
       .where(sql`${table.isActive} = true`),
-    studentActiveIdx: index("idx_course_enrollments_student_id")
+    studentActiveIdx: index("ix_course_enrollments_student_id")
       .on(table.studentId)
       .where(sql`${table.isActive} = true`),
-    courseActiveIdx: index("idx_course_enrollments_course_id")
+    courseActiveIdx: index("ix_course_enrollments_course_id")
       .on(table.courseId)
       .where(sql`${table.isActive} = true`),
   }),

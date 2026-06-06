@@ -55,10 +55,15 @@ describe("Scope Boundary — Global roles (admin, teacher)", () => {
     expect(conditions[0]).not.toBe(SQL_FALSE);
   });
 
-  it("teacher: Layer 2 produces no scope filter for announcements", () => {
-    const conditions = buildAnnouncementListConditions(createTeacherScope(), {});
-    expect(conditions).toHaveLength(1);
+  it("teacher (with courses): Layer 2 scopes announcements to ownedCourseIds", () => {
+    const conditions = buildAnnouncementListConditions(createTeacherScope({ ownedCourseIds: [1, 2] }), {});
+    expect(conditions).toHaveLength(2);
     expect(conditions[0]).not.toBe(SQL_FALSE);
+  });
+  it("teacher (no courses): Layer 2 returns SQL_FALSE for announcements", () => {
+    const conditions = buildAnnouncementListConditions(createTeacherScope(), {});
+    expect(conditions).toHaveLength(2);
+    expect(conditions[0]).toBe(SQL_FALSE);
   });
 
   it("admin: Layer 3 allows access to any student-scoped resource", () => {
@@ -68,11 +73,16 @@ describe("Scope Boundary — Global roles (admin, teacher)", () => {
     expectAuthorized(() => assessmentPolicy.validateAccess(scope, { studentId: 500 }));
   });
 
-  it("teacher: Layer 3 allows access to any course-scoped resource", () => {
-    const scope = createTeacherScope();
+  it("teacher: Layer 3 allows access only to owned course-scoped resources", () => {
+    const scope = createTeacherScope({ ownedCourseIds: [1, 9999, 42] });
     expectAuthorized(() => notesPolicy.validateAccess(scope, { courseId: 1 }));
     expectAuthorized(() => notesPolicy.validateAccess(scope, { courseId: 9999 }));
     expectAuthorized(() => announcementPolicy.validateAccess(scope, { courseId: 42 }));
+  });
+  it("teacher: Layer 3 denies access to non-owned course-scoped resources", () => {
+    const scope = createTeacherScope({ ownedCourseIds: [1] });
+    expectForbidden(() => notesPolicy.validateAccess(scope, { courseId: 999 }));
+    expectForbidden(() => announcementPolicy.validateAccess(scope, { courseId: 999 }));
   });
 });
 

@@ -93,8 +93,11 @@ describe("Access Matrix — Layer 2 (list endpoint scope filters)", () => {
     it("admin → ALLOW (no scope filter)", () => {
       expectLayer2Allows(buildNoteListConditions(createAdminScope(), {}));
     });
-    it("teacher → ALLOW (no scope filter)", () => {
-      expectLayer2Allows(buildNoteListConditions(createTeacherScope(), {}));
+    it("teacher (with courses) → ALLOW (scoped to ownedCourseIds)", () => {
+      expectLayer2Allows(buildNoteListConditions(createTeacherScope({ ownedCourseIds: [1, 2] }), {}));
+    });
+    it("teacher (no courses) → BLOCK (SQL_FALSE)", () => {
+      expectLayer2Blocks(buildNoteListConditions(createTeacherScope(), {}));
     });
     it("student → ALLOW (scoped to enrolledCourseIds)", () => {
       expectLayer2Allows(buildNoteListConditions(createStudentScope(), {}));
@@ -111,8 +114,11 @@ describe("Access Matrix — Layer 2 (list endpoint scope filters)", () => {
     it("admin → ALLOW (no scope filter)", () => {
       expectLayer2Allows(buildAnnouncementListConditions(createAdminScope(), {}));
     });
-    it("teacher → ALLOW (no scope filter)", () => {
-      expectLayer2Allows(buildAnnouncementListConditions(createTeacherScope(), {}));
+    it("teacher (with courses) → ALLOW (scoped to ownedCourseIds)", () => {
+      expectLayer2Allows(buildAnnouncementListConditions(createTeacherScope({ ownedCourseIds: [1, 2] }), {}));
+    });
+    it("teacher (no courses) → BLOCK (SQL_FALSE)", () => {
+      expectLayer2Blocks(buildAnnouncementListConditions(createTeacherScope(), {}));
     });
     it("student → ALLOW (scoped to enrolledCourseIds)", () => {
       expectLayer2Allows(buildAnnouncementListConditions(createStudentScope(), {}));
@@ -164,7 +170,8 @@ describe("Access Matrix — Layer 3 (detail endpoint policy validation)", () => 
     const foreign  = { courseId: 999 };  // outside any default scope
 
     it("admin → any course ALLOW", () => expectAuthorized(() => notesPolicy.validateAccess(createAdminScope(), foreign)));
-    it("teacher → any course ALLOW", () => expectAuthorized(() => notesPolicy.validateAccess(createTeacherScope(), foreign)));
+    it("teacher → owned course ALLOW", () => expectAuthorized(() => notesPolicy.validateAccess(createTeacherScope({ ownedCourseIds: [1, 2, 3] }), enrolled)));
+    it("teacher → non-owned course DENY", () => expectForbidden(() => notesPolicy.validateAccess(createTeacherScope({ ownedCourseIds: [1] }), foreign)));
     it("student → enrolled course ALLOW", () => expectAuthorized(() => notesPolicy.validateAccess(createStudentScope(), enrolled)));
     it("student → non-enrolled course DENY", () => expectForbidden(() => notesPolicy.validateAccess(createStudentScope(), foreign)));
     it("parent → child course ALLOW", () => expectAuthorized(() => notesPolicy.validateAccess(createParentScope(), enrolled)));
@@ -177,7 +184,8 @@ describe("Access Matrix — Layer 3 (detail endpoint policy validation)", () => 
     const foreign  = { courseId: 999 };
 
     it("admin → any course ALLOW", () => expectAuthorized(() => announcementPolicy.validateAccess(createAdminScope(), foreign)));
-    it("teacher → any course ALLOW", () => expectAuthorized(() => announcementPolicy.validateAccess(createTeacherScope(), foreign)));
+    it("teacher → owned course ALLOW", () => expectAuthorized(() => announcementPolicy.validateAccess(createTeacherScope({ ownedCourseIds: [1, 2, 3] }), enrolled)));
+    it("teacher → non-owned course DENY", () => expectForbidden(() => announcementPolicy.validateAccess(createTeacherScope({ ownedCourseIds: [1] }), foreign)));
     it("student → enrolled course ALLOW", () => expectAuthorized(() => announcementPolicy.validateAccess(createStudentScope(), enrolled)));
     it("student → non-enrolled course DENY", () => expectForbidden(() => announcementPolicy.validateAccess(createStudentScope(), foreign)));
     it("parent → child course ALLOW", () => expectAuthorized(() => announcementPolicy.validateAccess(createParentScope(), enrolled)));

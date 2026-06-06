@@ -12,9 +12,15 @@ export const assessmentsTable = pgTable("assessments", {
   strengths: json("strengths").$type<string[]>().notNull().default([]),
   weaknesses: json("weaknesses").$type<string[]>().notNull().default([]),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   deletedAt: timestamp("deleted_at", { withTimezone: true }),
 });
 
-export const insertAssessmentSchema = createInsertSchema(assessmentsTable).omit({ id: true, createdAt: true, deletedAt: true });
+export const insertAssessmentSchema = createInsertSchema(assessmentsTable).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  deletedAt: true,
+});
 export type InsertAssessment = z.infer<typeof insertAssessmentSchema>;
 export type Assessment = typeof assessmentsTable.$inferSelect;

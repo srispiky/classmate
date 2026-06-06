@@ -22,7 +22,7 @@ export const studentGuardiansTable = pgTable(
   },
   (table) => ({
     uniqueGuardian: uniqueIndex("uq_student_guardians").on(table.studentId, table.userId),
-    userIdIdx: index("idx_student_guardians_user_id").on(table.userId),
+    userIdIdx: index("ix_student_guardians_user_id").on(table.userId),
   }),
 );
 

@@ -43,21 +43,62 @@ export interface StudentProgress {
   topicsNeedingWork: string[];
 }
 
+export type CourseStatus = (typeof CourseStatus)[keyof typeof CourseStatus];
+
+export const CourseStatus = {
+  active: "active",
+  archived: "archived",
+} as const;
+
 export interface Course {
   id: number;
   name: string;
   description: string;
   teacherName: string;
+  teacherId?: number | null;
   subject: string;
+  grade?: string | null;
+  academicYear?: string | null;
   studentCount: number;
+  status: CourseStatus;
   createdAt: string;
+  updatedAt: string;
 }
+
+export type CreateCourseBodyStatus =
+  (typeof CreateCourseBodyStatus)[keyof typeof CreateCourseBodyStatus];
+
+export const CreateCourseBodyStatus = {
+  active: "active",
+  archived: "archived",
+} as const;
 
 export interface CreateCourseBody {
   name: string;
-  description: string;
-  teacherName: string;
   subject: string;
+  grade: string;
+  academicYear: string;
+  teacherId: number;
+  status?: CreateCourseBodyStatus;
+  description?: string;
+}
+
+export type UpdateCourseBodyStatus =
+  (typeof UpdateCourseBodyStatus)[keyof typeof UpdateCourseBodyStatus];
+
+export const UpdateCourseBodyStatus = {
+  active: "active",
+  archived: "archived",
+} as const;
+
+export interface UpdateCourseBody {
+  name?: string;
+  subject?: string;
+  grade?: string;
+  academicYear?: string;
+  teacherId?: number;
+  status?: UpdateCourseBodyStatus;
+  description?: string;
 }
 
 export type AssignmentStatus =

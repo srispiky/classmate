@@ -141,8 +141,11 @@ describe("Layer 3 — notesPolicy.validateAccess (defense-in-depth)", () => {
     expectAuthorized(() => notesPolicy.validateAccess(createAdminScope(), { courseId: 9999 }));
   });
 
-  it("teacher: any courseId → ALLOW", () => {
-    expectAuthorized(() => notesPolicy.validateAccess(createTeacherScope(), { courseId: 1 }));
+  it("teacher: owned courseId → ALLOW", () => {
+    expectAuthorized(() => notesPolicy.validateAccess(createTeacherScope({ ownedCourseIds: [1] }), { courseId: 1 }));
+  });
+  it("teacher: non-owned courseId → DENY", () => {
+    expectForbidden(() => notesPolicy.validateAccess(createTeacherScope({ ownedCourseIds: [2] }), { courseId: 1 }));
   });
 
   it("student bypassing Layer 2: non-enrolled courseId → DENY", () => {
@@ -188,8 +191,11 @@ describe("Layer 3 — announcementPolicy.validateAccess (defense-in-depth)", () 
     expectAuthorized(() => announcementPolicy.validateAccess(createAdminScope(), { courseId: 42 }));
   });
 
-  it("teacher: any courseId → ALLOW", () => {
-    expectAuthorized(() => announcementPolicy.validateAccess(createTeacherScope(), { courseId: 99 }));
+  it("teacher: owned courseId → ALLOW", () => {
+    expectAuthorized(() => announcementPolicy.validateAccess(createTeacherScope({ ownedCourseIds: [99] }), { courseId: 99 }));
+  });
+  it("teacher: non-owned courseId → DENY", () => {
+    expectForbidden(() => announcementPolicy.validateAccess(createTeacherScope({ ownedCourseIds: [1] }), { courseId: 99 }));
   });
 
   it("student bypassing Layer 2: non-enrolled courseId → DENY", () => {

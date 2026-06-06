@@ -5,13 +5,19 @@
  * Classmate API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { CourseStatus } from "./courseStatus";
 
 export interface Course {
   id: number;
   name: string;
   description: string;
   teacherName: string;
+  teacherId?: number | null;
   subject: string;
+  grade?: string | null;
+  academicYear?: string | null;
   studentCount: number;
+  status: CourseStatus;
   createdAt: string;
+  updatedAt: string;
 }

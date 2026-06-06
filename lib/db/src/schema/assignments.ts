@@ -14,9 +14,15 @@ export const assignmentsTable = pgTable("assignments", {
   maxScore: real("max_score").notNull().default(100),
   feedback: text("feedback"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   deletedAt: timestamp("deleted_at", { withTimezone: true }),
 });
 
-export const insertAssignmentSchema = createInsertSchema(assignmentsTable).omit({ id: true, createdAt: true, deletedAt: true });
+export const insertAssignmentSchema = createInsertSchema(assignmentsTable).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  deletedAt: true,
+});
 export type InsertAssignment = z.infer<typeof insertAssignmentSchema>;
 export type Assignment = typeof assignmentsTable.$inferSelect;

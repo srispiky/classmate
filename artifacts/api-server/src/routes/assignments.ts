@@ -170,7 +170,7 @@ router.patch("/assignments/:id", async (req, res): Promise<void> => {
 
   const [updated] = await db
     .update(assignmentsTable)
-    .set(parsed.data)
+    .set({ ...parsed.data, updatedAt: new Date() })
     .where(eq(assignmentsTable.id, params.data.id))
     .returning();
 

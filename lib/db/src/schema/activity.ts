@@ -9,6 +9,7 @@ export const activityTable = pgTable("activity", {
   studentName: text("student_name").notNull(),
   courseName: text("course_name").notNull(),
   timestamp: timestamp("timestamp", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
 export const insertActivitySchema = createInsertSchema(activityTable).omit({ id: true, timestamp: true });
