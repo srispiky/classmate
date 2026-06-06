@@ -44,10 +44,18 @@ describe("Layer 2 — Assignments: buildAssignmentListConditions", () => {
       expectLayer2Allows(c);
     });
 
-    it("teacher: 1 condition (soft-delete only), no scope filter", () => {
-      const c = buildAssignmentListConditions(createTeacherScope(), {});
-      expect(c).toHaveLength(1);
+    it("teacher with owned courses: 2 conditions (course scope + soft-delete)", () => {
+      const c = buildAssignmentListConditions(createTeacherScope({ ownedCourseIds: [1, 2] }), {});
+      expect(c).toHaveLength(2);
       expectLayer2Allows(c);
+      expectSoftDeleteGuard(c);
+    });
+
+    it("teacher with no courses: 2 conditions (SQL_FALSE + soft-delete)", () => {
+      const c = buildAssignmentListConditions(createTeacherScope(), {});
+      expect(c).toHaveLength(2);
+      expectLayer2Blocks(c);
+      expectSoftDeleteGuard(c);
     });
 
     it("student with studentId: 2 conditions (eq scope + soft-delete)", () => {
@@ -122,8 +130,14 @@ describe("Layer 2 — Assessments: buildAssessmentListConditions", () => {
     expectLayer2Allows(c);
   });
 
-  it("teacher: 1 condition, allows all", () => {
-    expectLayer2Allows(buildAssessmentListConditions(createTeacherScope(), {}));
+  it("teacher with owned courses: 2 conditions (course scope + soft-delete), allows owned", () => {
+    const c = buildAssessmentListConditions(createTeacherScope({ ownedCourseIds: [1, 2] }), {});
+    expect(c).toHaveLength(2);
+    expectLayer2Allows(c);
+  });
+
+  it("teacher with no courses: SQL_FALSE at position 0", () => {
+    expectLayer2Blocks(buildAssessmentListConditions(createTeacherScope(), {}));
   });
 
   it("student: 2 conditions (scope + deletedAt), allows own", () => {

@@ -2,7 +2,7 @@ import { eq, and, isNull } from "drizzle-orm";
 import type { SQL } from "drizzle-orm";
 import { db, assignmentsTable, studentsTable, coursesTable } from "@workspace/db";
 import type { ScopeContext } from "./scope-context";
-import { studentIdScopeFilter } from "./scope-filter";
+import { mixedResourceScopeFilter } from "./scope-filter";
 
 export interface AssignmentFilters {
   courseId?: number;
@@ -84,9 +84,10 @@ const JOIN_SELECT = {
  * Exported for unit testing — contains no DB calls.
  *
  * Layer 2 scope filter rules:
- * - admin/teacher: no scope filter (only soft-delete guard + optional query filters)
- * - student:        eq(student_id, scope.studentId) — or SQL_FALSE if account is unlinked
- * - parent:         inArray(student_id, scope.childStudentIds) — or SQL_FALSE if empty
+ * - admin:   no scope filter (only soft-delete guard + optional query filters)
+ * - teacher: inArray(course_id, ownedCourseIds) — or SQL_FALSE if no owned courses
+ * - student: eq(student_id, scope.studentId) — or SQL_FALSE if account is unlinked
+ * - parent:  inArray(student_id, scope.childStudentIds) — or SQL_FALSE if empty
  *
  * The extra `studentId` query param is only honoured for global roles (admin/teacher).
  * For scoped roles the scope filter already constrains the visible rows — adding a
@@ -98,7 +99,7 @@ export function buildAssignmentListConditions(
 ): SQL[] {
   const conditions: SQL[] = [];
 
-  const scopeFilter = studentIdScopeFilter(assignmentsTable.studentId, scope);
+  const scopeFilter = mixedResourceScopeFilter(assignmentsTable.courseId, assignmentsTable.studentId, scope);
   if (scopeFilter !== undefined) conditions.push(scopeFilter);
 
   if (filters.courseId != null) {

@@ -51,9 +51,14 @@ describe("Layer 3 — assignmentPolicy.validateAccess (defense-in-depth)", () =>
       expectAuthorized(() => assignmentPolicy.validateAccess(admin, { studentId: 1000 }));
     });
 
-    it("teacher accessing any studentId resource: ALLOW", () => {
+    it("teacher accessing assignment in owned course: ALLOW", () => {
+      const teacher = createTeacherScope({ ownedCourseIds: [5] });
+      expectAuthorized(() => assignmentPolicy.validateAccess(teacher, { studentId: 500, courseId: 5 }));
+    });
+
+    it("teacher (no owned courses) accessing assignment: DENY (defense-in-depth)", () => {
       const teacher = createTeacherScope();
-      expectAuthorized(() => assignmentPolicy.validateAccess(teacher, { studentId: 500 }));
+      expectForbidden(() => assignmentPolicy.validateAccess(teacher, { studentId: 500 }));
     });
   });
 

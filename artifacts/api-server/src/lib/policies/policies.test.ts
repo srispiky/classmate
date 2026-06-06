@@ -73,9 +73,21 @@ describe("AssignmentScopePolicy.getScopeCondition", () => {
     expect(assignmentPolicy.getScopeCondition(scope)).toBeUndefined();
   });
 
-  it("teacher → undefined (no filter)", () => {
+  it("teacher with ownedCourseIds → SQL condition (inArray on courseId)", () => {
+    const scope = buildScopeContext(session({ role: "teacher", ownedCourseIds: [1, 2] }));
+    const cond = assignmentPolicy.getScopeCondition(scope);
+    expect(cond).toBeDefined();
+    expect(cond).not.toBe(SQL_FALSE);
+  });
+
+  it("teacher with empty ownedCourseIds → SQL_FALSE", () => {
+    const scope = buildScopeContext(session({ role: "teacher", ownedCourseIds: [] }));
+    expect(assignmentPolicy.getScopeCondition(scope)).toBe(SQL_FALSE);
+  });
+
+  it("teacher with no ownedCourseIds (session default) → SQL_FALSE", () => {
     const scope = buildScopeContext(session({ role: "teacher" }));
-    expect(assignmentPolicy.getScopeCondition(scope)).toBeUndefined();
+    expect(assignmentPolicy.getScopeCondition(scope)).toBe(SQL_FALSE);
   });
 
   it("student with id → SQL condition (not SQL_FALSE)", () => {
@@ -111,12 +123,40 @@ describe("AssignmentScopePolicy.getScopeCondition", () => {
 describe("AssignmentScopePolicy.validateAccess", () => {
   it("admin: does not throw for any resource", () => {
     const scope = buildScopeContext(session({ role: "admin" }));
-    expect(() => assignmentPolicy.validateAccess(scope, { studentId: 99 })).not.toThrow();
+    expect(() => assignmentPolicy.validateAccess(scope, { studentId: 99, courseId: 1 })).not.toThrow();
   });
 
-  it("teacher: does not throw for any resource", () => {
-    const scope = buildScopeContext(session({ role: "teacher" }));
-    expect(() => assignmentPolicy.validateAccess(scope, { studentId: 42 })).not.toThrow();
+  it("teacher: passes for assignment in owned course", () => {
+    const scope = buildScopeContext(session({ role: "teacher", ownedCourseIds: [5, 10] }));
+    expect(() => assignmentPolicy.validateAccess(scope, { studentId: 42, courseId: 5 })).not.toThrow();
+  });
+
+  it("teacher: throws PolicyAuthorizationError for assignment in non-owned course", () => {
+    const scope = buildScopeContext(session({ role: "teacher", ownedCourseIds: [1, 2] }));
+    expect(() =>
+      assignmentPolicy.validateAccess(scope, { studentId: 42, courseId: 99 }),
+    ).toThrow(PolicyAuthorizationError);
+  });
+
+  it("teacher: throws when courseId is null (resource integrity violation)", () => {
+    const scope = buildScopeContext(session({ role: "teacher", ownedCourseIds: [1] }));
+    expect(() =>
+      assignmentPolicy.validateAccess(scope, { studentId: 1, courseId: null }),
+    ).toThrow(PolicyAuthorizationError);
+  });
+
+  it("teacher: throws when courseId is undefined", () => {
+    const scope = buildScopeContext(session({ role: "teacher", ownedCourseIds: [1] }));
+    expect(() =>
+      assignmentPolicy.validateAccess(scope, { studentId: 1 }),
+    ).toThrow(PolicyAuthorizationError);
+  });
+
+  it("teacher: throws when no owned courses (empty ownedCourseIds)", () => {
+    const scope = buildScopeContext(session({ role: "teacher", ownedCourseIds: [] }));
+    expect(() =>
+      assignmentPolicy.validateAccess(scope, { studentId: 1, courseId: 5 }),
+    ).toThrow(PolicyAuthorizationError);
   });
 
   it("student: passes when resource.studentId === scope.studentId", () => {
@@ -166,9 +206,21 @@ describe("AssessmentScopePolicy.getScopeCondition", () => {
     expect(assessmentPolicy.getScopeCondition(scope)).toBeUndefined();
   });
 
-  it("teacher → undefined", () => {
+  it("teacher with ownedCourseIds → SQL condition (inArray on courseId)", () => {
+    const scope = buildScopeContext(session({ role: "teacher", ownedCourseIds: [3, 7] }));
+    const cond = assessmentPolicy.getScopeCondition(scope);
+    expect(cond).toBeDefined();
+    expect(cond).not.toBe(SQL_FALSE);
+  });
+
+  it("teacher with empty ownedCourseIds → SQL_FALSE", () => {
+    const scope = buildScopeContext(session({ role: "teacher", ownedCourseIds: [] }));
+    expect(assessmentPolicy.getScopeCondition(scope)).toBe(SQL_FALSE);
+  });
+
+  it("teacher with no ownedCourseIds (session default) → SQL_FALSE", () => {
     const scope = buildScopeContext(session({ role: "teacher" }));
-    expect(assessmentPolicy.getScopeCondition(scope)).toBeUndefined();
+    expect(assessmentPolicy.getScopeCondition(scope)).toBe(SQL_FALSE);
   });
 
   it("student with id → SQL condition", () => {
@@ -199,12 +251,33 @@ describe("AssessmentScopePolicy.getScopeCondition", () => {
 describe("AssessmentScopePolicy.validateAccess", () => {
   it("admin: does not throw", () => {
     const scope = buildScopeContext(session({ role: "admin" }));
-    expect(() => assessmentPolicy.validateAccess(scope, { studentId: 10 })).not.toThrow();
+    expect(() => assessmentPolicy.validateAccess(scope, { studentId: 10, courseId: 1 })).not.toThrow();
   });
 
-  it("teacher: does not throw", () => {
-    const scope = buildScopeContext(session({ role: "teacher" }));
-    expect(() => assessmentPolicy.validateAccess(scope, { studentId: 10 })).not.toThrow();
+  it("teacher: passes for assessment in owned course", () => {
+    const scope = buildScopeContext(session({ role: "teacher", ownedCourseIds: [3, 8] }));
+    expect(() => assessmentPolicy.validateAccess(scope, { studentId: 10, courseId: 3 })).not.toThrow();
+  });
+
+  it("teacher: throws PolicyAuthorizationError for assessment in non-owned course", () => {
+    const scope = buildScopeContext(session({ role: "teacher", ownedCourseIds: [1, 2] }));
+    expect(() =>
+      assessmentPolicy.validateAccess(scope, { studentId: 10, courseId: 99 }),
+    ).toThrow(PolicyAuthorizationError);
+  });
+
+  it("teacher: throws when courseId is null", () => {
+    const scope = buildScopeContext(session({ role: "teacher", ownedCourseIds: [1] }));
+    expect(() =>
+      assessmentPolicy.validateAccess(scope, { studentId: 1, courseId: null }),
+    ).toThrow(PolicyAuthorizationError);
+  });
+
+  it("teacher: throws when no owned courses", () => {
+    const scope = buildScopeContext(session({ role: "teacher", ownedCourseIds: [] }));
+    expect(() =>
+      assessmentPolicy.validateAccess(scope, { studentId: 1, courseId: 5 }),
+    ).toThrow(PolicyAuthorizationError);
   });
 
   it("student: passes for own resource", () => {

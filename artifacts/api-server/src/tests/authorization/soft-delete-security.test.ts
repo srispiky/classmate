@@ -144,8 +144,11 @@ describe("Soft Delete Security — condition count invariants", () => {
     it("admin → assignments: 1 condition", () => {
       expect(buildAssignmentListConditions(createAdminScope(), {})).toHaveLength(1);
     });
-    it("teacher → assessments: 1 condition", () => {
-      expect(buildAssessmentListConditions(createTeacherScope(), {})).toHaveLength(1);
+    it("teacher (with courses) → assessments: 2 conditions (scope + soft-delete)", () => {
+      expect(buildAssessmentListConditions(createTeacherScope({ ownedCourseIds: [1] }), {})).toHaveLength(2);
+    });
+    it("teacher (no courses) → assessments: 2 conditions (SQL_FALSE + soft-delete)", () => {
+      expect(buildAssessmentListConditions(createTeacherScope(), {})).toHaveLength(2);
     });
     it("admin → notes: 1 condition", () => {
       expect(buildNoteListConditions(createAdminScope(), {})).toHaveLength(1);

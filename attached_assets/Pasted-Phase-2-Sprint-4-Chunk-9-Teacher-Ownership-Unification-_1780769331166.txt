@@ -1,0 +1,426 @@
+Phase 2 – Sprint 4
+
+Chunk 9 – Teacher Ownership Unification
+
+# Goal
+
+Remove all remaining Teacher Global Access behavior and fully transition the platform to Teacher Ownership-Based Access.
+
+After this chunk:
+
+Admin
+
+* Global access
+
+Teacher
+
+* Access only resources associated with owned courses
+
+Student
+
+* Existing access rules remain unchanged
+
+Parent
+
+* Existing access rules remain unchanged
+
+# Current State
+
+Course ownership infrastructure already exists:
+
+* ScopeContext.teacherId
+* ScopeContext.ownedCourseIds
+* TeacherScopeValidator
+* CourseScopePolicy
+
+Courses already enforce ownership boundaries.
+
+However, some resource policies still allow:
+
+```text
+Teacher = Global Access
+```
+
+This chunk removes that behavior.
+
+# Objectives
+
+1. Unify teacher ownership model
+2. Refactor resource policies
+3. Enforce course ownership everywhere
+4. Preserve student access
+5. Preserve parent access
+6. Add regression tests
+7. Add IDOR tests
+
+# Resources In Scope
+
+Review and update:
+
+```text
+AssignmentScopePolicy
+
+AssessmentScopePolicy
+
+NotesScopePolicy
+
+AnnouncementScopePolicy
+```
+
+Review any additional resource policies that currently contain:
+
+```text
+Teacher = Global
+```
+
+# Authorization Target Model
+
+Admin
+
+* Global access
+
+Teacher
+
+* Access only resources linked to owned courses
+
+Student
+
+* Existing enrollment-based access
+
+Parent
+
+* Existing child-course access
+
+# Teacher Ownership Rule
+
+Resource access must be determined through:
+
+```ts
+scope.ownedCourseIds
+```
+
+loaded during authentication.
+
+No additional ownership queries during authorization.
+
+No runtime ownership resolution.
+
+# Assignments
+
+Current behavior:
+
+```text
+Teacher = Global
+```
+
+Target behavior:
+
+Teacher may access assignment only if:
+
+```text
+assignment.course_id IN scope.ownedCourseIds
+```
+
+Requirements:
+
+Layer 2 filtering
+
+Layer 3 validation
+
+Use existing policy framework.
+
+# Assessments
+
+Current behavior:
+
+```text
+Teacher = Global
+```
+
+Target behavior:
+
+Teacher may access assessment only if:
+
+```text
+assessment.course_id IN scope.ownedCourseIds
+```
+
+Requirements:
+
+Layer 2 filtering
+
+Layer 3 validation
+
+Reuse shared validators.
+
+# Notes
+
+Current behavior:
+
+Teacher = Global
+
+Target behavior:
+
+Teacher may access note only if:
+
+```text
+note.course_id IN scope.ownedCourseIds
+```
+
+Requirements:
+
+Layer 2 filtering
+
+Layer 3 validation
+
+Reuse TeacherScopeValidator.
+
+# Announcements
+
+Current behavior:
+
+Teacher = Global
+
+Target behavior:
+
+Teacher may access announcement only if:
+
+```text
+announcement.course_id IN scope.ownedCourseIds
+```
+
+Requirements:
+
+Layer 2 filtering
+
+Layer 3 validation
+
+# Shared Authorization Rules
+
+Do not implement role checks separately in every policy.
+
+Reuse:
+
+```ts
+TeacherScopeValidator
+
+CourseScopePolicy
+```
+
+where appropriate.
+
+Avoid:
+
+```ts
+if (scope.role === "teacher")
+```
+
+duplicated throughout policies.
+
+Centralize authorization decisions.
+
+# Layer 2 Review
+
+Verify query filtering exists for:
+
+* Assignments
+* Assessments
+* Notes
+* Announcements
+
+Teacher results must be filtered using:
+
+```ts
+scope.ownedCourseIds
+```
+
+before data retrieval.
+
+Unauthorized resources must never appear in result sets.
+
+# Layer 3 Review
+
+Verify ownership validation exists for:
+
+```ts
+getById()
+
+update()
+
+delete()
+
+archive()
+```
+
+and any other single-resource operations.
+
+Defense-in-depth must remain intact.
+
+# Student Behavior
+
+Do not change:
+
+```ts
+scope.studentId
+
+scope.enrolledCourseIds
+```
+
+Student access rules must continue to function exactly as before.
+
+# Parent Behavior
+
+Do not change:
+
+```ts
+scope.childStudentIds
+
+scope.childCourseIds
+```
+
+Parent access rules must continue to function exactly as before.
+
+# Regression Tests
+
+Assignments
+
+Verify:
+
+Teacher
+
+* owned course assignment visible
+* non-owned course assignment hidden
+
+Assessments
+
+Verify:
+
+Teacher
+
+* owned course assessment visible
+* non-owned assessment hidden
+
+Notes
+
+Verify:
+
+Teacher
+
+* owned course note visible
+* non-owned note hidden
+
+Announcements
+
+Verify:
+
+Teacher
+
+* owned course announcement visible
+* non-owned announcement hidden
+
+# IDOR Security Tests
+
+Teacher A owns:
+
+```text
+Course A
+```
+
+Teacher B owns:
+
+```text
+Course B
+```
+
+Teacher A attempts:
+
+```http
+GET resource from Course B
+```
+
+Expected:
+
+```http
+403 Forbidden
+```
+
+Verify:
+
+Assignments
+
+Assessments
+
+Notes
+
+Announcements
+
+All reject unauthorized access.
+
+# Cross-Policy Consistency Review
+
+Review all existing policies.
+
+Verify:
+
+Teacher ownership behavior is consistent across:
+
+* Courses
+* Assignments
+* Assessments
+* Notes
+* Announcements
+
+No resource should continue using:
+
+```text
+Teacher = Global Access
+```
+
+# Performance Requirements
+
+Authorization must use:
+
+```ts
+scope.ownedCourseIds
+```
+
+already available in ScopeContext.
+
+Do not add:
+
+* ownership joins
+* runtime course lookups
+* additional enrollment queries
+
+No N+1 patterns.
+
+# Architecture Requirements
+
+Authorization logic belongs only in:
+
+* Policies
+* Validators
+* Scope helpers
+
+Do not introduce authorization logic into:
+
+* Controllers
+* Repositories
+* Services
+
+# Acceptance Criteria
+
+1. AssignmentScopePolicy updated
+2. AssessmentScopePolicy updated
+3. NotesScopePolicy updated
+4. AnnouncementScopePolicy updated
+5. Teacher Global Access removed
+6. Teacher Ownership Model fully enforced
+7. Layer 2 filtering verified
+8. Layer 3 validation verified
+9. Regression tests added
+10. IDOR tests added
+11. Existing tests remain green
+12. No performance regressions introduced
+
+Deliver complete implementation with tests and a summary of all policies updated.

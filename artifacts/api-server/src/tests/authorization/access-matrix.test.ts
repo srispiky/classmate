@@ -10,7 +10,7 @@
  * │ Role         │ Assignments│ Assessments │ Notes     │ Announcements │
  * ├──────────────┼────────────┼─────────────┼───────────┼───────────────┤
  * │ admin        │ ALLOW (all)│ ALLOW (all) │ ALLOW(all)│ ALLOW (all)   │
- * │ teacher      │ ALLOW (all)│ ALLOW (all) │ ALLOW(all)│ ALLOW (all)   │
+ * │ teacher      │ ALLOW(own) │ ALLOW (own) │ ALLOW(own)│ ALLOW (own)   │
  * │ student      │ ALLOW(own) │ ALLOW (own) │ ALLOW(enr)│ ALLOW (enr)   │
  * │ parent       │ ALLOW(child│ ALLOW(child)│ ALLOW(ch) │ ALLOW (child) │
  * │ guest        │ BLOCK      │ BLOCK       │ BLOCK     │ BLOCK         │
@@ -23,7 +23,7 @@
  * │ Role         │ Access to own resource    │ Access to other's      │
  * ├──────────────┼───────────────────────────┼────────────────────────┤
  * │ admin        │ ALLOW                     │ ALLOW                  │
- * │ teacher      │ ALLOW                     │ ALLOW                  │
+ * │ teacher      │ ALLOW (owned course)      │ DENY (403)             │
  * │ student      │ ALLOW (own/enrolled)      │ DENY (403)             │
  * │ parent       │ ALLOW (child/childCourses)│ DENY (403)             │
  * │ guest        │ DENY (403)                │ DENY (403)             │
@@ -57,8 +57,11 @@ describe("Access Matrix — Layer 2 (list endpoint scope filters)", () => {
     it("admin → ALLOW (no scope filter)", () => {
       expectLayer2Allows(buildAssignmentListConditions(createAdminScope(), {}));
     });
-    it("teacher → ALLOW (no scope filter)", () => {
-      expectLayer2Allows(buildAssignmentListConditions(createTeacherScope(), {}));
+    it("teacher (with courses) → ALLOW (scoped to ownedCourseIds)", () => {
+      expectLayer2Allows(buildAssignmentListConditions(createTeacherScope({ ownedCourseIds: [1, 2] }), {}));
+    });
+    it("teacher (no courses) → BLOCK (SQL_FALSE)", () => {
+      expectLayer2Blocks(buildAssignmentListConditions(createTeacherScope(), {}));
     });
     it("student → ALLOW (scoped to own studentId)", () => {
       expectLayer2Allows(buildAssignmentListConditions(createStudentScope(), {}));
@@ -75,8 +78,11 @@ describe("Access Matrix — Layer 2 (list endpoint scope filters)", () => {
     it("admin → ALLOW (no scope filter)", () => {
       expectLayer2Allows(buildAssessmentListConditions(createAdminScope(), {}));
     });
-    it("teacher → ALLOW (no scope filter)", () => {
-      expectLayer2Allows(buildAssessmentListConditions(createTeacherScope(), {}));
+    it("teacher (with courses) → ALLOW (scoped to ownedCourseIds)", () => {
+      expectLayer2Allows(buildAssessmentListConditions(createTeacherScope({ ownedCourseIds: [1, 2] }), {}));
+    });
+    it("teacher (no courses) → BLOCK (SQL_FALSE)", () => {
+      expectLayer2Blocks(buildAssessmentListConditions(createTeacherScope(), {}));
     });
     it("student → ALLOW (scoped to own studentId)", () => {
       expectLayer2Allows(buildAssessmentListConditions(createStudentScope(), {}));
@@ -142,8 +148,8 @@ describe("Access Matrix — Layer 3 (detail endpoint policy validation)", () => 
 
     it("admin → own resource ALLOW", () => expectAuthorized(() => assignmentPolicy.validateAccess(createAdminScope(), owned)));
     it("admin → other resource ALLOW (global)", () => expectAuthorized(() => assignmentPolicy.validateAccess(createAdminScope(), other)));
-    it("teacher → own resource ALLOW", () => expectAuthorized(() => assignmentPolicy.validateAccess(createTeacherScope(), owned)));
-    it("teacher → other resource ALLOW (global)", () => expectAuthorized(() => assignmentPolicy.validateAccess(createTeacherScope(), other)));
+    it("teacher → assignment in owned course ALLOW", () => expectAuthorized(() => assignmentPolicy.validateAccess(createTeacherScope({ ownedCourseIds: [10] }), { studentId: 42, courseId: 10 })));
+    it("teacher → assignment in non-owned course DENY", () => expectForbidden(() => assignmentPolicy.validateAccess(createTeacherScope({ ownedCourseIds: [10] }), { studentId: 42, courseId: 99 })));
     it("student → own resource ALLOW", () => expectAuthorized(() => assignmentPolicy.validateAccess(createStudentScope(), owned)));
     it("student → other resource DENY", () => expectForbidden(() => assignmentPolicy.validateAccess(createStudentScope(), other)));
     it("parent → child resource ALLOW", () => expectAuthorized(() => assignmentPolicy.validateAccess(createParentScope(), { studentId: 10 })));
@@ -156,7 +162,8 @@ describe("Access Matrix — Layer 3 (detail endpoint policy validation)", () => 
     const other = { studentId: 999 };
 
     it("admin → any resource ALLOW", () => expectAuthorized(() => assessmentPolicy.validateAccess(createAdminScope(), other)));
-    it("teacher → any resource ALLOW", () => expectAuthorized(() => assessmentPolicy.validateAccess(createTeacherScope(), other)));
+    it("teacher → assessment in owned course ALLOW", () => expectAuthorized(() => assessmentPolicy.validateAccess(createTeacherScope({ ownedCourseIds: [5] }), { studentId: 999, courseId: 5 })));
+    it("teacher → assessment in non-owned course DENY", () => expectForbidden(() => assessmentPolicy.validateAccess(createTeacherScope({ ownedCourseIds: [5] }), { studentId: 999, courseId: 99 })));
     it("student → own resource ALLOW", () => expectAuthorized(() => assessmentPolicy.validateAccess(createStudentScope(), owned)));
     it("student → other resource DENY", () => expectForbidden(() => assessmentPolicy.validateAccess(createStudentScope(), other)));
     it("parent → child resource ALLOW", () => expectAuthorized(() => assessmentPolicy.validateAccess(createParentScope(), { studentId: 10 })));

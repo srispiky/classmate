@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { assessmentsTable } from "@workspace/db";
 import { buildScopeContext, type ClassmateSession } from "./scope-context";
-import { canAccessStudentResource } from "./ownership";
+import { canAccessMixedResource } from "./ownership";
 import { SQL_FALSE } from "./scope-filter";
 import { buildAssessmentListConditions } from "./assessments.queries";
 
@@ -53,17 +53,33 @@ describe("buildAssessmentListConditions — admin scope", () => {
 });
 
 describe("buildAssessmentListConditions — teacher scope", () => {
-  it("produces only the deletedAt guard (no scope filter) for teacher", () => {
-    const scope = buildScopeContext(session({ role: "teacher" }));
+  it("teacher with empty ownedCourseIds → SQL_FALSE scope filter", () => {
+    const scope = buildScopeContext(session({ role: "teacher", ownedCourseIds: [] }));
     const conditions = buildAssessmentListConditions(scope, {});
-    expect(conditions).toHaveLength(1);
+    expect(conditions).toHaveLength(2);
+    expect(conditions[0]).toBe(SQL_FALSE);
+  });
+
+  it("teacher with ownedCourseIds → course-based scope filter (not SQL_FALSE)", () => {
+    const scope = buildScopeContext(session({ role: "teacher", ownedCourseIds: [3, 7] }));
+    const conditions = buildAssessmentListConditions(scope, {});
+    expect(conditions).toHaveLength(2);
     expect(conditions[0]).not.toBe(SQL_FALSE);
   });
 
-  it("applies studentId filter for teacher (global role)", () => {
-    const scope = buildScopeContext(session({ role: "teacher" }));
+  it("teacher can additionally filter by studentId (within owned courses)", () => {
+    const scope = buildScopeContext(session({ role: "teacher", ownedCourseIds: [3, 7] }));
     const conditions = buildAssessmentListConditions(scope, { studentId: 11 });
-    expect(conditions).toHaveLength(2);
+    // [inArray(courseId, [3,7]), eq(studentId, 11), isNull(deletedAt)]
+    expect(conditions).toHaveLength(3);
+    expect(conditions).not.toContain(SQL_FALSE);
+  });
+
+  it("teacher can additionally filter by courseId", () => {
+    const scope = buildScopeContext(session({ role: "teacher", ownedCourseIds: [3, 7] }));
+    const conditions = buildAssessmentListConditions(scope, { courseId: 3 });
+    // [inArray(courseId, [3,7]), eq(courseId, 3), isNull(deletedAt)]
+    expect(conditions).toHaveLength(3);
     expect(conditions).not.toContain(SQL_FALSE);
   });
 });
@@ -87,7 +103,6 @@ describe("buildAssessmentListConditions — student scope", () => {
   it("ignores studentId query param for scoped student role", () => {
     const scope = buildScopeContext(session({ role: "student", studentId: 5 }));
     const conditions = buildAssessmentListConditions(scope, { studentId: 5 });
-    // studentId filter param is ignored for non-global roles
     expect(conditions).toHaveLength(2);
   });
 
@@ -133,7 +148,6 @@ describe("buildAssessmentListConditions — parent scope", () => {
   it("ignores studentId query param for scoped parent role", () => {
     const scope = buildScopeContext(session({ role: "parent", childStudentIds: [3] }));
     const conditions = buildAssessmentListConditions(scope, { studentId: 3 });
-    // studentId filter param is ignored for non-global roles
     expect(conditions).toHaveLength(2);
   });
 });
@@ -158,9 +172,88 @@ describe("buildAssessmentListConditions — soft-delete guard", () => {
   });
 });
 
+// ── canAccessMixedResource — Layer 3 ownership (assessment context) ──────────
+
+describe("canAccessMixedResource — admin", () => {
+  it("admin can access any assessment regardless of studentId or courseId", () => {
+    const scope = buildScopeContext(session({ role: "admin" }));
+    expect(canAccessMixedResource(99, 1, scope)).toBe("allowed");
+    expect(canAccessMixedResource(null, null, scope)).toBe("allowed");
+  });
+});
+
+describe("canAccessMixedResource — teacher IDOR protection (assessments)", () => {
+  it("teacher can access assessment in owned course", () => {
+    const scope = buildScopeContext(session({ role: "teacher", ownedCourseIds: [3, 8] }));
+    expect(canAccessMixedResource(10, 3, scope)).toBe("allowed");
+    expect(canAccessMixedResource(5, 8, scope)).toBe("allowed");
+  });
+
+  it("teacher IDOR blocked — cannot access assessment in non-owned course", () => {
+    const scope = buildScopeContext(session({ role: "teacher", ownedCourseIds: [3] }));
+    expect(canAccessMixedResource(10, 99, scope)).toBe("denied");
+  });
+
+  it("teacher with empty ownedCourseIds is always denied", () => {
+    const scope = buildScopeContext(session({ role: "teacher", ownedCourseIds: [] }));
+    expect(canAccessMixedResource(1, 5, scope)).toBe("denied");
+  });
+
+  it("teacher denied when courseId is null", () => {
+    const scope = buildScopeContext(session({ role: "teacher", ownedCourseIds: [1] }));
+    expect(canAccessMixedResource(1, null, scope)).toBe("denied");
+  });
+});
+
+describe("canAccessMixedResource — student IDOR protection (assessments)", () => {
+  it("student can access own assessment (matching studentId)", () => {
+    const scope = buildScopeContext(session({ role: "student", studentId: 8 }));
+    expect(canAccessMixedResource(8, 1, scope)).toBe("allowed");
+  });
+
+  it("student IDOR blocked — cannot access another student assessment", () => {
+    const scope = buildScopeContext(session({ role: "student", studentId: 8 }));
+    expect(canAccessMixedResource(15, 1, scope)).toBe("denied");
+  });
+
+  it("student with null studentId is always denied (unlinked account)", () => {
+    const scope = buildScopeContext(session({ role: "student", studentId: undefined }));
+    expect(canAccessMixedResource(1, 1, scope)).toBe("denied");
+  });
+});
+
+describe("canAccessMixedResource — parent IDOR protection (assessments)", () => {
+  it("parent can access child assessment", () => {
+    const scope = buildScopeContext(session({ role: "parent", childStudentIds: [2, 6, 9] }));
+    expect(canAccessMixedResource(6, 1, scope)).toBe("allowed");
+  });
+
+  it("parent IDOR blocked — cannot access non-child assessment", () => {
+    const scope = buildScopeContext(session({ role: "parent", childStudentIds: [2, 6, 9] }));
+    expect(canAccessMixedResource(10, 1, scope)).toBe("denied");
+  });
+
+  it("parent with empty childStudentIds is always denied", () => {
+    const scope = buildScopeContext(session({ role: "parent", childStudentIds: [] }));
+    expect(canAccessMixedResource(1, 1, scope)).toBe("denied");
+  });
+
+  it("parent with undefined childStudentIds is always denied", () => {
+    const scope = buildScopeContext(session({ role: "parent", childStudentIds: undefined }));
+    expect(canAccessMixedResource(1, 1, scope)).toBe("denied");
+  });
+});
+
+describe("canAccessMixedResource — guest scope", () => {
+  it("guest is always denied", () => {
+    const scope = buildScopeContext(session({ role: "guest" }));
+    expect(canAccessMixedResource(1, 1, scope)).toBe("denied");
+  });
+});
+
 // ── schema column reference sanity check ─────────────────────────────────────
 
-describe("assessmentsTable schema — deletedAt column", () => {
+describe("assessmentsTable schema — column references", () => {
   it("assessmentsTable exposes the deletedAt column", () => {
     expect(assessmentsTable.deletedAt).toBeDefined();
     expect(assessmentsTable.deletedAt.name).toBe("deleted_at");
@@ -170,65 +263,9 @@ describe("assessmentsTable schema — deletedAt column", () => {
     expect(assessmentsTable.studentId).toBeDefined();
     expect(assessmentsTable.studentId.name).toBe("student_id");
   });
-});
 
-// ── canAccessStudentResource — Layer 3 ownership (assessment context) ─────────
-
-describe("canAccessStudentResource — admin and teacher", () => {
-  it("admin can access any assessment regardless of student_id", () => {
-    const scope = buildScopeContext(session({ role: "admin" }));
-    expect(canAccessStudentResource(99, scope)).toBe("allowed");
-    expect(canAccessStudentResource(1, scope)).toBe("allowed");
-  });
-
-  it("teacher can access any assessment regardless of student_id", () => {
-    const scope = buildScopeContext(session({ role: "teacher" }));
-    expect(canAccessStudentResource(42, scope)).toBe("allowed");
-  });
-});
-
-describe("canAccessStudentResource — student IDOR protection (assessments)", () => {
-  it("student can access own assessment (matching studentId)", () => {
-    const scope = buildScopeContext(session({ role: "student", studentId: 8 }));
-    expect(canAccessStudentResource(8, scope)).toBe("allowed");
-  });
-
-  it("student IDOR blocked — cannot access another student assessment", () => {
-    const scope = buildScopeContext(session({ role: "student", studentId: 8 }));
-    expect(canAccessStudentResource(15, scope)).toBe("denied");
-  });
-
-  it("student with null studentId is always denied (unlinked account)", () => {
-    const scope = buildScopeContext(session({ role: "student", studentId: undefined }));
-    expect(canAccessStudentResource(1, scope)).toBe("denied");
-  });
-});
-
-describe("canAccessStudentResource — parent IDOR protection (assessments)", () => {
-  it("parent can access child assessment", () => {
-    const scope = buildScopeContext(session({ role: "parent", childStudentIds: [2, 6, 9] }));
-    expect(canAccessStudentResource(6, scope)).toBe("allowed");
-  });
-
-  it("parent IDOR blocked — cannot access non-child assessment", () => {
-    const scope = buildScopeContext(session({ role: "parent", childStudentIds: [2, 6, 9] }));
-    expect(canAccessStudentResource(10, scope)).toBe("denied");
-  });
-
-  it("parent with empty childStudentIds is always denied", () => {
-    const scope = buildScopeContext(session({ role: "parent", childStudentIds: [] }));
-    expect(canAccessStudentResource(1, scope)).toBe("denied");
-  });
-
-  it("parent with undefined childStudentIds is always denied", () => {
-    const scope = buildScopeContext(session({ role: "parent", childStudentIds: undefined }));
-    expect(canAccessStudentResource(1, scope)).toBe("denied");
-  });
-});
-
-describe("canAccessStudentResource — guest scope", () => {
-  it("guest is always denied", () => {
-    const scope = buildScopeContext(session({ role: "guest" }));
-    expect(canAccessStudentResource(1, scope)).toBe("denied");
+  it("assessmentsTable exposes the courseId column for teacher scope filter binding", () => {
+    expect(assessmentsTable.courseId).toBeDefined();
+    expect(assessmentsTable.courseId.name).toBe("course_id");
   });
 });

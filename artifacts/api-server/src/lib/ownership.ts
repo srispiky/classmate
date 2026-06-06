@@ -48,6 +48,52 @@ export function canAccessStudentResource(
 }
 
 /**
+ * Layer 3 — Post-fetch ownership check for resources with BOTH a course_id and student_id.
+ *
+ * Used by: assignments/:id, assessments/:id.
+ *
+ * Enforces teacher course-ownership at Layer 3, providing defense-in-depth after
+ * the Layer 2 mixedResourceScopeFilter. For students and parents, delegates to
+ * the same student-ID-based check as canAccessStudentResource.
+ *
+ * | Role    | Allowed when                                               |
+ * |---------|------------------------------------------------------------|
+ * | admin   | always                                                     |
+ * | teacher | resourceCourseId ∈ scope.ownedCourseIds                    |
+ * | student | resourceStudentId === scope.studentId (both non-null)      |
+ * | parent  | resourceStudentId ∈ scope.childStudentIds                  |
+ * | other   | never                                                      |
+ *
+ * @param resourceStudentId - The student_id field from the fetched row.
+ * @param resourceCourseId  - The course_id field from the fetched row.
+ * @param scope             - The ScopeContext built from req.session.
+ */
+export function canAccessMixedResource(
+  resourceStudentId: number | null | undefined,
+  resourceCourseId: number | null | undefined,
+  scope: ScopeContext,
+): OwnershipResult {
+  if (scope.role === "admin") return "allowed";
+
+  if (scope.role === "teacher") {
+    if (resourceCourseId == null) return "denied";
+    return scope.ownedCourseIds.includes(resourceCourseId) ? "allowed" : "denied";
+  }
+
+  if (scope.role === "student") {
+    if (resourceStudentId == null) return "denied";
+    return scope.studentId !== null && resourceStudentId === scope.studentId ? "allowed" : "denied";
+  }
+
+  if (scope.role === "parent") {
+    if (resourceStudentId == null) return "denied";
+    return scope.childStudentIds.includes(resourceStudentId) ? "allowed" : "denied";
+  }
+
+  return "denied";
+}
+
+/**
  * Layer 3 — Post-fetch ownership check for course-scoped resources.
  *
  * Used by: notes/:id, courses/:id.

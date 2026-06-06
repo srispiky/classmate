@@ -81,6 +81,53 @@ export function courseIdScopeFilter(column: Column, scope: ScopeContext): SQL | 
 }
 
 /**
+ * WHERE clause for resources that carry BOTH a course_id FK (teacher access)
+ * AND a student_id FK (student/parent access).
+ *
+ * Used by: assignments, assessments. Replaces studentIdScopeFilter for these
+ * resources to enforce teacher course-ownership (Sprint 4 Chunk 9).
+ *
+ * | Role    | Column used   | Condition                                         |
+ * |---------|---------------|---------------------------------------------------|
+ * | admin   | —             | undefined — no filter, full table visible         |
+ * | teacher | courseIdColumn| inArray(course_id, ownedCourseIds) or SQL_FALSE   |
+ * | student | studentId     | eq(student_id, studentId) or SQL_FALSE if null    |
+ * | parent  | studentId     | inArray(student_id, childStudentIds) or SQL_FALSE |
+ * | other   | —             | SQL_FALSE                                         |
+ *
+ * Teacher access is course-ownership based (not student-based).
+ * Student and parent access rules are unchanged from studentIdScopeFilter.
+ *
+ * @param courseIdColumn   - The course_id FK column (used for teacher scope).
+ * @param studentIdColumn  - The student_id FK column (used for student/parent scope).
+ * @param scope            - The ScopeContext built from req.session at route entry.
+ */
+export function mixedResourceScopeFilter(
+  courseIdColumn: Column,
+  studentIdColumn: Column,
+  scope: ScopeContext,
+): SQL | undefined {
+  if (scope.role === "admin") return undefined;
+
+  if (scope.role === "teacher") {
+    if (scope.ownedCourseIds.length === 0) return SQL_FALSE;
+    return inArray(courseIdColumn, scope.ownedCourseIds);
+  }
+
+  if (scope.role === "student") {
+    if (scope.studentId === null) return SQL_FALSE;
+    return eq(studentIdColumn, scope.studentId);
+  }
+
+  if (scope.role === "parent") {
+    if (scope.childStudentIds.length === 0) return SQL_FALSE;
+    return inArray(studentIdColumn, scope.childStudentIds);
+  }
+
+  return SQL_FALSE;
+}
+
+/**
  * Low-level WHERE clause that restricts a course_id column to courses attended
  * by any of the supplied child students.
  *

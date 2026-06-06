@@ -46,8 +46,14 @@ describe("AssignmentScopePolicy.getScopeCondition", () => {
     expect(assignmentPolicy.getScopeCondition(createAdminScope())).toBeUndefined();
   });
 
-  it("teacher → undefined (no filter — full table access)", () => {
-    expect(assignmentPolicy.getScopeCondition(createTeacherScope())).toBeUndefined();
+  it("teacher with owned courses → inArray(course_id, ...) condition (not undefined, not SQL_FALSE)", () => {
+    const cond = assignmentPolicy.getScopeCondition(createTeacherScope({ ownedCourseIds: [1, 2] }));
+    expect(cond).toBeDefined();
+    expect(cond).not.toBe(SQL_FALSE);
+  });
+
+  it("teacher with no owned courses → SQL_FALSE", () => {
+    expect(assignmentPolicy.getScopeCondition(createTeacherScope())).toBe(SQL_FALSE);
   });
 
   it("student with studentId → eq(student_id, X) condition (not undefined, not SQL_FALSE)", () => {
@@ -78,8 +84,12 @@ describe("AssignmentScopePolicy.validateAccess", () => {
     expectAuthorized(() => assignmentPolicy.validateAccess(createAdminScope(), { studentId: 9999 }));
   });
 
-  it("teacher → any studentId → ALLOW", () => {
-    expectAuthorized(() => assignmentPolicy.validateAccess(createTeacherScope(), { studentId: 500 }));
+  it("teacher: assignment in owned course → ALLOW", () => {
+    expectAuthorized(() => assignmentPolicy.validateAccess(createTeacherScope({ ownedCourseIds: [5] }), { studentId: 500, courseId: 5 }));
+  });
+
+  it("teacher (no owned courses): assignment → DENY", () => {
+    expectForbidden(() => assignmentPolicy.validateAccess(createTeacherScope(), { studentId: 500 }));
   });
 
   it("student: own studentId → ALLOW", () => {
@@ -123,8 +133,13 @@ describe("AssessmentScopePolicy.getScopeCondition", () => {
   it("admin → undefined", () => {
     expect(assessmentPolicy.getScopeCondition(createAdminScope())).toBeUndefined();
   });
-  it("teacher → undefined", () => {
-    expect(assessmentPolicy.getScopeCondition(createTeacherScope())).toBeUndefined();
+  it("teacher with owned courses → inArray(course_id, ...) condition (not undefined, not SQL_FALSE)", () => {
+    const cond = assessmentPolicy.getScopeCondition(createTeacherScope({ ownedCourseIds: [1, 2] }));
+    expect(cond).toBeDefined();
+    expect(cond).not.toBe(SQL_FALSE);
+  });
+  it("teacher with no owned courses → SQL_FALSE", () => {
+    expect(assessmentPolicy.getScopeCondition(createTeacherScope())).toBe(SQL_FALSE);
   });
   it("student → real SQL condition", () => {
     const cond = assessmentPolicy.getScopeCondition(createStudentScope({ studentId: 5 }));
@@ -145,9 +160,17 @@ describe("AssessmentScopePolicy.getScopeCondition", () => {
 });
 
 describe("AssessmentScopePolicy.validateAccess", () => {
-  it("admin/teacher → any studentId → ALLOW", () => {
+  it("admin → any studentId → ALLOW", () => {
     expectAuthorized(() => assessmentPolicy.validateAccess(createAdminScope(), { studentId: 1 }));
-    expectAuthorized(() => assessmentPolicy.validateAccess(createTeacherScope(), { studentId: 999 }));
+    expectAuthorized(() => assessmentPolicy.validateAccess(createAdminScope(), { studentId: 9999 }));
+  });
+
+  it("teacher: assessment in owned course → ALLOW", () => {
+    expectAuthorized(() => assessmentPolicy.validateAccess(createTeacherScope({ ownedCourseIds: [3] }), { studentId: 999, courseId: 3 }));
+  });
+
+  it("teacher (no owned courses): assessment → DENY", () => {
+    expectForbidden(() => assessmentPolicy.validateAccess(createTeacherScope(), { studentId: 999 }));
   });
   it("student: own → ALLOW, foreign → DENY", () => {
     const scope = createStudentScope({ studentId: 7 });

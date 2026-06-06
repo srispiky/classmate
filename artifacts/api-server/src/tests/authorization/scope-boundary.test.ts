@@ -43,10 +43,16 @@ describe("Scope Boundary — Global roles (admin, teacher)", () => {
     expect(conditions[0]).not.toBe(SQL_FALSE);
   });
 
-  it("teacher: Layer 2 produces no scope filter for assessments", () => {
-    const conditions = buildAssessmentListConditions(createTeacherScope(), {});
-    expect(conditions).toHaveLength(1);
+  it("teacher (with courses): Layer 2 scopes assessments to ownedCourseIds", () => {
+    const conditions = buildAssessmentListConditions(createTeacherScope({ ownedCourseIds: [1, 2] }), {});
+    expect(conditions).toHaveLength(2);
     expect(conditions[0]).not.toBe(SQL_FALSE);
+  });
+
+  it("teacher (no courses): Layer 2 returns SQL_FALSE for assessments", () => {
+    const conditions = buildAssessmentListConditions(createTeacherScope(), {});
+    expect(conditions).toHaveLength(2);
+    expect(conditions[0]).toBe(SQL_FALSE);
   });
 
   it("admin: Layer 2 produces no scope filter for notes", () => {
