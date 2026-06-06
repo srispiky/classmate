@@ -1,0 +1,376 @@
+Phase 2 – Sprint 4
+
+Chunk 5 – TeacherScopeValidator
+
+# Goal
+
+Create a reusable TeacherScopeValidator that becomes the central authorization engine for course ownership access.
+
+This validator will be used by:
+
+* CourseScopePolicy
+* AssignmentScopePolicy
+* AssessmentScopePolicy
+* NotesScopePolicy
+* AnnouncementScopePolicy
+* Future Study Materials
+* Future Attendance
+* Future Discussions
+
+The validator must support all platform roles:
+
+* Admin
+* Teacher
+* Student
+* Parent
+
+# Current Infrastructure
+
+Already implemented:
+
+* ScopeContext
+* SessionEnricher
+* teacherId
+* ownedCourseIds
+* studentId
+* enrolledCourseIds
+* childStudentIds
+* childCourseIds
+
+Teacher ownership information is already available in ScopeContext.
+
+Do not perform additional database lookups.
+
+All authorization decisions must use scope data only.
+
+# Objectives
+
+1. Create TeacherScopeValidator
+2. Create universal course-access checks
+3. Create validation helpers
+4. Create reusable query filter helpers
+5. Add unit tests
+6. Preserve backward compatibility
+
+# Architecture
+
+Suggested location:
+
+```text
+src/shared/auth/teacher-scope-validator.ts
+```
+
+The validator should become the platform's single source of truth for course access decisions.
+
+# Core Authorization Rules
+
+Admin
+
+* Global access
+
+Teacher
+
+* Access only owned courses
+
+Rule:
+
+```ts
+courseId IN scope.ownedCourseIds
+```
+
+Student
+
+* Access only enrolled courses
+
+Rule:
+
+```ts
+courseId IN scope.enrolledCourseIds
+```
+
+Parent
+
+* Access only child courses
+
+Rule:
+
+```ts
+courseId IN scope.childCourseIds
+```
+
+# Primary Function
+
+Create:
+
+```ts
+canAccessCourse(
+  scope: ScopeContext,
+  courseId: string
+): boolean
+```
+
+Behavior:
+
+Admin
+
+```ts
+true
+```
+
+Teacher
+
+```ts
+scope.ownedCourseIds.includes(courseId)
+```
+
+Student
+
+```ts
+scope.enrolledCourseIds.includes(courseId)
+```
+
+Parent
+
+```ts
+scope.childCourseIds.includes(courseId)
+```
+
+Otherwise
+
+```ts
+false
+```
+
+# Validation Helper
+
+Create:
+
+```ts
+validateCourseAccess(
+  scope: ScopeContext,
+  courseId: string
+): void
+```
+
+Behavior:
+
+* Calls canAccessCourse()
+* Throws AuthorizationError when access denied
+* Reuse existing authorization exception patterns
+
+Do not introduce new error types.
+
+# Ownership Helper
+
+Create:
+
+```ts
+isTeacherOwnedCourse(
+  scope: ScopeContext,
+  courseId: string
+): boolean
+```
+
+Behavior:
+
+Admin
+
+```ts
+true
+```
+
+Teacher
+
+```ts
+scope.ownedCourseIds.includes(courseId)
+```
+
+Student
+
+```ts
+false
+```
+
+Parent
+
+```ts
+false
+```
+
+Purpose:
+
+Future teacher-bound resource validation.
+
+# Query Filter Helper
+
+Create reusable query helper:
+
+```ts
+applyTeacherScopeFilter(
+  query,
+  scope,
+  courseIdColumn
+)
+```
+
+Behavior:
+
+Admin
+
+* no filtering
+
+Teacher
+
+```sql
+WHERE course_id IN ownedCourseIds
+```
+
+Student
+
+```sql
+WHERE course_id IN enrolledCourseIds
+```
+
+Parent
+
+```sql
+WHERE course_id IN childCourseIds
+```
+
+Requirements:
+
+* Generic
+* Reusable
+* No resource-specific logic
+* Compatible with existing query builder patterns
+
+# Performance Requirements
+
+Must not:
+
+* query database
+* resolve ownership dynamically
+* perform joins
+
+Only use:
+
+```ts
+scope.ownedCourseIds
+scope.enrolledCourseIds
+scope.childCourseIds
+```
+
+Authorization checks must be O(1) relative to request execution.
+
+# Backward Compatibility
+
+Do not modify:
+
+* AssignmentScopePolicy
+* AssessmentScopePolicy
+* NotesScopePolicy
+* AnnouncementScopePolicy
+
+Do not change existing authorization behavior yet.
+
+This chunk only introduces reusable infrastructure.
+
+# Testing
+
+Create comprehensive unit tests.
+
+canAccessCourse()
+
+Admin
+
+* any course => true
+
+Teacher
+
+* owned course => true
+* non-owned course => false
+
+Student
+
+* enrolled course => true
+* non-enrolled course => false
+
+Parent
+
+* child course => true
+* unrelated course => false
+
+---
+
+validateCourseAccess()
+
+Verify:
+
+* authorized access succeeds
+* unauthorized access throws AuthorizationError
+
+---
+
+isTeacherOwnedCourse()
+
+Verify:
+
+* admin behavior
+* teacher behavior
+* student behavior
+* parent behavior
+
+---
+
+applyTeacherScopeFilter()
+
+Verify generated filtering behavior for:
+
+* Admin
+* Teacher
+* Student
+* Parent
+
+# Edge Cases
+
+Verify:
+
+* empty ownedCourseIds
+* empty enrolledCourseIds
+* empty childCourseIds
+* duplicate course ids
+* undefined courseId
+* null handling (if applicable in project standards)
+
+# Code Quality
+
+Follow existing patterns used by:
+
+* CourseScopeValidator
+* ScopeFilter utilities
+* ResourceScopePolicy framework
+
+Avoid:
+
+```ts
+if (...) ...
+```
+
+authorization logic duplicated across future services.
+
+Centralize all course-access decisions.
+
+# Acceptance Criteria
+
+1. TeacherScopeValidator created
+2. canAccessCourse() implemented
+3. validateCourseAccess() implemented
+4. isTeacherOwnedCourse() implemented
+5. applyTeacherScopeFilter() implemented
+6. Unit tests added
+7. Existing tests remain green
+8. No database queries introduced
+9. No policy behavior changes introduced
+10. Ready for CourseScopePolicy implementation
+
+Deliver complete implementation with tests.
