@@ -1,0 +1,340 @@
+Phase 2 – Sprint 4
+
+Chunk 6 – CourseScopePolicy
+
+# Goal
+
+Implement CourseScopePolicy using the ResourceScopePolicy framework and TeacherScopeValidator.
+
+This is the first policy that fully supports:
+
+* Admin ownership model
+* Teacher ownership model
+* Student enrollment model
+* Parent child-enrollment model
+
+The policy becomes the authorization engine for Course resources.
+
+# Current Infrastructure
+
+Already implemented:
+
+* ScopeContext
+
+* SessionEnricher
+
+* teacherId
+
+* ownedCourseIds
+
+* enrolledCourseIds
+
+* childCourseIds
+
+* CourseScopeValidator
+
+* TeacherScopeValidator
+
+* ResourceScopePolicy framework
+
+Reuse existing infrastructure.
+
+Do not duplicate authorization logic.
+
+Do not perform additional database lookups.
+
+# Objectives
+
+1. Create CourseScopePolicy
+2. Implement Layer 2 query filtering
+3. Implement Layer 3 ownership validation
+4. Integrate Teacher ownership model
+5. Add unit tests
+6. Preserve existing behavior
+
+# Authorization Rules
+
+Admin
+
+* Global access
+
+Teacher
+
+* Access only owned courses
+
+Rule:
+
+```ts
+course.id IN scope.ownedCourseIds
+```
+
+Student
+
+* Access only enrolled courses
+
+Rule:
+
+```ts
+course.id IN scope.enrolledCourseIds
+```
+
+Parent
+
+* Access only child courses
+
+Rule:
+
+```ts
+course.id IN scope.childCourseIds
+```
+
+# Policy Location
+
+Suggested location:
+
+```text
+src/shared/auth/policies/course-scope-policy.ts
+```
+
+# Policy Responsibilities
+
+The policy must:
+
+1. Filter course queries
+2. Validate course access
+3. Centralize course authorization
+
+Services must not contain role-specific authorization logic.
+
+All authorization decisions should flow through the policy.
+
+# Layer 2 – Query Filtering
+
+Implement:
+
+```ts
+applyFilter(
+  query,
+  scope
+)
+```
+
+Behavior:
+
+Admin
+
+* no filtering
+
+Teacher
+
+```sql
+WHERE course.id IN ownedCourseIds
+```
+
+Student
+
+```sql
+WHERE course.id IN enrolledCourseIds
+```
+
+Parent
+
+```sql
+WHERE course.id IN childCourseIds
+```
+
+Requirements:
+
+* Use TeacherScopeValidator
+* Use existing query filter infrastructure
+* No in-memory filtering
+* No post-processing arrays
+* Database-level filtering only
+
+# Layer 3 – Access Validation
+
+Implement:
+
+```ts
+validateAccess(
+  scope,
+  course
+)
+```
+
+Behavior:
+
+Calls:
+
+```ts
+validateCourseAccess(
+  scope,
+  course.id
+)
+```
+
+Requirements:
+
+* Reuse TeacherScopeValidator
+* Throw existing AuthorizationError
+* No duplicated ownership logic
+
+# Policy Design
+
+The policy should be lightweight.
+
+Avoid:
+
+```ts
+if (role === ...)
+```
+
+logic repeated throughout the policy.
+
+Delegate authorization decisions to:
+
+```ts
+TeacherScopeValidator
+```
+
+and related shared helpers.
+
+# Expected Usage
+
+Future CourseService usage:
+
+```ts
+coursePolicy.applyFilter(
+  query,
+  scope
+);
+```
+
+and:
+
+```ts
+coursePolicy.validateAccess(
+  scope,
+  course
+);
+```
+
+No service should need to know role-specific ownership rules.
+
+# Testing
+
+Create comprehensive policy tests.
+
+Admin
+
+Verify:
+
+* all courses visible
+* all courses accessible
+
+Teacher
+
+Verify:
+
+* owned courses visible
+* non-owned courses filtered
+* non-owned courses denied
+
+Student
+
+Verify:
+
+* enrolled courses visible
+* non-enrolled courses filtered
+* non-enrolled courses denied
+
+Parent
+
+Verify:
+
+* child courses visible
+* unrelated courses filtered
+* unrelated courses denied
+
+# Layer 2 Tests
+
+Verify:
+
+```ts
+applyFilter()
+```
+
+produces expected restrictions.
+
+Confirm unauthorized courses never appear in query results.
+
+# Layer 3 Tests
+
+Verify:
+
+```ts
+validateAccess()
+```
+
+blocks unauthorized access.
+
+Simulate direct resource access.
+
+Defense-in-depth must remain intact.
+
+# Edge Cases
+
+Verify:
+
+* empty ownedCourseIds
+* empty enrolledCourseIds
+* empty childCourseIds
+* missing teacherId
+* missing course id
+* soft-deleted course handling compatibility
+
+# Backward Compatibility
+
+Do not modify:
+
+* AssignmentScopePolicy
+* AssessmentScopePolicy
+* NotesScopePolicy
+* AnnouncementScopePolicy
+
+Teacher access remains unchanged for those resources until Sprint 4 Chunk 9.
+
+Only Course resources should use teacher ownership boundaries in this chunk.
+
+# Performance Requirements
+
+Must not:
+
+* query database during authorization
+* perform ownership joins
+* resolve enrollments dynamically
+
+Authorization decisions must use:
+
+```ts
+scope.ownedCourseIds
+scope.enrolledCourseIds
+scope.childCourseIds
+```
+
+already present in ScopeContext.
+
+# Acceptance Criteria
+
+1. CourseScopePolicy created
+2. applyFilter() implemented
+3. validateAccess() implemented
+4. Teacher ownership model supported
+5. Student enrollment model supported
+6. Parent child-course model supported
+7. Admin global access preserved
+8. Unit tests added
+9. Existing tests remain green
+10. Ready for Course API implementation
+
+Deliver complete implementation with tests.
