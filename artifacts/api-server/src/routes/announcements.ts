@@ -31,6 +31,9 @@ function serializeAnnouncement(a: AnnouncementRow) {
     authorName: a.authorName,
     priority: a.priority,
     createdAt: a.createdAt.toISOString(),
+    updatedAt: a.updatedAt.toISOString(),
+    createdBy: a.createdBy ?? null,
+    updatedBy: a.updatedBy ?? null,
   };
 }
 

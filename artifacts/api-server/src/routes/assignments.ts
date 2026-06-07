@@ -33,6 +33,9 @@ function serializeAssignment(a: AssignmentRow) {
     maxScore: a.maxScore,
     feedback: a.feedback ?? null,
     createdAt: a.createdAt.toISOString(),
+    updatedAt: a.updatedAt.toISOString(),
+    createdBy: a.createdBy ?? null,
+    updatedBy: a.updatedBy ?? null,
   };
 }
 

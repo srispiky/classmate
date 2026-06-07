@@ -17,6 +17,9 @@ export interface NoteRow {
   topic: string;
   videoUrl: string | null;
   createdAt: Date;
+  updatedAt: Date;
+  createdBy: number | null;
+  updatedBy: number | null;
   deletedAt: Date | null;
 }
 
@@ -28,6 +31,9 @@ type RawRow = {
   topic: string;
   videoUrl: string | null;
   createdAt: Date;
+  updatedAt: Date;
+  createdBy: number | null;
+  updatedBy: number | null;
   deletedAt: Date | null;
   courseName: string | null;
 };
@@ -41,6 +47,9 @@ function toNoteRow(r: RawRow): NoteRow {
     topic: r.topic,
     videoUrl: r.videoUrl,
     createdAt: r.createdAt,
+    updatedAt: r.updatedAt,
+    createdBy: r.createdBy,
+    updatedBy: r.updatedBy,
     deletedAt: r.deletedAt,
     courseName: r.courseName ?? "Unknown",
   };
@@ -54,6 +63,9 @@ const JOIN_SELECT = {
   topic: notesTable.topic,
   videoUrl: notesTable.videoUrl,
   createdAt: notesTable.createdAt,
+  updatedAt: notesTable.updatedAt,
+  createdBy: notesTable.createdBy,
+  updatedBy: notesTable.updatedBy,
   deletedAt: notesTable.deletedAt,
   courseName: coursesTable.name,
 } as const;

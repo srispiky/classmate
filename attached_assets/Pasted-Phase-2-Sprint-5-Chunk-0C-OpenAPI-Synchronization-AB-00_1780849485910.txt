@@ -1,0 +1,152 @@
+Phase 2 – Sprint 5
+
+Chunk 0C – OpenAPI Synchronization (AB-001)
+
+Goal
+
+Synchronize the OpenAPI contract with the current backend implementation following completion of:
+
+* Chunk 0A OpenAPI Stabilization
+* Chunk 0B Audit Field Remediation
+
+This is a contract-governance task.
+
+Do not introduce new business functionality.
+
+Do not modify authorization behavior.
+
+Do not redesign APIs.
+
+Focus exclusively on ensuring the OpenAPI specification accurately reflects the implemented backend.
+
+Background
+
+Sprint 5 previously experienced frontend instability caused by generated API export drift.
+
+Chunk 0A introduced codegen stabilization and validation.
+
+Chunk 0B introduced audit field remediation.
+
+The OpenAPI contract must now be synchronized with the current backend state before Student Portal implementation begins.
+
+Objectives
+
+1. Review all implemented routes.
+
+2. Compare backend implementation against OpenAPI definitions.
+
+3. Identify contract drift.
+
+4. Synchronize specification with actual behavior.
+
+5. Regenerate clients.
+
+6. Verify code generation remains stable.
+
+Scope
+
+Review all currently implemented domains:
+
+* authentication
+* users
+* courses
+* enrollments
+* assignments
+* assessments
+* announcements
+* notes
+
+Review:
+
+* request DTOs
+* response DTOs
+* path parameters
+* query parameters
+* status codes
+* validation schemas
+* error responses
+
+Tasks
+
+1. Contract Audit
+
+Produce a contract drift report.
+
+Identify:
+
+* undocumented endpoints
+* undocumented fields
+* obsolete schemas
+* stale DTOs
+* incorrect response types
+
+2. OpenAPI Synchronization
+
+Update specifications to match implementation.
+
+Requirements:
+
+* implementation is source of truth
+* no behavior changes
+* no authorization changes
+* no database changes
+
+3. Client Regeneration
+
+Regenerate:
+
+* generated/api.ts
+* generated/api.schemas.ts
+* generated hooks
+
+Verify successful generation.
+
+4. Codegen Stability Verification
+
+Execute existing safeguards from Chunk 0A.
+
+Verify:
+
+* barrel exports valid
+* export validation passes
+* no stale exports
+* deterministic output
+
+5. Regression Validation
+
+Verify:
+
+* frontend builds
+* backend builds
+* typecheck passes
+* existing tests remain green
+
+6. Documentation
+
+Update architecture documentation describing:
+
+* OpenAPI generation flow
+* synchronization workflow
+* codegen verification process
+
+Deliverables
+
+1. Contract drift report
+2. OpenAPI updates
+3. Regenerated clients
+4. Validation results
+5. Files modified
+6. Risks identified
+7. Synchronization summary
+
+Acceptance Criteria
+
+1. OpenAPI matches implementation
+2. No undocumented endpoints remain
+3. Generated clients compile successfully
+4. Codegen stability checks pass
+5. Frontend startup succeeds
+6. Existing tests remain green
+7. No business behavior changes introduced
+
+Provide a complete synchronization report and Go/No-Go recommendation for Sprint 5 Chunk 1 (Student Dashboard).

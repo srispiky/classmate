@@ -13,4 +13,6 @@ export interface Enrollment {
   enrolledAt: string;
   enrolledBy: number;
   isActive: boolean;
+  droppedAt?: string | null;
+  droppedBy?: number | null;
 }

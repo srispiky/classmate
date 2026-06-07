@@ -8,6 +8,38 @@
 import * as zod from "zod";
 
 /**
+ * @summary Authenticate with username and password
+ */
+export const LoginBody = zod.object({
+  username: zod.string(),
+  password: zod.string(),
+});
+
+export const LoginResponse = zod.object({
+  id: zod.number(),
+  username: zod.string(),
+  displayName: zod.string(),
+  role: zod.string(),
+});
+
+/**
+ * @summary End the current session
+ */
+export const LogoutResponse = zod.object({
+  ok: zod.boolean(),
+});
+
+/**
+ * @summary Get the currently authenticated user
+ */
+export const GetMeResponse = zod.object({
+  id: zod.number(),
+  username: zod.string(),
+  displayName: zod.string(),
+  role: zod.string(),
+});
+
+/**
  * @summary Health check
  */
 export const HealthCheckResponse = zod.object({

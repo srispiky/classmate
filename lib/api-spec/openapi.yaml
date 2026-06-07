@@ -31,8 +31,68 @@ tags:
     description: Course announcements
   - name: dashboard
     description: Dashboard aggregations
+  - name: authentication
+    description: Authentication operations
 
 paths:
+  # ---- AUTHENTICATION ----
+  /auth/login:
+    post:
+      operationId: login
+      tags: [authentication]
+      security: []
+      summary: Authenticate with username and password
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginBody"
+      responses:
+        "200":
+          description: Authenticated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthUser"
+        "400":
+          description: Missing credentials
+        "401":
+          description: Invalid credentials
+
+  /auth/logout:
+    post:
+      operationId: logout
+      tags: [authentication]
+      summary: End the current session
+      responses:
+        "200":
+          description: Session ended
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                required: [ok]
+
+  /auth/me:
+    get:
+      operationId: getMe
+      tags: [authentication]
+      summary: Get the currently authenticated user
+      responses:
+        "200":
+          description: Current user
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthUser"
+        "401":
+          description: Not authenticated
+
+
   /healthz:
     get:
       operationId: healthCheck
@@ -699,6 +759,12 @@ components:
           type: integer
         isActive:
           type: boolean
+        droppedAt:
+          type: string
+          nullable: true
+        droppedBy:
+          type: integer
+          nullable: true
       required: [id, courseId, studentId, enrolledAt, enrolledBy, isActive]
 
     EnrollStudentBody:
@@ -1227,3 +1293,25 @@ components:
         fCount:
           type: integer
       required: [courseName, courseId, averageScore, aCount, bCount, cCount, dCount, fCount]
+
+    LoginBody:
+      type: object
+      properties:
+        username:
+          type: string
+        password:
+          type: string
+      required: [username, password]
+
+    AuthUser:
+      type: object
+      properties:
+        id:
+          type: integer
+        username:
+          type: string
+        displayName:
+          type: string
+        role:
+          type: string
+      required: [id, username, displayName, role]

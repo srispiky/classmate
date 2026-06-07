@@ -21,6 +21,9 @@ export interface AssessmentRow {
   strengths: string[];
   weaknesses: string[];
   createdAt: Date;
+  updatedAt: Date;
+  createdBy: number | null;
+  updatedBy: number | null;
   deletedAt: Date | null;
 }
 
@@ -34,6 +37,9 @@ type RawRow = {
   strengths: string[];
   weaknesses: string[];
   createdAt: Date;
+  updatedAt: Date;
+  createdBy: number | null;
+  updatedBy: number | null;
   deletedAt: Date | null;
   studentName: string | null;
   courseName: string | null;
@@ -50,6 +56,9 @@ function toAssessmentRow(r: RawRow): AssessmentRow {
     strengths: r.strengths,
     weaknesses: r.weaknesses,
     createdAt: r.createdAt,
+    updatedAt: r.updatedAt,
+    createdBy: r.createdBy,
+    updatedBy: r.updatedBy,
     deletedAt: r.deletedAt,
     studentName: r.studentName ?? "Unknown",
     courseName: r.courseName ?? "Unknown",
@@ -66,6 +75,9 @@ const JOIN_SELECT = {
   strengths: assessmentsTable.strengths,
   weaknesses: assessmentsTable.weaknesses,
   createdAt: assessmentsTable.createdAt,
+  updatedAt: assessmentsTable.updatedAt,
+  createdBy: assessmentsTable.createdBy,
+  updatedBy: assessmentsTable.updatedBy,
   deletedAt: assessmentsTable.deletedAt,
   studentName: studentsTable.name,
   courseName: coursesTable.name,

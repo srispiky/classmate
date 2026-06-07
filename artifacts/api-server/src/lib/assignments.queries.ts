@@ -23,6 +23,9 @@ export interface AssignmentRow {
   maxScore: number;
   feedback: string | null;
   createdAt: Date;
+  updatedAt: Date;
+  createdBy: number | null;
+  updatedBy: number | null;
   deletedAt: Date | null;
 }
 
@@ -38,6 +41,9 @@ type RawRow = {
   maxScore: number;
   feedback: string | null;
   createdAt: Date;
+  updatedAt: Date;
+  createdBy: number | null;
+  updatedBy: number | null;
   deletedAt: Date | null;
   studentName: string | null;
   courseName: string | null;
@@ -56,6 +62,9 @@ function toAssignmentRow(r: RawRow): AssignmentRow {
     maxScore: r.maxScore,
     feedback: r.feedback,
     createdAt: r.createdAt,
+    updatedAt: r.updatedAt,
+    createdBy: r.createdBy,
+    updatedBy: r.updatedBy,
     deletedAt: r.deletedAt,
     studentName: r.studentName ?? "Unknown",
     courseName: r.courseName ?? "Unknown",
@@ -74,6 +83,9 @@ const JOIN_SELECT = {
   maxScore: assignmentsTable.maxScore,
   feedback: assignmentsTable.feedback,
   createdAt: assignmentsTable.createdAt,
+  updatedAt: assignmentsTable.updatedAt,
+  createdBy: assignmentsTable.createdBy,
+  updatedBy: assignmentsTable.updatedBy,
   deletedAt: assignmentsTable.deletedAt,
   studentName: studentsTable.name,
   courseName: coursesTable.name,

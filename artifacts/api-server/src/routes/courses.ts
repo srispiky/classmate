@@ -25,6 +25,8 @@ function serializeCourse(c: CourseRow) {
     status: c.status,
     createdAt: c.createdAt.toISOString(),
     updatedAt: c.updatedAt.toISOString(),
+    createdBy: c.createdBy ?? null,
+    updatedBy: c.updatedBy ?? null,
   };
 }
 

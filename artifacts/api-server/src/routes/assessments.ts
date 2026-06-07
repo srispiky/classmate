@@ -39,6 +39,9 @@ function serializeAssessment(a: AssessmentRow) {
     strengths: a.strengths,
     weaknesses: a.weaknesses,
     createdAt: a.createdAt.toISOString(),
+    updatedAt: a.updatedAt.toISOString(),
+    createdBy: a.createdBy ?? null,
+    updatedBy: a.updatedBy ?? null,
   };
 }
 

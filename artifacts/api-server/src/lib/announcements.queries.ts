@@ -17,6 +17,9 @@ export interface AnnouncementRow {
   authorName: string;
   priority: string;
   createdAt: Date;
+  updatedAt: Date;
+  createdBy: number | null;
+  updatedBy: number | null;
   deletedAt: Date | null;
 }
 
@@ -28,6 +31,9 @@ type RawRow = {
   authorName: string;
   priority: string;
   createdAt: Date;
+  updatedAt: Date;
+  createdBy: number | null;
+  updatedBy: number | null;
   deletedAt: Date | null;
   courseName: string | null;
 };
@@ -41,6 +47,9 @@ function toAnnouncementRow(r: RawRow): AnnouncementRow {
     authorName: r.authorName,
     priority: r.priority,
     createdAt: r.createdAt,
+    updatedAt: r.updatedAt,
+    createdBy: r.createdBy,
+    updatedBy: r.updatedBy,
     deletedAt: r.deletedAt,
     courseName: r.courseName ?? "Unknown",
   };
@@ -54,6 +63,9 @@ const JOIN_SELECT = {
   authorName: announcementsTable.authorName,
   priority: announcementsTable.priority,
   createdAt: announcementsTable.createdAt,
+  updatedAt: announcementsTable.updatedAt,
+  createdBy: announcementsTable.createdBy,
+  updatedBy: announcementsTable.updatedBy,
   deletedAt: announcementsTable.deletedAt,
   courseName: coursesTable.name,
 } as const;

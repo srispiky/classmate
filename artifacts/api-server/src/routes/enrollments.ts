@@ -122,6 +122,8 @@ router.post(
       enrolledAt: enrollment.enrolledAt.toISOString(),
       enrolledBy: enrollment.enrolledBy,
       isActive: enrollment.isActive,
+      droppedAt: enrollment.droppedAt?.toISOString() ?? null,
+      droppedBy: enrollment.droppedBy ?? null,
     });
   },
 );

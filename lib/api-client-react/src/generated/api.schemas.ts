@@ -12,6 +12,8 @@ export interface Enrollment {
   enrolledAt: string;
   enrolledBy: number;
   isActive: boolean;
+  droppedAt?: string | null;
+  droppedBy?: number | null;
 }
 
 export interface EnrollStudentBody {
@@ -352,6 +354,22 @@ export interface GradeBreakdown {
   dCount: number;
   fCount: number;
 }
+
+export interface LoginBody {
+  username: string;
+  password: string;
+}
+
+export interface AuthUser {
+  id: number;
+  username: string;
+  displayName: string;
+  role: string;
+}
+
+export type Logout200 = {
+  ok: boolean;
+};
 
 export type ListAssignmentsParams = {
   courseId?: number;

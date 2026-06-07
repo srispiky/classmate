@@ -27,6 +27,9 @@ function serializeNote(n: NoteRow) {
     topic: n.topic,
     videoUrl: n.videoUrl ?? null,
     createdAt: n.createdAt.toISOString(),
+    updatedAt: n.updatedAt.toISOString(),
+    createdBy: n.createdBy ?? null,
+    updatedBy: n.updatedBy ?? null,
   };
 }
 
