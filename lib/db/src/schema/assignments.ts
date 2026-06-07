@@ -19,6 +19,7 @@ export const assignmentsTable = pgTable("assignments", {
   deletedAt: timestamp("deleted_at", { withTimezone: true }),
   createdBy: integer("created_by").references(() => usersTable.id, { onDelete: "set null" }),
   updatedBy: integer("updated_by").references(() => usersTable.id, { onDelete: "set null" }),
+  deletedBy: integer("deleted_by").references(() => usersTable.id, { onDelete: "set null" }),
 });
 
 export const insertAssignmentSchema = createInsertSchema(assignmentsTable).omit({
@@ -28,6 +29,7 @@ export const insertAssignmentSchema = createInsertSchema(assignmentsTable).omit(
   deletedAt: true,
   createdBy: true,
   updatedBy: true,
+  deletedBy: true,
 });
 export type InsertAssignment = z.infer<typeof insertAssignmentSchema>;
 export type Assignment = typeof assignmentsTable.$inferSelect;

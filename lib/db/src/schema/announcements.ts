@@ -15,6 +15,7 @@ export const announcementsTable = pgTable("announcements", {
   deletedAt: timestamp("deleted_at", { withTimezone: true }),
   createdBy: integer("created_by").references(() => usersTable.id, { onDelete: "set null" }),
   updatedBy: integer("updated_by").references(() => usersTable.id, { onDelete: "set null" }),
+  deletedBy: integer("deleted_by").references(() => usersTable.id, { onDelete: "set null" }),
 });
 
 export const insertAnnouncementSchema = createInsertSchema(announcementsTable).omit({
@@ -24,6 +25,7 @@ export const insertAnnouncementSchema = createInsertSchema(announcementsTable).o
   deletedAt: true,
   createdBy: true,
   updatedBy: true,
+  deletedBy: true,
 });
 export type InsertAnnouncement = z.infer<typeof insertAnnouncementSchema>;
 export type Announcement = typeof announcementsTable.$inferSelect;

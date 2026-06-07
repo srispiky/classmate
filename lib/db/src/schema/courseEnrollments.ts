@@ -30,6 +30,7 @@ export const courseEnrollmentsTable = pgTable(
       .references(() => usersTable.id, { onDelete: "restrict" }),
     isActive: boolean("is_active").notNull().default(true),
     droppedAt: timestamp("dropped_at", { withTimezone: true }),
+    droppedBy: integer("dropped_by").references(() => usersTable.id, { onDelete: "set null" }),
   },
   (table) => ({
     activeEnrollmentUnique: uniqueIndex("uq_course_enrollments_active")
@@ -48,6 +49,7 @@ export const insertCourseEnrollmentSchema = createInsertSchema(courseEnrollments
   id: true,
   enrolledAt: true,
   droppedAt: true,
+  droppedBy: true,
 });
 export const selectCourseEnrollmentSchema = createSelectSchema(courseEnrollmentsTable);
 export type InsertCourseEnrollment = z.infer<typeof insertCourseEnrollmentSchema>;

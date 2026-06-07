@@ -1,0 +1,198 @@
+Phase 2 – Sprint 5
+
+Chunk 0B – Audit Field Remediation (AB-002)
+
+# Goal
+
+Complete audit-readiness remediation identified during Sprint 4 Readiness Review.
+
+This is an architecture hardening task.
+
+Do not implement new business features.
+
+Do not modify authorization behavior.
+
+Do not modify OpenAPI.
+
+Focus exclusively on audit field consistency.
+
+# Background
+
+Sprint 4 Readiness Review identified missing audit fields.
+
+Current standards require all mutable business entities to support:
+
+* created_at
+* updated_at
+* created_by
+* updated_by
+
+Soft deletable entities should also support:
+
+* deleted_at
+* deleted_by
+
+# Target Standard
+
+Every mutable business entity must support:
+
+```sql
+created_at timestamptz not null
+updated_at timestamptz not null
+
+created_by uuid null
+updated_by uuid null
+```
+
+Follow existing project conventions.
+
+# Scope
+
+Review all business entities including:
+
+* courses
+* assignments
+* assessments
+* notes
+* announcements
+* course_enrollments
+
+Review any additional mutable entities that exist.
+
+# Tasks
+
+1. Audit Existing Schema
+
+Identify:
+
+* missing updated_at
+* missing created_by
+* missing updated_by
+
+Produce a remediation summary.
+
+---
+
+2. Database Migrations
+
+Create migrations for missing audit columns.
+
+Requirements:
+
+* backward compatible
+* existing data preserved
+* safe defaults applied where required
+
+Do not rename existing columns.
+
+Do not redesign tables.
+
+---
+
+3. Drizzle Schema Updates
+
+Update schema definitions to reflect new audit fields.
+
+Ensure consistency across entities.
+
+---
+
+4. Repository Updates
+
+Verify create operations populate:
+
+```ts
+createdAt
+createdBy
+```
+
+Verify update operations populate:
+
+```ts
+updatedAt
+updatedBy
+```
+
+Reuse existing user/session context patterns.
+
+---
+
+5. Service Review
+
+Review mutation workflows:
+
+* create
+* update
+* archive
+* soft delete
+
+Ensure audit fields are maintained consistently.
+
+---
+
+6. Soft Delete Review
+
+Verify entities supporting soft delete correctly populate:
+
+```ts
+deletedAt
+deletedBy
+```
+
+Do not change deletion strategy.
+
+---
+
+7. Integration Tests
+
+Add tests verifying:
+
+Create:
+
+* created_at populated
+* created_by populated
+
+Update:
+
+* updated_at updated
+* updated_by updated
+
+Soft Delete:
+
+* deleted_at populated
+* deleted_by populated
+
+---
+
+8. Architecture Compliance
+
+Verify audit logic remains:
+
+* Service layer
+* Repository layer
+
+Do not place audit logic in:
+
+* Controllers
+* Policies
+
+# Deliverables
+
+1. Audit remediation report
+2. Database migrations
+3. Drizzle schema updates
+4. Repository updates
+5. Integration tests
+6. Compliance summary
+
+# Acceptance Criteria
+
+1. All mutable entities contain required audit fields
+2. Create operations populate audit fields
+3. Update operations populate audit fields
+4. Soft delete operations populate audit fields
+5. Existing tests remain green
+6. No authorization behavior changed
+7. No API contract changes introduced
+
+Deliver complete implementation with migration summary and audit compliance report.

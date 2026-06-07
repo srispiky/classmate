@@ -62,10 +62,11 @@ export async function createEnrollment(
 export async function deactivateEnrollment(
   courseId: number,
   studentId: number,
+  droppedBy: number,
 ): Promise<CourseEnrollment | null> {
   const [row] = await db
     .update(courseEnrollmentsTable)
-    .set({ isActive: false, droppedAt: new Date() })
+    .set({ isActive: false, droppedAt: new Date(), droppedBy })
     .where(
       and(
         eq(courseEnrollmentsTable.courseId, courseId),

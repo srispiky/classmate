@@ -168,8 +168,8 @@ router.delete(
       throw err;
     }
 
-    // Soft unenroll — sets isActive=false, droppedAt=now()
-    const removed = await deactivateEnrollment(courseId, studentId);
+    // Soft unenroll — sets isActive=false, droppedAt=now(), droppedBy=scope.userId
+    const removed = await deactivateEnrollment(courseId, studentId, scope.userId);
     if (!removed) {
       res.status(404).json({ error: "Enrollment not found" });
       return;

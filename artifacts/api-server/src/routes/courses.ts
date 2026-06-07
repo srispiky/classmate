@@ -179,7 +179,7 @@ router.delete("/courses/:id", requireRole("admin", "teacher"), async (req, res):
   // Soft delete — never physically remove rows.
   await db
     .update(coursesTable)
-    .set({ deletedAt: new Date(), updatedAt: new Date(), updatedBy: scope.userId })
+    .set({ deletedAt: new Date(), updatedAt: new Date(), updatedBy: scope.userId, deletedBy: scope.userId })
     .where(eq(coursesTable.id, params.data.id));
 
   res.status(204).send();
