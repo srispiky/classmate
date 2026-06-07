@@ -7,6 +7,7 @@
     "hello": "tsx ./src/hello.ts",
     "seed-admin": "tsx ./src/seed-admin.ts",
     "migrate:enrollments": "tsx ./src/migrate-course-enrollments.ts",
+    "check-barrel": "tsx ./src/check-api-barrel.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
