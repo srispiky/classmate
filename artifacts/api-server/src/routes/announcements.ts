@@ -58,6 +58,7 @@ router.get("/announcements", async (req, res): Promise<void> => {
 // ── POST /api/announcements ───────────────────────────────────────────────────
 
 router.post("/announcements", async (req, res): Promise<void> => {
+  const scope = buildScopeContext(req.session as ClassmateSession);
   const parsed = CreateAnnouncementBody.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.message });
@@ -74,6 +75,7 @@ router.post("/announcements", async (req, res): Promise<void> => {
     .values({
       ...parsed.data,
       priority: parsed.data.priority ?? "normal",
+      createdBy: scope.userId,
     })
     .returning();
 
@@ -162,7 +164,7 @@ router.patch("/announcements/:id", async (req, res): Promise<void> => {
 
   const [announcement] = await db
     .update(announcementsTable)
-    .set(parsed.data)
+    .set({ ...parsed.data, updatedAt: new Date(), updatedBy: scope.userId })
     .where(eq(announcementsTable.id, params.data.id))
     .returning();
 

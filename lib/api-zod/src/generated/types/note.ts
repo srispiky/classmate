@@ -15,4 +15,7 @@ export interface Note {
   topic: string;
   videoUrl?: string | null;
   createdAt: string;
+  updatedAt?: string;
+  createdBy?: number | null;
+  updatedBy?: number | null;
 }

@@ -7,6 +7,9 @@ info:
 servers:
   - url: /api
     description: Base API path
+security:
+  - sessionCookie: []
+
 tags:
   - name: health
     description: Health operations
@@ -16,6 +19,8 @@ tags:
     description: Teacher operations
   - name: courses
     description: Course operations
+  - name: enrollments
+    description: Course enrollment management
   - name: assignments
     description: Assignment operations
   - name: notes
@@ -222,6 +227,60 @@ paths:
       responses:
         "204":
           description: No Content
+
+  # ---- ENROLLMENTS ----
+  /courses/{courseId}/enrollments:
+    post:
+      operationId: enrollStudent
+      tags: [enrollments]
+      summary: Enroll a student into a course
+      parameters:
+        - name: courseId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EnrollStudentBody"
+      responses:
+        "201":
+          description: Enrollment created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Enrollment"
+        "404":
+          description: Course or student not found
+        "409":
+          description: Student already enrolled
+        "422":
+          description: Course is not active
+
+  /courses/{courseId}/enrollments/{studentId}:
+    delete:
+      operationId: unenrollStudent
+      tags: [enrollments]
+      summary: Unenroll a student from a course
+      parameters:
+        - name: courseId
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: studentId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Enrollment removed
+        "404":
+          description: Enrollment not found
 
   # ---- ASSIGNMENTS ----
   /assignments:
@@ -617,7 +676,38 @@ paths:
                   $ref: "#/components/schemas/GradeBreakdown"
 
 components:
+  securitySchemes:
+    sessionCookie:
+      type: apiKey
+      in: cookie
+      name: connect.sid
+      description: Session cookie set by the server after login
+
   schemas:
+    Enrollment:
+      type: object
+      properties:
+        id:
+          type: integer
+        courseId:
+          type: integer
+        studentId:
+          type: integer
+        enrolledAt:
+          type: string
+        enrolledBy:
+          type: integer
+        isActive:
+          type: boolean
+      required: [id, courseId, studentId, enrolledAt, enrolledBy, isActive]
+
+    EnrollStudentBody:
+      type: object
+      properties:
+        studentId:
+          type: integer
+      required: [studentId]
+
     HealthStatus:
       type: object
       properties:
@@ -727,6 +817,12 @@ components:
           type: string
         updatedAt:
           type: string
+        createdBy:
+          type: integer
+          nullable: true
+        updatedBy:
+          type: integer
+          nullable: true
       required: [id, name, description, teacherName, subject, studentCount, status, createdAt, updatedAt]
 
     CreateCourseBody:
@@ -800,6 +896,14 @@ components:
           nullable: true
         createdAt:
           type: string
+        updatedAt:
+          type: string
+        createdBy:
+          type: integer
+          nullable: true
+        updatedBy:
+          type: integer
+          nullable: true
       required: [id, title, description, courseId, courseName, studentId, studentName, dueDate, status, maxScore, createdAt]
 
     CreateAssignmentBody:
@@ -850,6 +954,14 @@ components:
           enum: [normal, urgent]
         createdAt:
           type: string
+        updatedAt:
+          type: string
+        createdBy:
+          type: integer
+          nullable: true
+        updatedBy:
+          type: integer
+          nullable: true
       required: [id, title, content, courseId, courseName, authorName, priority, createdAt]
 
     AnnouncementInput:
@@ -901,6 +1013,14 @@ components:
           nullable: true
         createdAt:
           type: string
+        updatedAt:
+          type: string
+        createdBy:
+          type: integer
+          nullable: true
+        updatedBy:
+          type: integer
+          nullable: true
       required: [id, title, content, courseId, courseName, topic, createdAt]
 
     CreateNoteBody:
@@ -962,6 +1082,14 @@ components:
             type: string
         createdAt:
           type: string
+        updatedAt:
+          type: string
+        createdBy:
+          type: integer
+          nullable: true
+        updatedBy:
+          type: integer
+          nullable: true
       required: [id, studentId, studentName, courseId, courseName, title, score, maxScore, percentage, strengths, weaknesses, createdAt]
 
     CreateAssessmentBody:

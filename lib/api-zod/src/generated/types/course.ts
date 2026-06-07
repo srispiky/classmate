@@ -20,4 +20,6 @@ export interface Course {
   status: CourseStatus;
   createdAt: string;
   updatedAt: string;
+  createdBy?: number | null;
+  updatedBy?: number | null;
 }

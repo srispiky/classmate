@@ -112,6 +112,8 @@ export const ListCoursesResponseItem = zod.object({
   status: zod.enum(["active", "archived"]),
   createdAt: zod.string(),
   updatedAt: zod.string(),
+  createdBy: zod.number().nullish(),
+  updatedBy: zod.number().nullish(),
 });
 export const ListCoursesResponse = zod.array(ListCoursesResponseItem);
 
@@ -148,6 +150,8 @@ export const GetCourseResponse = zod.object({
   status: zod.enum(["active", "archived"]),
   createdAt: zod.string(),
   updatedAt: zod.string(),
+  createdBy: zod.number().nullish(),
+  updatedBy: zod.number().nullish(),
 });
 
 /**
@@ -180,6 +184,8 @@ export const UpdateCourseResponse = zod.object({
   status: zod.enum(["active", "archived"]),
   createdAt: zod.string(),
   updatedAt: zod.string(),
+  createdBy: zod.number().nullish(),
+  updatedBy: zod.number().nullish(),
 });
 
 /**
@@ -187,6 +193,25 @@ export const UpdateCourseResponse = zod.object({
  */
 export const DeleteCourseParams = zod.object({
   id: zod.coerce.number(),
+});
+
+/**
+ * @summary Enroll a student into a course
+ */
+export const EnrollStudentParams = zod.object({
+  courseId: zod.coerce.number(),
+});
+
+export const EnrollStudentBody = zod.object({
+  studentId: zod.number(),
+});
+
+/**
+ * @summary Unenroll a student from a course
+ */
+export const UnenrollStudentParams = zod.object({
+  courseId: zod.coerce.number(),
+  studentId: zod.coerce.number(),
 });
 
 /**
@@ -211,6 +236,9 @@ export const ListAssignmentsResponseItem = zod.object({
   maxScore: zod.number(),
   feedback: zod.string().nullish(),
   createdAt: zod.string(),
+  updatedAt: zod.string().optional(),
+  createdBy: zod.number().nullish(),
+  updatedBy: zod.number().nullish(),
 });
 export const ListAssignmentsResponse = zod.array(ListAssignmentsResponseItem);
 
@@ -247,6 +275,9 @@ export const GetAssignmentResponse = zod.object({
   maxScore: zod.number(),
   feedback: zod.string().nullish(),
   createdAt: zod.string(),
+  updatedAt: zod.string().optional(),
+  createdBy: zod.number().nullish(),
+  updatedBy: zod.number().nullish(),
 });
 
 /**
@@ -276,6 +307,9 @@ export const UpdateAssignmentResponse = zod.object({
   maxScore: zod.number(),
   feedback: zod.string().nullish(),
   createdAt: zod.string(),
+  updatedAt: zod.string().optional(),
+  createdBy: zod.number().nullish(),
+  updatedBy: zod.number().nullish(),
 });
 
 /**
@@ -294,6 +328,9 @@ export const ListNotesResponseItem = zod.object({
   topic: zod.string(),
   videoUrl: zod.string().nullish(),
   createdAt: zod.string(),
+  updatedAt: zod.string().optional(),
+  createdBy: zod.number().nullish(),
+  updatedBy: zod.number().nullish(),
 });
 export const ListNotesResponse = zod.array(ListNotesResponseItem);
 
@@ -324,6 +361,9 @@ export const GetNoteResponse = zod.object({
   topic: zod.string(),
   videoUrl: zod.string().nullish(),
   createdAt: zod.string(),
+  updatedAt: zod.string().optional(),
+  createdBy: zod.number().nullish(),
+  updatedBy: zod.number().nullish(),
 });
 
 /**
@@ -349,6 +389,9 @@ export const UpdateNoteResponse = zod.object({
   topic: zod.string(),
   videoUrl: zod.string().nullish(),
   createdAt: zod.string(),
+  updatedAt: zod.string().optional(),
+  createdBy: zod.number().nullish(),
+  updatedBy: zod.number().nullish(),
 });
 
 /**
@@ -367,6 +410,9 @@ export const ListAnnouncementsResponseItem = zod.object({
   authorName: zod.string(),
   priority: zod.enum(["normal", "urgent"]),
   createdAt: zod.string(),
+  updatedAt: zod.string().optional(),
+  createdBy: zod.number().nullish(),
+  updatedBy: zod.number().nullish(),
 });
 export const ListAnnouncementsResponse = zod.array(
   ListAnnouncementsResponseItem,
@@ -399,6 +445,9 @@ export const GetAnnouncementResponse = zod.object({
   authorName: zod.string(),
   priority: zod.enum(["normal", "urgent"]),
   createdAt: zod.string(),
+  updatedAt: zod.string().optional(),
+  createdBy: zod.number().nullish(),
+  updatedBy: zod.number().nullish(),
 });
 
 /**
@@ -424,6 +473,9 @@ export const UpdateAnnouncementResponse = zod.object({
   authorName: zod.string(),
   priority: zod.enum(["normal", "urgent"]),
   createdAt: zod.string(),
+  updatedAt: zod.string().optional(),
+  createdBy: zod.number().nullish(),
+  updatedBy: zod.number().nullish(),
 });
 
 /**
@@ -447,6 +499,9 @@ export const ListAssessmentsResponseItem = zod.object({
   strengths: zod.array(zod.string()),
   weaknesses: zod.array(zod.string()),
   createdAt: zod.string(),
+  updatedAt: zod.string().optional(),
+  createdBy: zod.number().nullish(),
+  updatedBy: zod.number().nullish(),
 });
 export const ListAssessmentsResponse = zod.array(ListAssessmentsResponseItem);
 
@@ -483,6 +538,9 @@ export const GetAssessmentResponse = zod.object({
   strengths: zod.array(zod.string()),
   weaknesses: zod.array(zod.string()),
   createdAt: zod.string(),
+  updatedAt: zod.string().optional(),
+  createdBy: zod.number().nullish(),
+  updatedBy: zod.number().nullish(),
 });
 
 /**

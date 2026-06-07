@@ -5,6 +5,19 @@
  * Classmate API specification
  * OpenAPI spec version: 0.1.0
  */
+export interface Enrollment {
+  id: number;
+  courseId: number;
+  studentId: number;
+  enrolledAt: string;
+  enrolledBy: number;
+  isActive: boolean;
+}
+
+export interface EnrollStudentBody {
+  studentId: number;
+}
+
 export interface HealthStatus {
   status: string;
 }
@@ -63,6 +76,8 @@ export interface Course {
   status: CourseStatus;
   createdAt: string;
   updatedAt: string;
+  createdBy?: number | null;
+  updatedBy?: number | null;
 }
 
 export type CreateCourseBodyStatus =
@@ -125,6 +140,9 @@ export interface Assignment {
   maxScore: number;
   feedback?: string | null;
   createdAt: string;
+  updatedAt?: string;
+  createdBy?: number | null;
+  updatedBy?: number | null;
 }
 
 export interface CreateAssignmentBody {
@@ -169,6 +187,9 @@ export interface Announcement {
   authorName: string;
   priority: AnnouncementPriority;
   createdAt: string;
+  updatedAt?: string;
+  createdBy?: number | null;
+  updatedBy?: number | null;
 }
 
 export type AnnouncementInputPriority =
@@ -211,6 +232,9 @@ export interface Note {
   topic: string;
   videoUrl?: string | null;
   createdAt: string;
+  updatedAt?: string;
+  createdBy?: number | null;
+  updatedBy?: number | null;
 }
 
 export interface CreateNoteBody {
@@ -241,6 +265,9 @@ export interface Assessment {
   strengths: string[];
   weaknesses: string[];
   createdAt: string;
+  updatedAt?: string;
+  createdBy?: number | null;
+  updatedBy?: number | null;
 }
 
 export interface CreateAssessmentBody {

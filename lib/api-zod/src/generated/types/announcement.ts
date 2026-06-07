@@ -16,4 +16,7 @@ export interface Announcement {
   authorName: string;
   priority: AnnouncementPriority;
   createdAt: string;
+  updatedAt?: string;
+  createdBy?: number | null;
+  updatedBy?: number | null;
 }

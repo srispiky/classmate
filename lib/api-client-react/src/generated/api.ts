@@ -31,6 +31,8 @@ import type {
   CreateNoteBody,
   CreateStudentBody,
   DashboardSummary,
+  EnrollStudentBody,
+  Enrollment,
   GradeBreakdown,
   HealthStatus,
   ListAnnouncementsParams,
@@ -965,6 +967,178 @@ export const useDeleteCourse = <
   TContext
 > => {
   return useMutation(getDeleteCourseMutationOptions(options));
+};
+
+/**
+ * @summary Enroll a student into a course
+ */
+export const getEnrollStudentUrl = (courseId: number) => {
+  return `/api/courses/${courseId}/enrollments`;
+};
+
+export const enrollStudent = async (
+  courseId: number,
+  enrollStudentBody: EnrollStudentBody,
+  options?: RequestInit,
+): Promise<Enrollment> => {
+  return customFetch<Enrollment>(getEnrollStudentUrl(courseId), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(enrollStudentBody),
+  });
+};
+
+export const getEnrollStudentMutationOptions = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof enrollStudent>>,
+    TError,
+    { courseId: number; data: BodyType<EnrollStudentBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof enrollStudent>>,
+  TError,
+  { courseId: number; data: BodyType<EnrollStudentBody> },
+  TContext
+> => {
+  const mutationKey = ["enrollStudent"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof enrollStudent>>,
+    { courseId: number; data: BodyType<EnrollStudentBody> }
+  > = (props) => {
+    const { courseId, data } = props ?? {};
+
+    return enrollStudent(courseId, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type EnrollStudentMutationResult = NonNullable<
+  Awaited<ReturnType<typeof enrollStudent>>
+>;
+export type EnrollStudentMutationBody = BodyType<EnrollStudentBody>;
+export type EnrollStudentMutationError = ErrorType<void>;
+
+/**
+ * @summary Enroll a student into a course
+ */
+export const useEnrollStudent = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof enrollStudent>>,
+    TError,
+    { courseId: number; data: BodyType<EnrollStudentBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof enrollStudent>>,
+  TError,
+  { courseId: number; data: BodyType<EnrollStudentBody> },
+  TContext
+> => {
+  return useMutation(getEnrollStudentMutationOptions(options));
+};
+
+/**
+ * @summary Unenroll a student from a course
+ */
+export const getUnenrollStudentUrl = (courseId: number, studentId: number) => {
+  return `/api/courses/${courseId}/enrollments/${studentId}`;
+};
+
+export const unenrollStudent = async (
+  courseId: number,
+  studentId: number,
+  options?: RequestInit,
+): Promise<void> => {
+  return customFetch<void>(getUnenrollStudentUrl(courseId, studentId), {
+    ...options,
+    method: "DELETE",
+  });
+};
+
+export const getUnenrollStudentMutationOptions = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof unenrollStudent>>,
+    TError,
+    { courseId: number; studentId: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof unenrollStudent>>,
+  TError,
+  { courseId: number; studentId: number },
+  TContext
+> => {
+  const mutationKey = ["unenrollStudent"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof unenrollStudent>>,
+    { courseId: number; studentId: number }
+  > = (props) => {
+    const { courseId, studentId } = props ?? {};
+
+    return unenrollStudent(courseId, studentId, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type UnenrollStudentMutationResult = NonNullable<
+  Awaited<ReturnType<typeof unenrollStudent>>
+>;
+
+export type UnenrollStudentMutationError = ErrorType<void>;
+
+/**
+ * @summary Unenroll a student from a course
+ */
+export const useUnenrollStudent = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof unenrollStudent>>,
+    TError,
+    { courseId: number; studentId: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof unenrollStudent>>,
+  TError,
+  { courseId: number; studentId: number },
+  TContext
+> => {
+  return useMutation(getUnenrollStudentMutationOptions(options));
 };
 
 /**

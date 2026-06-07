@@ -27,6 +27,8 @@ export * from "./createCourseBodyStatus";
 export * from "./createNoteBody";
 export * from "./createStudentBody";
 export * from "./dashboardSummary";
+export * from "./enrollment";
+export * from "./enrollStudentBody";
 export * from "./gradeBreakdown";
 export * from "./healthStatus";
 export * from "./listAnnouncementsParams";

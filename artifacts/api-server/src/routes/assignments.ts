@@ -59,6 +59,7 @@ router.get("/assignments", async (req, res): Promise<void> => {
 // ── POST /api/assignments ────────────────────────────────────────────────────
 
 router.post("/assignments", async (req, res): Promise<void> => {
+  const scope = buildScopeContext(req.session as ClassmateSession);
   const parsed = CreateAssignmentBody.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.message });
@@ -77,7 +78,7 @@ router.post("/assignments", async (req, res): Promise<void> => {
 
   const [assignment] = await db
     .insert(assignmentsTable)
-    .values({ ...parsed.data, status: "pending" })
+    .values({ ...parsed.data, status: "pending", createdBy: scope.userId })
     .returning();
 
   await db.insert(activityTable).values({
@@ -170,7 +171,7 @@ router.patch("/assignments/:id", async (req, res): Promise<void> => {
 
   const [updated] = await db
     .update(assignmentsTable)
-    .set({ ...parsed.data, updatedAt: new Date() })
+    .set({ ...parsed.data, updatedAt: new Date(), updatedBy: scope.userId })
     .where(eq(assignmentsTable.id, params.data.id))
     .returning();
 

@@ -88,7 +88,7 @@ router.post("/courses", requireRole("admin", "teacher"), async (req, res): Promi
 
   const [course] = await db
     .insert(coursesTable)
-    .values(parsed.data)
+    .values({ ...parsed.data, createdBy: scope.userId })
     .returning();
 
   res.status(201).json(serializeCourse(course));
@@ -133,7 +133,7 @@ router.put("/courses/:id", requireRole("admin", "teacher"), async (req, res): Pr
 
   const [updated] = await db
     .update(coursesTable)
-    .set({ ...parsed.data, updatedAt: new Date() })
+    .set({ ...parsed.data, updatedAt: new Date(), updatedBy: scope.userId })
     .where(eq(coursesTable.id, params.data.id))
     .returning();
 
@@ -179,7 +179,7 @@ router.delete("/courses/:id", requireRole("admin", "teacher"), async (req, res):
   // Soft delete — never physically remove rows.
   await db
     .update(coursesTable)
-    .set({ deletedAt: new Date(), updatedAt: new Date() })
+    .set({ deletedAt: new Date(), updatedAt: new Date(), updatedBy: scope.userId })
     .where(eq(coursesTable.id, params.data.id));
 
   res.status(204).send();

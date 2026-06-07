@@ -24,6 +24,8 @@ export const coursesTable = pgTable("courses", {
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   deletedAt: timestamp("deleted_at", { withTimezone: true }),
+  createdBy: integer("created_by").references(() => usersTable.id, { onDelete: "set null" }),
+  updatedBy: integer("updated_by").references(() => usersTable.id, { onDelete: "set null" }),
 });
 
 // ── Domain validation constants ───────────────────────────────────────────────
@@ -96,6 +98,8 @@ export const insertCourseSchema = createInsertSchema(coursesTable).omit({
   updatedAt: true,
   deletedAt: true,
   studentCount: true,
+  createdBy: true,
+  updatedBy: true,
 });
 
 export const selectCourseSchema = createSelectSchema(coursesTable);

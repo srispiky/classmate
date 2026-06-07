@@ -52,6 +52,7 @@ router.get("/notes", async (req, res): Promise<void> => {
 // ── POST /api/notes ──────────────────────────────────────────────────────────
 
 router.post("/notes", async (req, res): Promise<void> => {
+  const scope = buildScopeContext(req.session as ClassmateSession);
   const parsed = CreateNoteBody.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.message });
@@ -65,7 +66,7 @@ router.post("/notes", async (req, res): Promise<void> => {
 
   const [note] = await db
     .insert(notesTable)
-    .values({ ...parsed.data, videoUrl: parsed.data.videoUrl ?? null })
+    .values({ ...parsed.data, videoUrl: parsed.data.videoUrl ?? null, createdBy: scope.userId })
     .returning();
 
   await db.insert(activityTable).values({
@@ -163,7 +164,7 @@ router.patch("/notes/:id", async (req, res): Promise<void> => {
 
   const [note] = await db
     .update(notesTable)
-    .set({ ...parsed.data, updatedAt: new Date() })
+    .set({ ...parsed.data, updatedAt: new Date(), updatedBy: scope.userId })
     .where(eq(notesTable.id, params.data.id))
     .returning();
 

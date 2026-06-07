@@ -1,6 +1,7 @@
 import { pgTable, text, serial, timestamp, integer, real } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
+import { usersTable } from "./users";
 
 export const assignmentsTable = pgTable("assignments", {
   id: serial("id").primaryKey(),
@@ -16,6 +17,8 @@ export const assignmentsTable = pgTable("assignments", {
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   deletedAt: timestamp("deleted_at", { withTimezone: true }),
+  createdBy: integer("created_by").references(() => usersTable.id, { onDelete: "set null" }),
+  updatedBy: integer("updated_by").references(() => usersTable.id, { onDelete: "set null" }),
 });
 
 export const insertAssignmentSchema = createInsertSchema(assignmentsTable).omit({
@@ -23,6 +26,8 @@ export const insertAssignmentSchema = createInsertSchema(assignmentsTable).omit(
   createdAt: true,
   updatedAt: true,
   deletedAt: true,
+  createdBy: true,
+  updatedBy: true,
 });
 export type InsertAssignment = z.infer<typeof insertAssignmentSchema>;
 export type Assignment = typeof assignmentsTable.$inferSelect;

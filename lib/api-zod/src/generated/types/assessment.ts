@@ -19,4 +19,7 @@ export interface Assessment {
   strengths: string[];
   weaknesses: string[];
   createdAt: string;
+  updatedAt?: string;
+  createdBy?: number | null;
+  updatedBy?: number | null;
 }

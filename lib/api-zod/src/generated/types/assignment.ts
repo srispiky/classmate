@@ -21,4 +21,7 @@ export interface Assignment {
   maxScore: number;
   feedback?: string | null;
   createdAt: string;
+  updatedAt?: string;
+  createdBy?: number | null;
+  updatedBy?: number | null;
 }
