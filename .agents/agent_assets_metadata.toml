@@ -54,3 +54,9 @@ id = "gtc_ByWrYvwoNRQMqXTTI"
 uri = "file://docs/diagnostics/sprint5-chunk0-failure-analysis.md"
 type = "text"
 title = "Sprint 5 Chunk 0 — Failure Analysis"
+
+[[outputs]]
+id = "rH8X7XCXVCHDqREn3oyg4"
+uri = "file://docs/chunk-0b-review-closure.md"
+type = "text"
+title = "Chunk 0B Review & Closure — AB-002 Audit Field Remediation"
