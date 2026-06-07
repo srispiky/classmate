@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { eq } from "drizzle-orm";
-import { db, assessmentsTable, studentsTable, activityTable } from "@workspace/db";
+import { db, assessmentsTable, studentsTable, coursesTable, activityTable } from "@workspace/db";
 import {
   CreateAssessmentBody,
   GetAssessmentParams,
@@ -149,9 +149,9 @@ router.post("/assessments", async (req, res): Promise<void> => {
     .where(eq(studentsTable.id, parsed.data.studentId));
 
   const [course] = await db
-    .select({ name: studentsTable.name })
-    .from(studentsTable)
-    .where(eq(studentsTable.id, parsed.data.courseId));
+    .select({ name: coursesTable.name })
+    .from(coursesTable)
+    .where(eq(coursesTable.id, parsed.data.courseId));
 
   const [assessment] = await db.insert(assessmentsTable).values(parsed.data).returning();
 

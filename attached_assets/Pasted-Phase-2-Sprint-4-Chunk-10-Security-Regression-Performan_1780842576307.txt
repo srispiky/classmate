@@ -1,0 +1,521 @@
+Phase 2 – Sprint 4
+
+Chunk 10 – Security + Regression + Performance Validation
+
+# Goal
+
+Perform a comprehensive validation of all Sprint 4 deliverables.
+
+This is a hardening and verification phase.
+
+No new business features.
+
+No new APIs.
+
+No architectural redesigns.
+
+Focus on validating:
+
+* Security
+* Authorization
+* RLS
+* Performance
+* Auditability
+* Regression safety
+
+# Sprint 4 Scope
+
+Review and validate:
+
+* Course Domain
+* Teacher Scope Infrastructure
+* TeacherScopeValidator
+* CourseScopePolicy
+* Course APIs
+* Enrollment Management
+* Teacher Ownership Unification
+
+# Current Authorization Model
+
+Admin
+
+* Global access
+
+Teacher
+
+* Owned courses only
+
+Student
+
+* Enrolled courses only
+
+Parent
+
+* Child courses only
+
+Validate that this model is consistently enforced across all resources.
+
+# Objectives
+
+1. Security Review
+2. Authorization Review
+3. RLS Review
+4. IDOR Review
+5. Performance Review
+6. Audit Review
+7. Architecture Review
+8. Regression Testing
+9. Sprint 4 Readiness Report
+
+---
+
+SECTION 1
+Security Validation
+===================
+
+Review all resources:
+
+* Courses
+* Assignments
+* Assessments
+* Notes
+* Announcements
+* Enrollments
+
+Verify:
+
+Layer 1
+
+* requireAuth()
+* requirePermission()
+
+Layer 2
+
+* Query filtering
+
+Layer 3
+
+* Post-fetch validation
+
+Confirm no endpoint bypasses any layer.
+
+Produce findings.
+
+---
+
+SECTION 2
+Teacher Boundary Validation
+===========================
+
+Verify:
+
+Teacher A
+
+owns:
+
+```text
+Course A
+Course B
+```
+
+Teacher B
+
+owns:
+
+```text
+Course C
+Course D
+```
+
+Validate:
+
+Teacher A cannot:
+
+* view Course C
+* update Course C
+* delete Course C
+* view Course C assignments
+* view Course C assessments
+* view Course C notes
+* view Course C announcements
+* manage Course C enrollments
+
+Expected:
+
+```http
+403 Forbidden
+```
+
+for every unauthorized operation.
+
+---
+
+SECTION 3
+Student Boundary Validation
+===========================
+
+Student enrolled in:
+
+```text
+Course A
+```
+
+Verify:
+
+Allowed:
+
+* own assignments
+* own assessments
+* enrolled courses
+
+Denied:
+
+* other student records
+* non-enrolled courses
+* unrelated assignments
+* unrelated assessments
+
+Validate both list and detail endpoints.
+
+---
+
+SECTION 4
+Parent Boundary Validation
+==========================
+
+Parent linked to:
+
+```text
+Student A
+```
+
+Verify:
+
+Allowed:
+
+* child courses
+* child assignments
+* child assessments
+
+Denied:
+
+* unrelated students
+* unrelated courses
+* unrelated assessments
+
+Validate list and detail operations.
+
+---
+
+SECTION 5
+IDOR Testing
+============
+
+Perform direct-object-reference testing.
+
+Resources:
+
+* Courses
+* Assignments
+* Assessments
+* Notes
+* Announcements
+* Enrollments
+
+Attempt:
+
+```http
+GET /:id
+PUT /:id
+DELETE /:id
+```
+
+using unauthorized identifiers.
+
+Verify:
+
+```http
+403 Forbidden
+```
+
+or project-standard equivalent.
+
+No data leakage permitted.
+
+---
+
+SECTION 6
+Policy Consistency Review
+=========================
+
+Review:
+
+* CourseScopePolicy
+* AssignmentScopePolicy
+* AssessmentScopePolicy
+* NotesScopePolicy
+* AnnouncementScopePolicy
+
+Verify:
+
+Admin
+
+* consistent
+
+Teacher
+
+* ownership-based everywhere
+
+Student
+
+* enrollment-based everywhere
+
+Parent
+
+* child-course-based everywhere
+
+Identify any deviations.
+
+---
+
+SECTION 7
+Performance Review
+==================
+
+Review:
+
+ScopeContext construction.
+
+Verify:
+
+No N+1 queries.
+
+Authorization decisions use:
+
+```ts
+scope.ownedCourseIds
+
+scope.enrolledCourseIds
+
+scope.childCourseIds
+```
+
+already loaded into session scope.
+
+No runtime ownership queries.
+
+No authorization joins.
+
+Review query plans where appropriate.
+
+---
+
+SECTION 8
+Enrollment Performance Review
+=============================
+
+Review:
+
+course_enrollments
+
+Indexes:
+
+```sql
+course_id
+
+student_id
+
+is_active
+```
+
+Verify:
+
+Enrollment creation
+
+Enrollment removal
+
+Course access resolution
+
+remain efficient.
+
+Document recommendations.
+
+---
+
+SECTION 9
+Audit Readiness Review
+======================
+
+Review all Sprint 4 entities.
+
+Verify:
+
+created_at
+
+updated_at
+
+created_by
+
+updated_by
+
+soft delete support where applicable
+
+Document missing audit fields.
+
+Cross-reference:
+
+Architecture Backlog
+
+AB-002 updated_at remediation
+
+---
+
+SECTION 10
+Architecture Compliance Review
+==============================
+
+Verify compliance with:
+
+coding-standards.md
+
+database-standards.md
+
+authorization-standards.md
+
+Review:
+
+Controllers
+
+Repositories
+
+Services
+
+Policies
+
+Validators
+
+Confirm:
+
+No authorization logic in:
+
+* Controllers
+* Repositories
+
+No business logic in:
+
+* Policies
+
+No database logic in:
+
+* Controllers
+
+Document violations.
+
+---
+
+SECTION 11
+Regression Testing
+==================
+
+Execute all:
+
+Unit Tests
+
+Integration Tests
+
+Policy Tests
+
+Security Tests
+
+Enrollment Tests
+
+Verify:
+
+100% passing.
+
+Identify failures.
+
+---
+
+SECTION 12
+OpenAPI Review
+==============
+
+Cross-reference:
+
+AB-001 OpenAPI synchronization
+
+Verify:
+
+Courses
+
+Enrollments
+
+Assignments
+
+Assessments
+
+Notes
+
+Announcements
+
+match implementation.
+
+Identify contract drift.
+
+---
+
+SECTION 13
+Sprint 4 Readiness Report
+=========================
+
+Create:
+
+```text
+docs/reviews/sprint4-readiness-report.md
+```
+
+Include:
+
+Executive Summary
+
+Security Findings
+
+Performance Findings
+
+Architecture Findings
+
+OpenAPI Findings
+
+Risk Assessment
+
+Recommendations
+
+Readiness Status
+
+Status must be one of:
+
+```text
+READY
+
+READY WITH MINOR RISKS
+
+NOT READY
+```
+
+# Acceptance Criteria
+
+1. Security validation completed
+2. Teacher boundaries validated
+3. Student boundaries validated
+4. Parent boundaries validated
+5. IDOR testing completed
+6. Policy consistency verified
+7. Performance review completed
+8. Audit review completed
+9. Architecture review completed
+10. Regression suite executed
+11. OpenAPI review completed
+12. Sprint readiness report generated
+
+Deliver findings, remediation recommendations, and final Sprint 4 readiness assessment.
