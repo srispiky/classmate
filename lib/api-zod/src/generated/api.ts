@@ -654,6 +654,35 @@ export const GetStudentCourseResponse = zod.object({
 });
 
 /**
+ * @summary Get aggregated workspace data for an enrolled course
+ */
+export const GetStudentCourseWorkspaceParams = zod.object({
+  courseId: zod.coerce.number(),
+});
+
+export const GetStudentCourseWorkspaceResponse = zod.object({
+  courseId: zod.number(),
+  title: zod.string(),
+  description: zod.string(),
+  teacherId: zod.number().nullish(),
+  totalAssignments: zod.number(),
+  pendingAssignments: zod.number(),
+  recentAssignments: zod
+    .number()
+    .describe("Assignments created in the last 7 days"),
+  totalAssessments: zod.number(),
+  upcomingAssessments: zod
+    .number()
+    .describe("Assessments created in the last 30 days"),
+  totalAnnouncements: zod.number(),
+  recentAnnouncements: zod
+    .number()
+    .describe("Announcements created in the last 7 days"),
+  totalNotes: zod.number(),
+  recentNotes: zod.number().describe("Notes created in the last 7 days"),
+});
+
+/**
  * @summary Get dashboard summary for the authenticated student
  */
 export const GetStudentDashboardResponse = zod.object({

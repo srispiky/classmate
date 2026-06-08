@@ -736,6 +736,31 @@ paths:
         "404":
           description: Course not found or student not enrolled
 
+  /student/courses/{courseId}/workspace:
+    get:
+      operationId: getStudentCourseWorkspace
+      tags: [students]
+      summary: Get aggregated workspace data for an enrolled course
+      parameters:
+        - in: path
+          name: courseId
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Course workspace summary
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StudentCourseWorkspace"
+        "401":
+          description: Not authenticated
+        "403":
+          description: Access denied — caller is not a student
+        "404":
+          description: Course not found or student not enrolled
+
   /student/dashboard:
     get:
       operationId: getStudentDashboard
@@ -1357,6 +1382,54 @@ components:
         fCount:
           type: integer
       required: [courseName, courseId, averageScore, aCount, bCount, cCount, dCount, fCount]
+
+    StudentCourseWorkspace:
+      type: object
+      properties:
+        courseId:
+          type: integer
+        title:
+          type: string
+        description:
+          type: string
+        teacherId:
+          type: integer
+          nullable: true
+        totalAssignments:
+          type: integer
+        pendingAssignments:
+          type: integer
+        recentAssignments:
+          type: integer
+          description: Assignments created in the last 7 days
+        totalAssessments:
+          type: integer
+        upcomingAssessments:
+          type: integer
+          description: Assessments created in the last 30 days
+        totalAnnouncements:
+          type: integer
+        recentAnnouncements:
+          type: integer
+          description: Announcements created in the last 7 days
+        totalNotes:
+          type: integer
+        recentNotes:
+          type: integer
+          description: Notes created in the last 7 days
+      required:
+        - courseId
+        - title
+        - description
+        - totalAssignments
+        - pendingAssignments
+        - recentAssignments
+        - totalAssessments
+        - upcomingAssessments
+        - totalAnnouncements
+        - recentAnnouncements
+        - totalNotes
+        - recentNotes
 
     StudentCourseSummary:
       type: object

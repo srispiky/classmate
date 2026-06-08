@@ -43,6 +43,7 @@ export * from "./student";
 export * from "./studentCourseDetail";
 export * from "./studentCourseSummary";
 export * from "./studentCourseSummaryEnrollmentStatus";
+export * from "./studentCourseWorkspace";
 export * from "./studentDashboard";
 export * from "./studentProgress";
 export * from "./studentSummary";

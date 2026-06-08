@@ -46,6 +46,7 @@ import type {
   Student,
   StudentCourseDetail,
   StudentCourseSummary,
+  StudentCourseWorkspace,
   StudentDashboard,
   StudentProgress,
   UpdateAssignmentBody,
@@ -3028,6 +3029,101 @@ export function useGetStudentCourse<
   },
 ): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
   const queryOptions = getGetStudentCourseQueryOptions(courseId, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Get aggregated workspace data for an enrolled course
+ */
+export const getGetStudentCourseWorkspaceUrl = (courseId: number) => {
+  return `/api/student/courses/${courseId}/workspace`;
+};
+
+export const getStudentCourseWorkspace = async (
+  courseId: number,
+  options?: RequestInit,
+): Promise<StudentCourseWorkspace> => {
+  return customFetch<StudentCourseWorkspace>(
+    getGetStudentCourseWorkspaceUrl(courseId),
+    {
+      ...options,
+      method: "GET",
+    },
+  );
+};
+
+export const getGetStudentCourseWorkspaceQueryKey = (courseId: number) => {
+  return [`/api/student/courses/${courseId}/workspace`] as const;
+};
+
+export const getGetStudentCourseWorkspaceQueryOptions = <
+  TData = Awaited<ReturnType<typeof getStudentCourseWorkspace>>,
+  TError = ErrorType<void>,
+>(
+  courseId: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getStudentCourseWorkspace>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getGetStudentCourseWorkspaceQueryKey(courseId);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getStudentCourseWorkspace>>
+  > = ({ signal }) =>
+    getStudentCourseWorkspace(courseId, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!courseId,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof getStudentCourseWorkspace>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetStudentCourseWorkspaceQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getStudentCourseWorkspace>>
+>;
+export type GetStudentCourseWorkspaceQueryError = ErrorType<void>;
+
+/**
+ * @summary Get aggregated workspace data for an enrolled course
+ */
+
+export function useGetStudentCourseWorkspace<
+  TData = Awaited<ReturnType<typeof getStudentCourseWorkspace>>,
+  TError = ErrorType<void>,
+>(
+  courseId: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getStudentCourseWorkspace>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetStudentCourseWorkspaceQueryOptions(
+    courseId,
+    options,
+  );
 
   const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
     queryKey: QueryKey;

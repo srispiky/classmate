@@ -1,0 +1,278 @@
+Phase 2 – Sprint 5
+
+Chunk 3 – Student Course Detail Workspace
+
+# Goal
+
+Expand the Student Course Detail experience.
+
+Chunk 2 established:
+
+* student course listing
+* student course access
+* ownership enforcement
+
+This chunk creates the course workspace view that students use after opening a course.
+
+Focus on course-centric aggregation.
+
+Do not implement assignment submission.
+
+Do not implement assessment attempts.
+
+Do not implement announcement management.
+
+Do not implement note management.
+
+Focus on course detail visibility only.
+
+# Background
+
+Completed:
+
+✓ Chunk 1 – Student Dashboard
+
+✓ Chunk 2 – Student Courses
+
+Verified:
+
+* student ownership enforcement
+* enrolled-course filtering
+* OpenAPI synchronization
+* code generation stability
+
+Current test status:
+
+1041+ tests passing
+
+# Architecture Rules
+
+Controllers:
+
+* validation only
+* service invocation only
+* response mapping only
+
+Repositories:
+
+* database access only
+
+Services:
+
+* business logic only
+
+Policies:
+
+* authorization only
+
+Validators:
+
+* ownership validation only
+
+Authorization logic must not appear in:
+
+* controllers
+* repositories
+
+Reuse existing ownership infrastructure.
+
+# Ownership Requirements
+
+Students may only access:
+
+* enrolled courses
+
+All course detail information must be scoped through:
+
+* ScopeContext
+* CourseScopePolicy
+* enrollment validation
+
+No alternate ownership paths permitted.
+
+# Endpoint
+
+Implement:
+
+GET /student/courses/{courseId}/workspace
+
+Use existing route naming conventions if different.
+
+# Workspace Response
+
+Return:
+
+## Course Information
+
+* courseId
+* title
+* description
+* teacherId
+
+## Assignment Summary
+
+* totalAssignments
+* pendingAssignments
+* recentAssignments
+
+## Assessment Summary
+
+* totalAssessments
+* upcomingAssessments
+
+## Announcement Summary
+
+* totalAnnouncements
+* recentAnnouncements
+
+## Notes Summary
+
+* totalNotes
+* recentNotes
+
+All returned information must belong to the selected enrolled course.
+
+# Tasks
+
+## 1. DTO Design
+
+Create:
+
+* StudentCourseWorkspaceDto
+* supporting summary DTOs
+
+Follow existing DTO conventions.
+
+---
+
+## 2. Repository Layer
+
+Implement efficient aggregation queries.
+
+Requirements:
+
+* ownership-aware
+* enrollment-aware
+* avoid N+1 queries
+
+Use aggregate queries where appropriate.
+
+---
+
+## 3. Service Layer
+
+Create StudentCourseWorkspaceService.
+
+Responsibilities:
+
+* aggregate course workspace data
+* coordinate repositories
+* apply business rules
+
+No SQL in services.
+
+---
+
+## 4. Controller Layer
+
+Create workspace endpoint.
+
+Responsibilities:
+
+* validation
+* service invocation
+* response mapping
+
+No business logic.
+
+---
+
+## 5. Authorization Validation
+
+Verify:
+
+* enrolled student can access workspace
+* non-enrolled student denied
+* cross-course access denied
+* teacher access denied unless explicitly allowed
+* parent access denied unless explicitly allowed
+
+---
+
+## 6. OpenAPI Integration
+
+Update:
+
+* endpoint definitions
+* DTO schemas
+* response schemas
+* status codes
+
+Regenerate generated clients if required.
+
+Verify codegen stability remains intact.
+
+---
+
+## 7. Testing
+
+Add tests covering:
+
+### Authorization
+
+* valid access
+* unauthorized access
+* ownership violations
+
+### Aggregation
+
+* assignment summaries
+* assessment summaries
+* announcement summaries
+* note summaries
+
+### Regression
+
+Verify existing tests remain green.
+
+# Deliverables
+
+1. Files created
+2. Files modified
+3. DTO definitions
+4. Repository implementation
+5. Service implementation
+6. Endpoint details
+7. OpenAPI updates
+8. Test coverage summary
+9. Performance considerations
+
+# Acceptance Criteria
+
+1. Course workspace endpoint implemented
+2. Ownership enforcement verified
+3. Only enrolled-course data returned
+4. Aggregations accurate
+5. OpenAPI updated
+6. Generated clients compile
+7. Existing tests remain green
+8. No authorization regressions introduced
+
+# Final Output
+
+Provide:
+
+* implementation summary
+* architecture compliance review
+* security review
+* performance review
+* test results
+
+Provide a formal:
+
+GO / NO-GO
+
+recommendation for:
+
+Sprint 5 – Chunk 4
+Student Assignments

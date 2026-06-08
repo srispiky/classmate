@@ -355,6 +355,26 @@ export interface GradeBreakdown {
   fCount: number;
 }
 
+export interface StudentCourseWorkspace {
+  courseId: number;
+  title: string;
+  description: string;
+  teacherId?: number | null;
+  totalAssignments: number;
+  pendingAssignments: number;
+  /** Assignments created in the last 7 days */
+  recentAssignments: number;
+  totalAssessments: number;
+  /** Assessments created in the last 30 days */
+  upcomingAssessments: number;
+  totalAnnouncements: number;
+  /** Announcements created in the last 7 days */
+  recentAnnouncements: number;
+  totalNotes: number;
+  /** Notes created in the last 7 days */
+  recentNotes: number;
+}
+
 export type StudentCourseSummaryEnrollmentStatus =
   (typeof StudentCourseSummaryEnrollmentStatus)[keyof typeof StudentCourseSummaryEnrollmentStatus];
 
