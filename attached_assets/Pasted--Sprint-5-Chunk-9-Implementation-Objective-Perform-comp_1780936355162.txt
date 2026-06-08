@@ -1,0 +1,330 @@
+# Sprint 5 — Chunk 9 Implementation
+
+## Objective
+
+Perform comprehensive Student Portal Hardening across all Sprint 5 functionality.
+
+This chunk focuses on security validation, ownership regression testing, authorization verification, performance validation, API contract validation, and edge-case testing.
+
+No new business features should be introduced.
+
+The goal is to prove that the completed Student Portal is production-ready.
+
+---
+
+## Scope
+
+Review all Student Portal endpoints:
+
+### Dashboard
+
+GET /api/student/dashboard
+
+### Courses
+
+GET /api/student/courses
+
+GET /api/student/courses/{courseId}
+
+### Workspace
+
+GET /api/student/courses/{courseId}/workspace
+
+### Assignments
+
+GET /api/student/assignments
+
+GET /api/student/assignments/{assignmentId}
+
+### Assessments
+
+GET /api/student/assessments
+
+GET /api/student/assessments/{assessmentId}
+
+### Announcements
+
+GET /api/student/announcements
+
+GET /api/student/announcements/{announcementId}
+
+### Notes
+
+GET /api/student/notes
+
+GET /api/student/notes/{noteId}
+
+---
+
+## Security Validation
+
+Perform comprehensive authorization review.
+
+Validate:
+
+### Authentication
+
+Unauthenticated requests:
+
+* return 401
+* never expose data
+* never bypass middleware
+
+---
+
+### Role Enforcement
+
+Validate:
+
+* student endpoints reject teacher users
+* student endpoints reject parent users
+* student endpoints reject unauthorized roles
+
+Expected:
+
+403 Forbidden
+
+---
+
+### Ownership Enforcement
+
+Validate:
+
+Student cannot access:
+
+* non-enrolled courses
+* non-enrolled assignments
+* non-enrolled assessments
+* non-enrolled announcements
+* non-enrolled notes
+
+Expected:
+
+404 or ownership denial according to platform standards
+
+---
+
+### IDOR Validation
+
+Attempt direct access using identifiers from:
+
+* other students
+* other courses
+* unrelated resources
+
+Verify:
+
+* no data exposure
+* no metadata leakage
+* no ownership bypass
+
+---
+
+### ScopeContext Validation
+
+Verify every endpoint derives access through ScopeContext.
+
+Validate:
+
+* enrolledCourseIds respected
+* studentId respected
+* ownership filters consistently applied
+
+---
+
+## Soft Delete Validation
+
+Verify deleted records never appear in:
+
+* list endpoints
+* detail endpoints
+* dashboard aggregation
+
+Validate:
+
+deleted_at filtering remains enforced.
+
+---
+
+## Dashboard Aggregation Validation
+
+Verify:
+
+* recent assignments ownership-safe
+* recent assessments ownership-safe
+* recent announcements ownership-safe
+* recent notes ownership-safe
+
+Validate:
+
+No cross-course aggregation leakage.
+
+---
+
+## API Contract Validation
+
+Review OpenAPI synchronization.
+
+Verify:
+
+* endpoint definitions match implementation
+* DTO schemas match runtime responses
+* generated clients compile successfully
+
+Run:
+
+* OpenAPI validation
+* code generation
+* client compilation
+
+---
+
+## Performance Validation
+
+Review dashboard aggregation implementation.
+
+Validate:
+
+* no N+1 patterns
+* batched queries remain in use
+* query count remains bounded
+
+Review:
+
+* courses endpoint
+* dashboard endpoint
+* workspace endpoint
+
+for unnecessary query amplification.
+
+---
+
+## Edge-Case Testing
+
+Validate:
+
+### Empty Student
+
+Student with:
+
+* no courses
+* no assignments
+* no assessments
+
+Expected:
+
+successful empty responses
+
+---
+
+### Soft Deleted Data
+
+Student references deleted resources.
+
+Expected:
+
+resource excluded
+
+---
+
+### Large Enrollment Set
+
+Student enrolled in many courses.
+
+Expected:
+
+stable response times
+
+---
+
+### Mixed Visibility Data
+
+Visible and non-visible resources coexist.
+
+Expected:
+
+only authorized resources returned
+
+---
+
+## Architecture Review
+
+Verify:
+
+Controllers contain only:
+
+* validation
+* service invocation
+* response mapping
+
+Repositories contain only:
+
+* data access
+
+Services contain only:
+
+* business logic
+
+Policies contain only:
+
+* authorization
+
+Validators contain only:
+
+* ownership decisions
+
+No architectural drift allowed.
+
+---
+
+## Testing Requirements
+
+Add or update tests covering:
+
+### Security
+
+* authentication failures
+* authorization failures
+* ownership failures
+* IDOR attempts
+
+### Dashboard
+
+* aggregation ownership validation
+* aggregation soft-delete validation
+
+### OpenAPI
+
+* schema validation
+* generated client validation
+
+### Performance
+
+* dashboard query efficiency
+* aggregation batching validation
+
+### Edge Cases
+
+* empty-state responses
+* deleted-resource scenarios
+* large enrollment scenarios
+
+---
+
+## Validation Checklist
+
+Must pass:
+
+* npm run lint
+* npm run typecheck
+* npm run test
+* npm run build
+
+Expected Outcome:
+
+* Student Portal fully hardened
+* Ownership enforcement revalidated
+* Authorization regression-free
+* OpenAPI synchronized
+* Performance validated
+* Production readiness confirmed
