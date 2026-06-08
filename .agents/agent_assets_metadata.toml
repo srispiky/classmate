@@ -72,3 +72,9 @@ id = "XMiqOBVuYJuHCNYWW1Fg_"
 uri = "file://docs/sprint5-chunk7-review.md"
 type = "text"
 title = "Sprint 5 – Chunk 7 Review and Closure"
+
+[[outputs]]
+id = "eW16x4BkbIcLRq99H7In0"
+uri = "file://docs/gap-analysis/functional-gap-analysis.md"
+type = "text"
+title = "Classmate Connect — Functional Gap Analysis"
