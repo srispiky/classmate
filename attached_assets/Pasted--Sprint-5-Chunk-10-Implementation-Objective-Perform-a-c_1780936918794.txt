@@ -1,0 +1,433 @@
+# Sprint 5 — Chunk 10 Implementation
+
+## Objective
+
+Perform a complete Sprint 5 Readiness Review and Production Readiness Assessment.
+
+This is a review and validation chunk.
+
+Do NOT introduce new features.
+
+Do NOT refactor working code unless a defect, security issue, architecture violation, or production risk is identified.
+
+The goal is to determine whether Sprint 5 can be formally signed off as complete.
+
+---
+
+# Sprint 5 Scope
+
+Completed Student Portal functionality:
+
+## Dashboard
+
+GET /api/student/dashboard
+
+## Courses
+
+GET /api/student/courses
+
+GET /api/student/courses/{courseId}
+
+## Workspace
+
+GET /api/student/courses/{courseId}/workspace
+
+## Assignments
+
+GET /api/student/assignments
+
+GET /api/student/assignments/{assignmentId}
+
+## Assessments
+
+GET /api/student/assessments
+
+GET /api/student/assessments/{assessmentId}
+
+## Announcements
+
+GET /api/student/announcements
+
+GET /api/student/announcements/{announcementId}
+
+## Notes
+
+GET /api/student/notes
+
+GET /api/student/notes/{noteId}
+
+## Dashboard Aggregation
+
+Recent assignments
+
+Recent assessments
+
+Recent announcements
+
+Recent notes
+
+---
+
+# Review Requirements
+
+Perform a complete review of:
+
+* Architecture
+* Security
+* Authorization
+* Ownership enforcement
+* OpenAPI
+* Generated clients
+* Performance
+* Testing
+* Maintainability
+* Production readiness
+
+---
+
+# Architecture Review
+
+Validate compliance with project architecture standards.
+
+## Controllers
+
+Must contain only:
+
+* validation
+* service invocation
+* response mapping
+
+Verify:
+
+* no business logic
+* no authorization logic
+* no repository access
+
+---
+
+## Services
+
+Must contain only:
+
+* business logic
+* orchestration
+* aggregation
+
+Verify:
+
+* authorization not embedded
+* data access not embedded
+
+---
+
+## Repositories
+
+Must contain only:
+
+* database access
+
+Verify:
+
+* no ownership decisions
+* no authorization logic
+* no HTTP concerns
+
+---
+
+## Policies
+
+Must contain only:
+
+* authorization decisions
+
+---
+
+## Validators
+
+Must contain only:
+
+* ownership decisions
+* scope validation
+
+---
+
+# Security Review
+
+Review all Student Portal endpoints.
+
+Validate:
+
+## Authentication
+
+* unauthenticated requests return 401
+* no bypass paths exist
+
+## Authorization
+
+* role restrictions enforced
+* student-only endpoints protected
+
+## Ownership
+
+Verify:
+
+Student can never access:
+
+* non-enrolled courses
+* non-enrolled assignments
+* non-enrolled assessments
+* non-enrolled announcements
+* non-enrolled notes
+
+## IDOR
+
+Attempt direct identifier access.
+
+Verify:
+
+* no resource leakage
+* no metadata leakage
+* no ownership bypass
+
+---
+
+# ScopeContext Review
+
+Validate usage of:
+
+```ts
+teacherId
+studentId
+parentId
+ownedCourseIds
+enrolledCourseIds
+childCourseIds
+childStudentIds
+```
+
+Verify:
+
+* consistent propagation
+* no manual ownership shortcuts
+* no bypasses
+* no duplicated ownership logic
+
+````
+
+---
+
+# Soft Delete Review
+
+Verify:
+
+```ts
+deleted_at
+deleted_by
+````
+
+are consistently respected.
+
+Review:
+
+* list endpoints
+* detail endpoints
+* dashboard aggregation
+
+Ensure deleted resources never appear.
+
+---
+
+# Dashboard Aggregation Review
+
+Review:
+
+* recent assignments
+* recent assessments
+* recent announcements
+* recent notes
+
+Validate:
+
+* ownership enforcement
+* batching
+* query efficiency
+* response consistency
+
+---
+
+# Performance Review
+
+Inspect:
+
+## Dashboard
+
+Validate:
+
+* no N+1 queries
+* bounded query counts
+
+## Courses
+
+Validate:
+
+* efficient loading
+* no redundant joins
+
+## Workspace
+
+Validate:
+
+* efficient aggregation
+
+## Resource Endpoints
+
+Validate:
+
+* indexes used
+* query plans reasonable
+
+Identify any future scaling concerns.
+
+---
+
+# OpenAPI Review
+
+Verify:
+
+* all endpoints documented
+* schemas synchronized
+* DTOs synchronized
+
+Run:
+
+* OpenAPI validation
+* client generation
+
+Verify generated clients compile successfully.
+
+---
+
+# Testing Review
+
+Review test coverage for:
+
+## Security
+
+* authentication
+* authorization
+* ownership
+* IDOR
+
+## Functional
+
+* dashboard
+* courses
+* workspace
+* assignments
+* assessments
+* announcements
+* notes
+
+## Aggregation
+
+* dashboard aggregation
+
+## Edge Cases
+
+* empty states
+* deleted resources
+* invalid identifiers
+
+---
+
+# Architecture Backlog Review
+
+Review status of:
+
+AB-001 OpenAPI Synchronization
+
+AB-002 Audit Field Remediation
+
+AB-003 Teacher Ownership Unification
+
+AB-004 UUID/Public ID Strategy Review
+
+AB-005 Index Naming Standard Adoption
+
+AB-006 Route Handler Repository Cleanup
+
+AB-007 Architecture Definition of Done
+
+AB-008 API Client Codegen Stability
+
+Provide recommendation for backlog prioritization entering Sprint 6.
+
+---
+
+# Production Readiness Assessment
+
+Provide formal assessment for:
+
+Architecture
+
+Security
+
+Performance
+
+Maintainability
+
+Testability
+
+API Stability
+
+Operational Risk
+
+Scalability
+
+For each category provide:
+
+* PASS
+* PASS WITH OBSERVATIONS
+* FAIL
+
+Include justification.
+
+---
+
+# Deliverable
+
+Produce a report:
+
+Sprint 5 Readiness Review
+
+Include:
+
+## Executive Summary
+
+## Architecture Findings
+
+## Security Findings
+
+## Performance Findings
+
+## OpenAPI Findings
+
+## Test Coverage Findings
+
+## Technical Debt
+
+## Backlog Recommendations
+
+## Production Readiness Assessment
+
+## Sprint 5 Sign-Off Recommendation
+
+Final Status:
+
+* APPROVED
+  or
+* APPROVED WITH OBSERVATIONS
+  or
+* NOT APPROVED
+
+No code modifications should be made unless a defect is discovered during review.
