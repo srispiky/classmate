@@ -11,6 +11,7 @@ import downloadsRouter from "./downloads";
 import adminRouter from "./admin";
 import announcementsRouter from "./announcements";
 import enrollmentsRouter from "./enrollments";
+import studentCoursesRouter from "./student-courses";
 import studentDashboardRouter from "./student-dashboard";
 import { requireAuth } from "../middleware/auth";
 
@@ -29,6 +30,7 @@ router.use(notesRouter);
 router.use(assessmentsRouter);
 router.use(announcementsRouter);
 router.use(enrollmentsRouter);
+router.use(studentCoursesRouter);
 router.use(studentDashboardRouter);
 router.use(dashboardRouter);
 router.use(adminRouter);

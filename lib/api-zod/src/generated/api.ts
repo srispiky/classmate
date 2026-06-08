@@ -624,6 +624,36 @@ export const GetStudentAiSuggestionsResponse = zod.object({
 });
 
 /**
+ * @summary List all enrolled courses for the authenticated student
+ */
+export const GetStudentCoursesResponseItem = zod.object({
+  courseId: zod.number(),
+  title: zod.string(),
+  description: zod.string(),
+  teacherId: zod.number().nullish(),
+  enrollmentStatus: zod.enum(["active"]),
+});
+export const GetStudentCoursesResponse = zod.array(
+  GetStudentCoursesResponseItem,
+);
+
+/**
+ * @summary Get details for a single enrolled course
+ */
+export const GetStudentCourseParams = zod.object({
+  courseId: zod.coerce.number(),
+});
+
+export const GetStudentCourseResponse = zod.object({
+  courseId: zod.number(),
+  title: zod.string(),
+  description: zod.string(),
+  teacherId: zod.number().nullish(),
+  createdAt: zod.coerce.date(),
+  updatedAt: zod.coerce.date(),
+});
+
+/**
  * @summary Get dashboard summary for the authenticated student
  */
 export const GetStudentDashboardResponse = zod.object({

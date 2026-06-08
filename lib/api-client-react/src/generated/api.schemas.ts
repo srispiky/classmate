@@ -355,6 +355,30 @@ export interface GradeBreakdown {
   fCount: number;
 }
 
+export type StudentCourseSummaryEnrollmentStatus =
+  (typeof StudentCourseSummaryEnrollmentStatus)[keyof typeof StudentCourseSummaryEnrollmentStatus];
+
+export const StudentCourseSummaryEnrollmentStatus = {
+  active: "active",
+} as const;
+
+export interface StudentCourseSummary {
+  courseId: number;
+  title: string;
+  description: string;
+  teacherId?: number | null;
+  enrollmentStatus: StudentCourseSummaryEnrollmentStatus;
+}
+
+export interface StudentCourseDetail {
+  courseId: number;
+  title: string;
+  description: string;
+  teacherId?: number | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface StudentDashboard {
   studentId: number;
   displayName: string;

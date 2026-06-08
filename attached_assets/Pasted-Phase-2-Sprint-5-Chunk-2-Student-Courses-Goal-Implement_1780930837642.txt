@@ -1,0 +1,273 @@
+Phase 2 – Sprint 5
+
+Chunk 2 – Student Courses
+
+# Goal
+
+Implement student course listing and course access.
+
+This chunk establishes the primary navigation experience for students and validates course-level ownership enforcement.
+
+Students must only be able to view courses in which they are actively enrolled.
+
+Do not implement assignments, assessments, announcements, or notes detail views in this chunk.
+
+Focus exclusively on student course discovery and course access.
+
+# Background
+
+Completed:
+
+✓ Chunk 0A – OpenAPI Stabilization
+
+✓ Chunk 0B – Audit Field Remediation
+
+✓ Chunk 0C – OpenAPI Synchronization
+
+✓ Chunk 1 – Student Dashboard Foundation
+
+Current status:
+
+* Student ownership infrastructure exists
+* Course ownership enforcement exists
+* Enrollment model implemented
+* Dashboard endpoint operational
+* OpenAPI synchronization complete
+
+# Architecture Rules
+
+Controllers:
+
+* validation only
+* service invocation only
+* response mapping only
+
+Repositories:
+
+* database access only
+
+Services:
+
+* business logic only
+
+Policies:
+
+* authorization only
+
+Validators:
+
+* ownership and scope validation only
+
+Authorization logic must not be implemented in:
+
+* controllers
+* repositories
+
+Reuse existing ownership infrastructure.
+
+# Student Ownership Requirements
+
+Students may access only:
+
+* actively enrolled courses
+
+Use existing:
+
+* ScopeContext
+* CourseScopePolicy
+* Student ownership validators
+* Enrollment infrastructure
+
+Do not create alternate ownership mechanisms.
+
+# Endpoints
+
+Implement student course endpoints.
+
+## List Courses
+
+GET /student/courses
+
+Returns all courses visible to the authenticated student.
+
+Student must only see enrolled courses.
+
+## Get Course
+
+GET /student/courses/{courseId}
+
+Returns details for a single enrolled course.
+
+Access must be denied if:
+
+* course does not exist
+* student is not enrolled
+* enrollment is inactive
+
+# Response Requirements
+
+Course list should include:
+
+* courseId
+* title
+* description
+* teacherId
+* enrollmentStatus
+
+Course detail should include:
+
+* courseId
+* title
+* description
+* teacherId
+* createdAt
+* updatedAt
+
+Use existing DTO conventions.
+
+# Tasks
+
+## 1. DTO Design
+
+Create:
+
+* StudentCourseSummaryDto
+* StudentCourseDetailDto
+
+Ensure OpenAPI compatibility.
+
+---
+
+## 2. Repository Layer
+
+Implement student-scoped course queries.
+
+Requirements:
+
+* ownership-aware
+* enrollment-aware
+* avoid N+1 queries
+* efficient filtering
+
+---
+
+## 3. Service Layer
+
+Create StudentCourseService.
+
+Responsibilities:
+
+* retrieve enrolled courses
+* retrieve single course details
+* coordinate repositories
+* enforce business rules
+
+No SQL logic in services.
+
+---
+
+## 4. Controller Layer
+
+Implement course endpoints.
+
+Responsibilities:
+
+* validation
+* service invocation
+* response mapping
+
+No ownership logic.
+
+---
+
+## 5. Authorization Validation
+
+Verify:
+
+* student can view enrolled courses
+* student cannot view non-enrolled courses
+* teacher cannot access student endpoints unless explicitly allowed
+* parent cannot access student endpoints unless explicitly allowed
+
+Reuse existing authorization middleware.
+
+---
+
+## 6. OpenAPI Integration
+
+Update:
+
+* endpoint definitions
+* DTO schemas
+* response schemas
+* status codes
+
+Regenerate generated clients if required.
+
+Verify codegen stability checks remain green.
+
+---
+
+## 7. Testing
+
+Add tests covering:
+
+### Authorization
+
+* authenticated student access
+* unauthenticated access denied
+* unauthorized role access denied
+
+### Ownership
+
+* enrolled course visible
+* non-enrolled course hidden
+* direct ID access blocked
+
+### Regression
+
+Verify existing tests remain green.
+
+# Deliverables
+
+Provide:
+
+1. Files created
+2. Files modified
+3. DTO definitions
+4. Repository implementation
+5. Service implementation
+6. Endpoint details
+7. OpenAPI updates
+8. Test coverage summary
+9. Performance considerations
+
+# Acceptance Criteria
+
+1. Student course list implemented
+2. Student course detail implemented
+3. Only enrolled courses visible
+4. Ownership enforcement verified
+5. OpenAPI updated
+6. Generated clients compile
+7. Existing tests remain green
+8. No authorization regressions introduced
+
+# Final Output
+
+Provide:
+
+* implementation summary
+* architecture compliance review
+* security review
+* performance review
+* test results
+
+Provide a formal:
+
+GO / NO-GO
+
+recommendation for:
+
+Sprint 5 – Chunk 3
+Student Course Detail Enhancements

@@ -692,6 +692,50 @@ paths:
                 $ref: "#/components/schemas/AiSuggestions"
 
   # ---- STUDENT PORTAL ----
+  /student/courses:
+    get:
+      operationId: getStudentCourses
+      tags: [students]
+      summary: List all enrolled courses for the authenticated student
+      responses:
+        "200":
+          description: List of actively-enrolled courses
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/StudentCourseSummary"
+        "401":
+          description: Not authenticated
+        "403":
+          description: Access denied — caller is not a student
+
+  /student/courses/{courseId}:
+    get:
+      operationId: getStudentCourse
+      tags: [students]
+      summary: Get details for a single enrolled course
+      parameters:
+        - in: path
+          name: courseId
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Course details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StudentCourseDetail"
+        "401":
+          description: Not authenticated
+        "403":
+          description: Access denied — caller is not a student
+        "404":
+          description: Course not found or student not enrolled
+
   /student/dashboard:
     get:
       operationId: getStudentDashboard
@@ -1313,6 +1357,52 @@ components:
         fCount:
           type: integer
       required: [courseName, courseId, averageScore, aCount, bCount, cCount, dCount, fCount]
+
+    StudentCourseSummary:
+      type: object
+      properties:
+        courseId:
+          type: integer
+        title:
+          type: string
+        description:
+          type: string
+        teacherId:
+          type: integer
+          nullable: true
+        enrollmentStatus:
+          type: string
+          enum: [active]
+      required:
+        - courseId
+        - title
+        - description
+        - enrollmentStatus
+
+    StudentCourseDetail:
+      type: object
+      properties:
+        courseId:
+          type: integer
+        title:
+          type: string
+        description:
+          type: string
+        teacherId:
+          type: integer
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+        - courseId
+        - title
+        - description
+        - createdAt
+        - updatedAt
 
     StudentDashboard:
       type: object
