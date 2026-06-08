@@ -462,6 +462,37 @@ export interface StudentCourseDetail {
   updatedAt: string;
 }
 
+export interface DashboardRecentAssignment {
+  assignmentId: number;
+  courseId: number;
+  title: string;
+  dueDate: string;
+  createdAt: string;
+}
+
+export interface DashboardRecentAssessment {
+  assessmentId: number;
+  courseId: number;
+  title: string;
+  createdAt: string;
+}
+
+export interface DashboardRecentAnnouncement {
+  announcementId: number;
+  courseId: number;
+  title: string;
+  priority: string;
+  createdAt: string;
+}
+
+export interface DashboardRecentNote {
+  noteId: number;
+  courseId: number;
+  title: string;
+  topic: string;
+  createdAt: string;
+}
+
 export interface StudentDashboard {
   studentId: number;
   displayName: string;
@@ -474,6 +505,10 @@ export interface StudentDashboard {
   /** Total active announcements in enrolled courses (no read-tracking in platform) */
   unreadAnnouncements: number;
   availableNotes: number;
+  recentAssignments: DashboardRecentAssignment[];
+  recentAssessments: DashboardRecentAssessment[];
+  recentAnnouncements: DashboardRecentAnnouncement[];
+  recentNotes: DashboardRecentNote[];
 }
 
 export interface LoginBody {

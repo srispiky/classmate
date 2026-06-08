@@ -1,0 +1,334 @@
+Phase 2 – Sprint 5
+
+Chunk 8 – Dashboard Aggregation Enhancements
+
+# Goal
+
+Enhance the Student Dashboard using the newly completed student portal resources.
+
+Chunks 1–7 established:
+
+* Dashboard
+* Courses
+* Course Workspace
+* Assignments
+* Assessments
+* Announcements
+* Notes
+
+This chunk improves dashboard usefulness by exposing richer aggregation and summary information.
+
+Do not introduce new ownership models.
+
+Do not introduce new authorization rules.
+
+Do not implement mutations.
+
+Focus on aggregation, performance, and dashboard usability.
+
+# Background
+
+Completed:
+
+✓ Chunk 1 – Student Dashboard
+
+✓ Chunk 2 – Student Courses
+
+✓ Chunk 3 – Student Course Workspace
+
+✓ Chunk 4 – Student Assignments
+
+✓ Chunk 5 – Student Assessments
+
+✓ Chunk 6 – Student Announcements
+
+✓ Chunk 7 – Student Notes
+
+Current status:
+
+* 1170 tests passing
+* OpenAPI synchronized
+* Codegen stable
+* Student Portal feature-complete
+
+Dashboard enhancements may now be implemented.
+
+# Architecture Rules
+
+Controllers:
+
+* validation only
+* service invocation only
+* response mapping only
+
+Repositories:
+
+* database access only
+
+Services:
+
+* business logic only
+
+Policies:
+
+* authorization only
+
+Validators:
+
+* ownership decisions only
+
+Do not place aggregation logic in controllers.
+
+Reuse existing dashboard infrastructure.
+
+# Ownership Requirements
+
+Students may only see information derived from:
+
+* enrolled courses
+
+All aggregations must continue to use:
+
+* ScopeContext
+* enrolledCourseIds
+* existing ownership infrastructure
+
+No alternate ownership paths permitted.
+
+# Existing Dashboard Review
+
+Review current dashboard implementation.
+
+Document:
+
+* existing response shape
+* existing aggregation strategy
+* existing query count
+* existing performance characteristics
+
+Identify opportunities for enhancement.
+
+# Dashboard Enhancements
+
+Evaluate and implement the following where supported by the existing schema.
+
+## Recent Assignments
+
+Return a limited collection:
+
+* assignmentId
+* courseId
+* title
+* dueDate (if available)
+* createdAt
+
+Limit results appropriately.
+
+---
+
+## Recent Assessments
+
+Return a limited collection:
+
+* assessmentId
+* courseId
+* title
+* createdAt
+
+Use existing assessment schema fields only.
+
+Do not invent data not present in the database.
+
+---
+
+## Recent Announcements
+
+Return:
+
+* announcementId
+* courseId
+* title
+* priority
+* createdAt
+
+Limit results appropriately.
+
+---
+
+## Recent Notes
+
+Return:
+
+* noteId
+* courseId
+* title
+* topic
+* createdAt
+
+Limit results appropriately.
+
+---
+
+## Course Activity Summary
+
+Evaluate whether useful aggregate statistics can be provided from the existing schema.
+
+Examples:
+
+* course count
+* assignment count
+* assessment count
+* announcement count
+* note count
+
+Only use fields that actually exist.
+
+# Tasks
+
+## 1. Dashboard Audit
+
+Review current dashboard implementation.
+
+Produce:
+
+* current response structure
+* current query strategy
+* improvement opportunities
+
+---
+
+## 2. DTO Enhancements
+
+Create or extend dashboard DTOs.
+
+Requirements:
+
+* backward compatible where possible
+* OpenAPI compatible
+* strongly typed
+
+---
+
+## 3. Repository Enhancements
+
+Implement efficient aggregation queries.
+
+Requirements:
+
+* ownership-aware
+* avoid N+1 queries
+* use aggregate queries
+* use limits for recent collections
+
+---
+
+## 4. Service Enhancements
+
+Update StudentDashboardService.
+
+Responsibilities:
+
+* aggregate dashboard metrics
+* assemble recent activity collections
+* coordinate repositories
+
+No SQL in services.
+
+---
+
+## 5. OpenAPI Integration
+
+Update:
+
+* dashboard schemas
+* endpoint documentation
+* response examples
+
+Regenerate generated artifacts if required.
+
+Verify:
+
+* codegen passes
+* barrel guard passes
+* generated clients compile
+
+---
+
+## 6. Performance Review
+
+Measure:
+
+* query count
+* execution pattern
+* opportunities for batching
+
+Document findings.
+
+---
+
+## 7. Testing
+
+Add tests covering:
+
+### Aggregation
+
+* counts remain correct
+
+### Recent Activity
+
+* assignments
+* assessments
+* announcements
+* notes
+
+### Ownership
+
+* only enrolled-course data visible
+
+### Regression
+
+Verify all existing tests remain green.
+
+# Deliverables
+
+Provide:
+
+1. Dashboard audit report
+2. DTO changes
+3. Repository changes
+4. Service changes
+5. OpenAPI updates
+6. Performance analysis
+7. Test coverage summary
+8. Files created
+9. Files modified
+
+# Acceptance Criteria
+
+1. Dashboard enriched with recent activity
+2. Ownership enforcement preserved
+3. Aggregations accurate
+4. No N+1 query patterns introduced
+5. OpenAPI updated
+6. Generated clients compile
+7. Existing tests remain green
+8. No authorization regressions introduced
+
+# Final Output
+
+Provide:
+
+* implementation summary
+* architecture compliance review
+* security review
+* performance review
+* test results
+
+Provide a formal:
+
+GO / NO-GO
+
+recommendation for:
+
+Sprint 5 – Chunk 9
+Student Portal Hardening

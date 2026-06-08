@@ -1830,6 +1830,68 @@ components:
         - createdAt
         - updatedAt
 
+    DashboardRecentAssignment:
+      type: object
+      properties:
+        assignmentId:
+          type: integer
+        courseId:
+          type: integer
+        title:
+          type: string
+        dueDate:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+      required: [assignmentId, courseId, title, dueDate, createdAt]
+
+    DashboardRecentAssessment:
+      type: object
+      properties:
+        assessmentId:
+          type: integer
+        courseId:
+          type: integer
+        title:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+      required: [assessmentId, courseId, title, createdAt]
+
+    DashboardRecentAnnouncement:
+      type: object
+      properties:
+        announcementId:
+          type: integer
+        courseId:
+          type: integer
+        title:
+          type: string
+        priority:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+      required: [announcementId, courseId, title, priority, createdAt]
+
+    DashboardRecentNote:
+      type: object
+      properties:
+        noteId:
+          type: integer
+        courseId:
+          type: integer
+        title:
+          type: string
+        topic:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+      required: [noteId, courseId, title, topic, createdAt]
+
     StudentDashboard:
       type: object
       properties:
@@ -1853,6 +1915,22 @@ components:
           description: Total active announcements in enrolled courses (no read-tracking in platform)
         availableNotes:
           type: integer
+        recentAssignments:
+          type: array
+          items:
+            $ref: "#/components/schemas/DashboardRecentAssignment"
+        recentAssessments:
+          type: array
+          items:
+            $ref: "#/components/schemas/DashboardRecentAssessment"
+        recentAnnouncements:
+          type: array
+          items:
+            $ref: "#/components/schemas/DashboardRecentAnnouncement"
+        recentNotes:
+          type: array
+          items:
+            $ref: "#/components/schemas/DashboardRecentNote"
       required:
         - studentId
         - displayName
@@ -1863,6 +1941,10 @@ components:
         - upcomingAssessments
         - unreadAnnouncements
         - availableNotes
+        - recentAssignments
+        - recentAssessments
+        - recentAnnouncements
+        - recentNotes
 
     LoginBody:
       type: object

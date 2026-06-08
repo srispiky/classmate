@@ -5,6 +5,10 @@
  * Classmate API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { DashboardRecentAnnouncement } from "./dashboardRecentAnnouncement";
+import type { DashboardRecentAssessment } from "./dashboardRecentAssessment";
+import type { DashboardRecentAssignment } from "./dashboardRecentAssignment";
+import type { DashboardRecentNote } from "./dashboardRecentNote";
 
 export interface StudentDashboard {
   studentId: number;
@@ -18,4 +22,8 @@ export interface StudentDashboard {
   /** Total active announcements in enrolled courses (no read-tracking in platform) */
   unreadAnnouncements: number;
   availableNotes: number;
+  recentAssignments: DashboardRecentAssignment[];
+  recentAssessments: DashboardRecentAssessment[];
+  recentAnnouncements: DashboardRecentAnnouncement[];
+  recentNotes: DashboardRecentNote[];
 }

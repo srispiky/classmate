@@ -860,6 +860,41 @@ export const GetStudentDashboardResponse = zod.object({
       "Total active announcements in enrolled courses (no read-tracking in platform)",
     ),
   availableNotes: zod.number(),
+  recentAssignments: zod.array(
+    zod.object({
+      assignmentId: zod.number(),
+      courseId: zod.number(),
+      title: zod.string(),
+      dueDate: zod.string(),
+      createdAt: zod.coerce.date(),
+    }),
+  ),
+  recentAssessments: zod.array(
+    zod.object({
+      assessmentId: zod.number(),
+      courseId: zod.number(),
+      title: zod.string(),
+      createdAt: zod.coerce.date(),
+    }),
+  ),
+  recentAnnouncements: zod.array(
+    zod.object({
+      announcementId: zod.number(),
+      courseId: zod.number(),
+      title: zod.string(),
+      priority: zod.string(),
+      createdAt: zod.coerce.date(),
+    }),
+  ),
+  recentNotes: zod.array(
+    zod.object({
+      noteId: zod.number(),
+      courseId: zod.number(),
+      title: zod.string(),
+      topic: zod.string(),
+      createdAt: zod.coerce.date(),
+    }),
+  ),
 });
 
 /**
