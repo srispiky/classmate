@@ -1,0 +1,337 @@
+Phase 2 – Sprint 5
+
+Chunk 7 – Student Notes
+
+# Goal
+
+Implement student note access.
+
+This chunk introduces note visibility for students and establishes note-level ownership enforcement.
+
+Notes are course-scoped resources.
+
+Students must only see notes belonging to courses in which they are actively enrolled.
+
+Do not implement note creation.
+
+Do not implement note editing.
+
+Do not implement note deletion.
+
+Do not implement note upload workflows.
+
+Focus exclusively on student note visibility and note detail retrieval.
+
+# Background
+
+Completed:
+
+✓ Chunk 1 – Student Dashboard
+
+✓ Chunk 2 – Student Courses
+
+✓ Chunk 3 – Student Course Workspace
+
+✓ Chunk 4 – Student Assignments
+
+✓ Chunk 5 – Student Assessments
+
+✓ Chunk 6 – Student Announcements
+
+Verified:
+
+* Student ownership enforcement operational
+* ScopeContext established
+* enrolledCourseIds available and tested
+* Announcement ownership validated
+* OpenAPI synchronization complete
+* Codegen stability validated
+
+Current status:
+
+* All tests green
+* Architecture compliant
+* No authorization debt
+
+# Architecture Rules
+
+Controllers:
+
+* validation only
+* service invocation only
+* response mapping only
+
+Repositories:
+
+* database access only
+
+Services:
+
+* business logic only
+
+Policies:
+
+* authorization only
+
+Validators:
+
+* ownership and scope decisions only
+
+Authorization logic must not be implemented in:
+
+* controllers
+* repositories
+
+Reuse existing ownership infrastructure.
+
+# Student Ownership Requirements
+
+Students may only access notes that belong to:
+
+* actively enrolled courses
+
+Use existing:
+
+* ScopeContext
+* enrolledCourseIds
+* CourseScopePolicy
+* ownership validators
+
+Do not introduce alternate ownership models.
+
+# Existing Notes Schema
+
+Current table:
+
+notes
+
+Columns:
+
+* id
+* courseId
+* title
+* content
+* topic
+* videoUrl
+* createdAt
+* updatedAt
+* deletedAt
+
+No studentId exists.
+
+Notes are course-scoped only.
+
+Ownership must be enforced using enrolledCourseIds.
+
+# Endpoints
+
+Implement:
+
+## List Notes
+
+GET /student/notes
+
+Returns notes visible to the authenticated student.
+
+Student must only see notes from enrolled courses.
+
+---
+
+## Note Detail
+
+GET /student/notes/{noteId}
+
+Returns note details.
+
+Access must be denied when:
+
+* note does not exist
+* note belongs to a non-enrolled course
+* note is soft deleted
+
+# Response Requirements
+
+Note List
+
+Return:
+
+* noteId
+* courseId
+* title
+* topic
+* createdAt
+
+Note Detail
+
+Return:
+
+* noteId
+* courseId
+* title
+* topic
+* content
+* videoUrl
+* createdAt
+* updatedAt
+
+Use existing DTO conventions.
+
+# Tasks
+
+## 1. DTO Design
+
+Create:
+
+* StudentNoteSummaryDto
+* StudentNoteDetailDto
+
+Ensure OpenAPI compatibility.
+
+---
+
+## 2. Repository Layer
+
+Implement student-scoped note queries.
+
+Requirements:
+
+* ownership-aware
+* course-scoped
+* soft-delete aware
+* avoid N+1 queries
+
+Primary ownership filter:
+
+courseId IN enrolledCourseIds
+
+---
+
+## 3. Service Layer
+
+Create StudentNotesService.
+
+Responsibilities:
+
+* retrieve visible notes
+* retrieve note details
+* coordinate repositories
+* apply business rules
+
+No SQL in services.
+
+---
+
+## 4. Controller Layer
+
+Implement note endpoints.
+
+Responsibilities:
+
+* validation
+* service invocation
+* response mapping
+
+No ownership logic.
+
+---
+
+## 5. Authorization Validation
+
+Verify:
+
+* student can access notes from enrolled courses
+* student cannot access notes from non-enrolled courses
+* direct ID enumeration attempts fail
+* unauthorized roles denied
+
+Reuse existing authorization middleware.
+
+---
+
+## 6. OpenAPI Integration
+
+Update:
+
+* endpoint definitions
+* DTO schemas
+* response schemas
+* status codes
+
+Regenerate generated artifacts if required.
+
+Verify:
+
+* barrel validation passes
+* codegen validation passes
+* generated clients compile
+
+---
+
+## 7. Testing
+
+Add tests covering:
+
+### Authorization
+
+* authenticated student access
+* unauthorized access denied
+* role validation
+
+### Ownership
+
+* enrolled-course note visible
+* non-enrolled-course note blocked
+* IDOR protection verified
+
+### Soft Delete
+
+* deleted notes hidden
+
+### Regression
+
+Verify all existing tests remain green.
+
+# Deliverables
+
+Provide:
+
+1. Files created
+2. Files modified
+3. DTO definitions
+4. Repository implementation
+5. Service implementation
+6. Endpoint details
+7. OpenAPI updates
+8. Test coverage summary
+9. Performance considerations
+
+# Acceptance Criteria
+
+1. Note list endpoint implemented
+2. Note detail endpoint implemented
+3. Only enrolled-course notes visible
+4. Soft-deleted notes hidden
+5. Ownership enforcement verified
+6. OpenAPI updated
+7. Generated clients compile
+8. Existing tests remain green
+9. No authorization regressions introduced
+
+# Final Output
+
+Provide:
+
+* implementation summary
+* architecture compliance review
+* security review
+* performance review
+* test results
+
+Provide a formal:
+
+GO / NO-GO
+
+recommendation for:
+
+Sprint 5 – Chunk 8
+Dashboard Aggregation Enhancements

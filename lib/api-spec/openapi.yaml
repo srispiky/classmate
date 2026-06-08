@@ -692,6 +692,52 @@ paths:
                 $ref: "#/components/schemas/AiSuggestions"
 
   # ---- STUDENT PORTAL ----
+  /student/notes:
+    get:
+      operationId: getStudentNotes
+      tags: [students]
+      summary: List all notes visible to the authenticated student
+      responses:
+        "200":
+          description: Note list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/StudentNoteSummary"
+        "401":
+          description: Not authenticated
+        "403":
+          description: Access denied — caller is not a student
+
+  /student/notes/{noteId}:
+    get:
+      operationId: getStudentNote
+      tags: [students]
+      summary: Get note detail for the authenticated student
+      parameters:
+        - in: path
+          name: noteId
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Note detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StudentNoteDetail"
+        "400":
+          description: Invalid note ID format
+        "401":
+          description: Not authenticated
+        "403":
+          description: Access denied — caller is not a student
+        "404":
+          description: Note not found or student not enrolled in the course
+
   /student/announcements:
     get:
       operationId: getStudentAnnouncements
@@ -1520,6 +1566,44 @@ components:
         fCount:
           type: integer
       required: [courseName, courseId, averageScore, aCount, bCount, cCount, dCount, fCount]
+
+    StudentNoteSummary:
+      type: object
+      properties:
+        noteId:
+          type: integer
+        courseId:
+          type: integer
+        title:
+          type: string
+        topic:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - noteId
+        - courseId
+        - title
+        - topic
+        - createdAt
+
+    StudentNoteDetail:
+      allOf:
+        - $ref: "#/components/schemas/StudentNoteSummary"
+        - type: object
+          properties:
+            content:
+              type: string
+            videoUrl:
+              type: string
+              nullable: true
+            updatedAt:
+              type: string
+              format: date-time
+          required:
+            - content
+            - updatedAt
 
     StudentAnnouncementSummary:
       type: object

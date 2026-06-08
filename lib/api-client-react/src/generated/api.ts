@@ -54,6 +54,8 @@ import type {
   StudentCourseSummary,
   StudentCourseWorkspace,
   StudentDashboard,
+  StudentNoteDetail,
+  StudentNoteSummary,
   StudentProgress,
   UpdateAssignmentBody,
   UpdateCourseBody,
@@ -2872,6 +2874,168 @@ export function useGetStudentAiSuggestions<
   },
 ): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
   const queryOptions = getGetStudentAiSuggestionsQueryOptions(id, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary List all notes visible to the authenticated student
+ */
+export const getGetStudentNotesUrl = () => {
+  return `/api/student/notes`;
+};
+
+export const getStudentNotes = async (
+  options?: RequestInit,
+): Promise<StudentNoteSummary[]> => {
+  return customFetch<StudentNoteSummary[]>(getGetStudentNotesUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetStudentNotesQueryKey = () => {
+  return [`/api/student/notes`] as const;
+};
+
+export const getGetStudentNotesQueryOptions = <
+  TData = Awaited<ReturnType<typeof getStudentNotes>>,
+  TError = ErrorType<void>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getStudentNotes>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetStudentNotesQueryKey();
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getStudentNotes>>> = ({
+    signal,
+  }) => getStudentNotes({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getStudentNotes>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetStudentNotesQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getStudentNotes>>
+>;
+export type GetStudentNotesQueryError = ErrorType<void>;
+
+/**
+ * @summary List all notes visible to the authenticated student
+ */
+
+export function useGetStudentNotes<
+  TData = Awaited<ReturnType<typeof getStudentNotes>>,
+  TError = ErrorType<void>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getStudentNotes>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetStudentNotesQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Get note detail for the authenticated student
+ */
+export const getGetStudentNoteUrl = (noteId: number) => {
+  return `/api/student/notes/${noteId}`;
+};
+
+export const getStudentNote = async (
+  noteId: number,
+  options?: RequestInit,
+): Promise<StudentNoteDetail> => {
+  return customFetch<StudentNoteDetail>(getGetStudentNoteUrl(noteId), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetStudentNoteQueryKey = (noteId: number) => {
+  return [`/api/student/notes/${noteId}`] as const;
+};
+
+export const getGetStudentNoteQueryOptions = <
+  TData = Awaited<ReturnType<typeof getStudentNote>>,
+  TError = ErrorType<void>,
+>(
+  noteId: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getStudentNote>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetStudentNoteQueryKey(noteId);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getStudentNote>>> = ({
+    signal,
+  }) => getStudentNote(noteId, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!noteId,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof getStudentNote>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetStudentNoteQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getStudentNote>>
+>;
+export type GetStudentNoteQueryError = ErrorType<void>;
+
+/**
+ * @summary Get note detail for the authenticated student
+ */
+
+export function useGetStudentNote<
+  TData = Awaited<ReturnType<typeof getStudentNote>>,
+  TError = ErrorType<void>,
+>(
+  noteId: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getStudentNote>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetStudentNoteQueryOptions(noteId, options);
 
   const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
     queryKey: QueryKey;

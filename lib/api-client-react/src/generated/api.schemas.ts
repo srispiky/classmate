@@ -355,6 +355,20 @@ export interface GradeBreakdown {
   fCount: number;
 }
 
+export interface StudentNoteSummary {
+  noteId: number;
+  courseId: number;
+  title: string;
+  topic: string;
+  createdAt: string;
+}
+
+export type StudentNoteDetail = StudentNoteSummary & {
+  content: string;
+  videoUrl?: string | null;
+  updatedAt: string;
+};
+
 export interface StudentAnnouncementSummary {
   announcementId: number;
   courseId: number;

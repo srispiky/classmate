@@ -624,6 +624,41 @@ export const GetStudentAiSuggestionsResponse = zod.object({
 });
 
 /**
+ * @summary List all notes visible to the authenticated student
+ */
+export const GetStudentNotesResponseItem = zod.object({
+  noteId: zod.number(),
+  courseId: zod.number(),
+  title: zod.string(),
+  topic: zod.string(),
+  createdAt: zod.coerce.date(),
+});
+export const GetStudentNotesResponse = zod.array(GetStudentNotesResponseItem);
+
+/**
+ * @summary Get note detail for the authenticated student
+ */
+export const GetStudentNoteParams = zod.object({
+  noteId: zod.coerce.number(),
+});
+
+export const GetStudentNoteResponse = zod
+  .object({
+    noteId: zod.number(),
+    courseId: zod.number(),
+    title: zod.string(),
+    topic: zod.string(),
+    createdAt: zod.coerce.date(),
+  })
+  .and(
+    zod.object({
+      content: zod.string(),
+      videoUrl: zod.string().nullish(),
+      updatedAt: zod.coerce.date(),
+    }),
+  );
+
+/**
  * @summary List all announcements visible to the authenticated student
  */
 export const GetStudentAnnouncementsResponseItem = zod.object({
