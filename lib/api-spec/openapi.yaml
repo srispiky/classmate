@@ -691,6 +691,26 @@ paths:
               schema:
                 $ref: "#/components/schemas/AiSuggestions"
 
+  # ---- STUDENT PORTAL ----
+  /student/dashboard:
+    get:
+      operationId: getStudentDashboard
+      tags: [students]
+      summary: Get dashboard summary for the authenticated student
+      responses:
+        "200":
+          description: Student dashboard summary
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StudentDashboard"
+        "401":
+          description: Not authenticated
+        "403":
+          description: Access denied — caller is not a student
+        "404":
+          description: Student record not found or not linked to this account
+
   # ---- DASHBOARD ----
   /dashboard/summary:
     get:
@@ -1293,6 +1313,40 @@ components:
         fCount:
           type: integer
       required: [courseName, courseId, averageScore, aCount, bCount, cCount, dCount, fCount]
+
+    StudentDashboard:
+      type: object
+      properties:
+        studentId:
+          type: integer
+        displayName:
+          type: string
+        activeCourseCount:
+          type: integer
+        totalAssignments:
+          type: integer
+        pendingAssignments:
+          type: integer
+        totalAssessments:
+          type: integer
+        upcomingAssessments:
+          type: integer
+          description: Assessments recorded within the last 30 days
+        unreadAnnouncements:
+          type: integer
+          description: Total active announcements in enrolled courses (no read-tracking in platform)
+        availableNotes:
+          type: integer
+      required:
+        - studentId
+        - displayName
+        - activeCourseCount
+        - totalAssignments
+        - pendingAssignments
+        - totalAssessments
+        - upcomingAssessments
+        - unreadAnnouncements
+        - availableNotes
 
     LoginBody:
       type: object

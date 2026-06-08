@@ -44,6 +44,7 @@ import type {
   Logout200,
   Note,
   Student,
+  StudentDashboard,
   StudentProgress,
   UpdateAssignmentBody,
   UpdateCourseBody,
@@ -2862,6 +2863,81 @@ export function useGetStudentAiSuggestions<
   },
 ): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
   const queryOptions = getGetStudentAiSuggestionsQueryOptions(id, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Get dashboard summary for the authenticated student
+ */
+export const getGetStudentDashboardUrl = () => {
+  return `/api/student/dashboard`;
+};
+
+export const getStudentDashboard = async (
+  options?: RequestInit,
+): Promise<StudentDashboard> => {
+  return customFetch<StudentDashboard>(getGetStudentDashboardUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetStudentDashboardQueryKey = () => {
+  return [`/api/student/dashboard`] as const;
+};
+
+export const getGetStudentDashboardQueryOptions = <
+  TData = Awaited<ReturnType<typeof getStudentDashboard>>,
+  TError = ErrorType<void>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getStudentDashboard>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetStudentDashboardQueryKey();
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getStudentDashboard>>
+  > = ({ signal }) => getStudentDashboard({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getStudentDashboard>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetStudentDashboardQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getStudentDashboard>>
+>;
+export type GetStudentDashboardQueryError = ErrorType<void>;
+
+/**
+ * @summary Get dashboard summary for the authenticated student
+ */
+
+export function useGetStudentDashboard<
+  TData = Awaited<ReturnType<typeof getStudentDashboard>>,
+  TError = ErrorType<void>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getStudentDashboard>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetStudentDashboardQueryOptions(options);
 
   const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
     queryKey: QueryKey;

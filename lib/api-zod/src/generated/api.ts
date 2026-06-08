@@ -624,6 +624,27 @@ export const GetStudentAiSuggestionsResponse = zod.object({
 });
 
 /**
+ * @summary Get dashboard summary for the authenticated student
+ */
+export const GetStudentDashboardResponse = zod.object({
+  studentId: zod.number(),
+  displayName: zod.string(),
+  activeCourseCount: zod.number(),
+  totalAssignments: zod.number(),
+  pendingAssignments: zod.number(),
+  totalAssessments: zod.number(),
+  upcomingAssessments: zod
+    .number()
+    .describe("Assessments recorded within the last 30 days"),
+  unreadAnnouncements: zod
+    .number()
+    .describe(
+      "Total active announcements in enrolled courses (no read-tracking in platform)",
+    ),
+  availableNotes: zod.number(),
+});
+
+/**
  * @summary Get overall classroom dashboard stats
  */
 export const GetDashboardSummaryResponse = zod.object({

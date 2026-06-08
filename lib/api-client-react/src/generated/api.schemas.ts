@@ -355,6 +355,20 @@ export interface GradeBreakdown {
   fCount: number;
 }
 
+export interface StudentDashboard {
+  studentId: number;
+  displayName: string;
+  activeCourseCount: number;
+  totalAssignments: number;
+  pendingAssignments: number;
+  totalAssessments: number;
+  /** Assessments recorded within the last 30 days */
+  upcomingAssessments: number;
+  /** Total active announcements in enrolled courses (no read-tracking in platform) */
+  unreadAnnouncements: number;
+  availableNotes: number;
+}
+
 export interface LoginBody {
   username: string;
   password: string;

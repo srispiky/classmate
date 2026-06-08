@@ -1,0 +1,310 @@
+Phase 2 – Sprint 5
+
+Chunk 1 – Student Dashboard Foundation
+
+# Goal
+
+Implement the Student Dashboard foundation.
+
+This is the first student-facing feature of Sprint 5.
+
+The purpose of this chunk is to validate:
+
+* student ownership enforcement
+* dashboard aggregation patterns
+* OpenAPI integration
+* frontend code generation stability
+
+Do not implement assignment submission.
+
+Do not implement assessment workflows.
+
+Do not implement announcement management.
+
+Do not implement note management.
+
+Focus only on a student dashboard summary endpoint.
+
+# Background
+
+Completed:
+
+✓ Sprint 5 Chunk 0A – OpenAPI Stabilization
+
+✓ Sprint 5 Chunk 0B – Audit Field Remediation
+
+✓ Sprint 5 Chunk 0C – OpenAPI Synchronization
+
+Current platform status:
+
+* OpenAPI synchronized
+* Code generation stabilized
+* Audit fields remediated
+* Student ownership infrastructure exists
+* ScopeContext implemented
+* Student authorization validated
+* Existing test suite green
+
+Sprint 5 Student Portal development may now begin.
+
+# Architecture Rules
+
+Maintain project architecture standards.
+
+Controllers:
+
+* validation only
+* service invocation only
+* response mapping only
+
+Repositories:
+
+* database access only
+
+Services:
+
+* business logic only
+
+Policies:
+
+* authorization only
+
+Validators:
+
+* ownership and scope decisions only
+
+Authorization logic is NOT allowed in:
+
+* controllers
+* repositories
+
+Do not introduce new authorization patterns.
+
+Reuse existing ownership infrastructure.
+
+# Student Ownership Requirements
+
+Student visibility is limited to:
+
+* enrolled courses only
+
+Use existing:
+
+* ScopeContext
+* student ownership filtering
+* CourseScopePolicy
+* ownership validators
+
+Do not duplicate ownership logic.
+
+Do not create dashboard-specific ownership rules.
+
+# Dashboard Endpoint
+
+Create a student dashboard endpoint.
+
+Suggested route:
+
+GET /student/dashboard
+
+Use existing route naming conventions if different.
+
+The endpoint must return a dashboard summary object.
+
+# Dashboard Response
+
+Include:
+
+## Student Summary
+
+* studentId
+* displayName
+
+## Course Summary
+
+* activeCourseCount
+
+## Assignment Summary
+
+* totalAssignments
+* pendingAssignments
+
+Assignments must be limited to enrolled courses.
+
+## Assessment Summary
+
+* totalAssessments
+* upcomingAssessments
+
+Assessments must be limited to enrolled courses.
+
+## Announcement Summary
+
+* unreadAnnouncements
+
+Announcements must be limited to enrolled courses.
+
+## Notes Summary
+
+* availableNotes
+
+Notes must be limited to enrolled courses.
+
+# Tasks
+
+## 1. DTO Design
+
+Create dashboard DTOs.
+
+Follow existing DTO conventions.
+
+Ensure OpenAPI compatibility.
+
+---
+
+## 2. Repository Layer
+
+Create aggregation queries.
+
+Requirements:
+
+* student-scoped
+* ownership-aware
+* aggregate-based
+* avoid N+1 queries
+
+Prefer COUNT and aggregate SQL.
+
+Do not fetch full datasets to compute counts.
+
+---
+
+## 3. Service Layer
+
+Create StudentDashboardService.
+
+Responsibilities:
+
+* aggregate dashboard metrics
+* coordinate repositories
+* enforce business rules
+
+No SQL in service layer.
+
+---
+
+## 4. Controller Layer
+
+Create dashboard endpoint.
+
+Responsibilities:
+
+* validation
+* service invocation
+* response mapping
+
+No business logic.
+
+No ownership logic.
+
+---
+
+## 5. Authorization Validation
+
+Verify:
+
+* student can access own dashboard
+* student cannot access another student's dashboard
+* teacher access denied unless explicitly authorized
+* parent access denied unless explicitly authorized
+* ownership boundaries remain intact
+
+Reuse existing authorization middleware.
+
+---
+
+## 6. OpenAPI Integration
+
+Document dashboard endpoint.
+
+Update:
+
+* request schemas
+* response schemas
+* status codes
+
+Regenerate generated artifacts if required.
+
+Verify codegen stability checks continue to pass.
+
+---
+
+## 7. Testing
+
+Add tests covering:
+
+### Authorization
+
+* authenticated student access
+* unauthenticated access denied
+* unauthorized role access denied
+
+### Ownership
+
+* only enrolled-course data visible
+
+### Aggregation
+
+* course counts
+* assignment counts
+* assessment counts
+* announcement counts
+* note counts
+
+### Regression
+
+Verify existing tests remain green.
+
+# Deliverables
+
+Provide:
+
+1. Files created
+2. Files modified
+3. DTO definitions
+4. Repository implementation
+5. Service implementation
+6. Endpoint details
+7. OpenAPI updates
+8. Test coverage summary
+9. Performance considerations
+
+# Acceptance Criteria
+
+1. Student dashboard endpoint implemented
+2. Student ownership enforced
+3. Dashboard only contains enrolled-course data
+4. Aggregations are accurate
+5. OpenAPI updated
+6. Generated clients compile successfully
+7. Existing tests remain green
+8. No authorization regressions introduced
+
+# Final Output
+
+Provide:
+
+* implementation summary
+* architecture compliance review
+* security review
+* performance review
+* test results
+
+Provide a formal:
+
+GO / NO-GO
+
+recommendation for:
+
+Sprint 5 – Chunk 2
+Student Courses

@@ -40,6 +40,7 @@ export * from "./loginBody";
 export * from "./logout200";
 export * from "./note";
 export * from "./student";
+export * from "./studentDashboard";
 export * from "./studentProgress";
 export * from "./studentSummary";
 export * from "./suggestion";
