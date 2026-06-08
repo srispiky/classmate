@@ -692,6 +692,52 @@ paths:
                 $ref: "#/components/schemas/AiSuggestions"
 
   # ---- STUDENT PORTAL ----
+  /student/assessments:
+    get:
+      operationId: getStudentAssessments
+      tags: [students]
+      summary: List all assessments visible to the authenticated student
+      responses:
+        "200":
+          description: Assessment list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/StudentAssessmentSummary"
+        "401":
+          description: Not authenticated
+        "403":
+          description: Access denied — caller is not a student
+
+  /student/assessments/{assessmentId}:
+    get:
+      operationId: getStudentAssessment
+      tags: [students]
+      summary: Get assessment detail for the authenticated student
+      parameters:
+        - in: path
+          name: assessmentId
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Assessment detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StudentAssessmentDetail"
+        "400":
+          description: Invalid assessment ID format
+        "401":
+          description: Not authenticated
+        "403":
+          description: Access denied — caller is not a student
+        "404":
+          description: Assessment not found or student not enrolled in the course
+
   /student/assignments:
     get:
       operationId: getStudentAssignments
@@ -1428,6 +1474,55 @@ components:
         fCount:
           type: integer
       required: [courseName, courseId, averageScore, aCount, bCount, cCount, dCount, fCount]
+
+    StudentAssessmentSummary:
+      type: object
+      description: >
+        Assessment summary. Note: the assessments table does not have
+        assessmentType or dueDate columns. The available qualitative fields
+        (strengths, weaknesses) are exposed in the detail response.
+      properties:
+        assessmentId:
+          type: integer
+        courseId:
+          type: integer
+        title:
+          type: string
+        score:
+          type: number
+        maxScore:
+          type: number
+      required:
+        - assessmentId
+        - courseId
+        - title
+        - score
+        - maxScore
+
+    StudentAssessmentDetail:
+      allOf:
+        - $ref: "#/components/schemas/StudentAssessmentSummary"
+        - type: object
+          properties:
+            strengths:
+              type: array
+              items:
+                type: string
+            weaknesses:
+              type: array
+              items:
+                type: string
+            createdAt:
+              type: string
+              format: date-time
+            updatedAt:
+              type: string
+              format: date-time
+          required:
+            - strengths
+            - weaknesses
+            - createdAt
+            - updatedAt
 
     StudentAssignmentSummary:
       type: object

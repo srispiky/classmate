@@ -624,6 +624,51 @@ export const GetStudentAiSuggestionsResponse = zod.object({
 });
 
 /**
+ * @summary List all assessments visible to the authenticated student
+ */
+export const GetStudentAssessmentsResponseItem = zod
+  .object({
+    assessmentId: zod.number(),
+    courseId: zod.number(),
+    title: zod.string(),
+    score: zod.number(),
+    maxScore: zod.number(),
+  })
+  .describe(
+    "Assessment summary. Note: the assessments table does not have assessmentType or dueDate columns. The available qualitative fields (strengths, weaknesses) are exposed in the detail response.\n",
+  );
+export const GetStudentAssessmentsResponse = zod.array(
+  GetStudentAssessmentsResponseItem,
+);
+
+/**
+ * @summary Get assessment detail for the authenticated student
+ */
+export const GetStudentAssessmentParams = zod.object({
+  assessmentId: zod.coerce.number(),
+});
+
+export const GetStudentAssessmentResponse = zod
+  .object({
+    assessmentId: zod.number(),
+    courseId: zod.number(),
+    title: zod.string(),
+    score: zod.number(),
+    maxScore: zod.number(),
+  })
+  .describe(
+    "Assessment summary. Note: the assessments table does not have assessmentType or dueDate columns. The available qualitative fields (strengths, weaknesses) are exposed in the detail response.\n",
+  )
+  .and(
+    zod.object({
+      strengths: zod.array(zod.string()),
+      weaknesses: zod.array(zod.string()),
+      createdAt: zod.coerce.date(),
+      updatedAt: zod.coerce.date(),
+    }),
+  );
+
+/**
  * @summary List all assignments visible to the authenticated student
  */
 export const GetStudentAssignmentsResponseItem = zod.object({

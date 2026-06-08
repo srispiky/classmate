@@ -1,0 +1,307 @@
+Phase 2 – Sprint 5
+
+Chunk 5 – Student Assessments
+
+# Goal
+
+Implement student assessment access.
+
+This chunk introduces assessment visibility for students and establishes assessment-level ownership enforcement.
+
+Students must only see assessments belonging to courses in which they are actively enrolled.
+
+Do not implement assessment submission workflows.
+
+Do not implement grading workflows.
+
+Do not implement assessment authoring, editing, or deletion.
+
+Focus exclusively on student assessment visibility and assessment detail retrieval.
+
+# Background
+
+Completed:
+
+✓ Chunk 1 – Student Dashboard
+
+✓ Chunk 2 – Student Courses
+
+✓ Chunk 3 – Student Course Workspace
+
+✓ Chunk 4 – Student Assignments
+
+Verified:
+
+* Student ownership enforcement operational
+* ScopeContext established
+* enrolledCourseIds available and tested
+* Assignment ownership filtering validated
+* OpenAPI synchronization complete
+* Codegen stability validated
+
+Current status:
+
+* All tests green
+* Architecture compliant
+* No known authorization debt
+
+# Architecture Rules
+
+Controllers:
+
+* validation only
+* service invocation only
+* response mapping only
+
+Repositories:
+
+* database access only
+
+Services:
+
+* business logic only
+
+Policies:
+
+* authorization only
+
+Validators:
+
+* ownership and scope decisions only
+
+Authorization logic must not be implemented in:
+
+* controllers
+* repositories
+
+Reuse existing ownership infrastructure.
+
+# Student Ownership Requirements
+
+Students may only access assessments that belong to:
+
+* actively enrolled courses
+
+Use existing:
+
+* ScopeContext
+* enrolledCourseIds
+* CourseScopePolicy
+* ownership validators
+
+Do not introduce alternate ownership models.
+
+# Endpoints
+
+Implement:
+
+## List Assessments
+
+GET /student/assessments
+
+Returns assessments visible to the authenticated student.
+
+Student must only see assessments from enrolled courses.
+
+---
+
+## Assessment Detail
+
+GET /student/assessments/{assessmentId}
+
+Returns assessment details.
+
+Access must be denied when:
+
+* assessment does not exist
+* assessment belongs to a non-enrolled course
+* assessment is soft deleted
+
+# Response Requirements
+
+Assessment List
+
+Return:
+
+* assessmentId
+* courseId
+* title
+* assessmentType
+* dueDate
+* score
+* maxScore
+
+Assessment Detail
+
+Return:
+
+* assessmentId
+* courseId
+* title
+* description
+* assessmentType
+* dueDate
+* score
+* maxScore
+* createdAt
+* updatedAt
+
+Use existing DTO conventions.
+
+# Tasks
+
+## 1. DTO Design
+
+Create:
+
+* StudentAssessmentSummaryDto
+* StudentAssessmentDetailDto
+
+Ensure OpenAPI compatibility.
+
+---
+
+## 2. Repository Layer
+
+Implement student-scoped assessment queries.
+
+Requirements:
+
+* ownership-aware
+* course-scoped
+* soft-delete aware
+* avoid N+1 queries
+
+Use enrolledCourseIds filtering.
+
+---
+
+## 3. Service Layer
+
+Create StudentAssessmentService.
+
+Responsibilities:
+
+* retrieve visible assessments
+* retrieve assessment details
+* coordinate repositories
+* apply business rules
+
+No SQL in services.
+
+---
+
+## 4. Controller Layer
+
+Implement assessment endpoints.
+
+Responsibilities:
+
+* validation
+* service invocation
+* response mapping
+
+No ownership logic.
+
+---
+
+## 5. Authorization Validation
+
+Verify:
+
+* student can access assessments from enrolled courses
+* student cannot access assessments from non-enrolled courses
+* direct ID enumeration attempts fail
+* unauthorized roles denied
+
+Reuse existing authorization middleware.
+
+---
+
+## 6. OpenAPI Integration
+
+Update:
+
+* endpoint definitions
+* DTO schemas
+* response schemas
+* status codes
+
+Regenerate generated artifacts if required.
+
+Verify:
+
+* barrel validation passes
+* codegen validation passes
+* generated clients compile
+
+---
+
+## 7. Testing
+
+Add tests covering:
+
+### Authorization
+
+* authenticated student access
+* unauthorized access denied
+* role validation
+
+### Ownership
+
+* enrolled-course assessment visible
+* non-enrolled-course assessment blocked
+* IDOR protection verified
+
+### Soft Delete
+
+* deleted assessments hidden
+
+### Regression
+
+Verify all existing tests remain green.
+
+# Deliverables
+
+Provide:
+
+1. Files created
+2. Files modified
+3. DTO definitions
+4. Repository implementation
+5. Service implementation
+6. Endpoint details
+7. OpenAPI updates
+8. Test coverage summary
+9. Performance considerations
+
+# Acceptance Criteria
+
+1. Assessment list endpoint implemented
+2. Assessment detail endpoint implemented
+3. Only enrolled-course assessments visible
+4. Soft-deleted assessments hidden
+5. Ownership enforcement verified
+6. OpenAPI updated
+7. Generated clients compile
+8. Existing tests remain green
+9. No authorization regressions introduced
+
+# Final Output
+
+Provide:
+
+* implementation summary
+* architecture compliance review
+* security review
+* performance review
+* test results
+
+Provide a formal:
+
+GO / NO-GO
+
+recommendation for:
+
+Sprint 5 – Chunk 6
+Student Announcements
