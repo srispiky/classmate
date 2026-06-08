@@ -66,3 +66,9 @@ id = "nmdxCmo3G6_gmZZNmRj-3"
 uri = "file://docs/sprint-5-audit.md"
 type = "text"
 title = "Sprint 5 Progress Audit"
+
+[[outputs]]
+id = "XMiqOBVuYJuHCNYWW1Fg_"
+uri = "file://docs/sprint5-chunk7-review.md"
+type = "text"
+title = "Sprint 5 – Chunk 7 Review and Closure"
