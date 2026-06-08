@@ -355,6 +355,20 @@ export interface GradeBreakdown {
   fCount: number;
 }
 
+export interface StudentAnnouncementSummary {
+  announcementId: number;
+  courseId: number;
+  title: string;
+  priority: string;
+  authorName: string;
+  createdAt: string;
+}
+
+export type StudentAnnouncementDetail = StudentAnnouncementSummary & {
+  content: string;
+  updatedAt: string;
+};
+
 /**
  * Assessment summary. Note: the assessments table does not have assessmentType or dueDate columns. The available qualitative fields (strengths, weaknesses) are exposed in the detail response.
 

@@ -1,0 +1,337 @@
+Phase 2 – Sprint 5
+
+Chunk 6 – Student Announcements
+
+# Goal
+
+Implement student announcement access.
+
+This chunk introduces announcement visibility for students and establishes announcement-level ownership enforcement.
+
+Announcements are course-scoped resources.
+
+Students must only see announcements belonging to courses in which they are actively enrolled.
+
+Do not implement announcement creation.
+
+Do not implement announcement editing.
+
+Do not implement announcement deletion.
+
+Do not implement read-tracking functionality.
+
+Focus exclusively on student announcement visibility and announcement detail retrieval.
+
+# Background
+
+Completed:
+
+✓ Chunk 1 – Student Dashboard
+
+✓ Chunk 2 – Student Courses
+
+✓ Chunk 3 – Student Course Workspace
+
+✓ Chunk 4 – Student Assignments
+
+✓ Chunk 5 – Student Assessments
+
+Verified:
+
+* Student ownership enforcement operational
+* ScopeContext established
+* enrolledCourseIds available and tested
+* Assignment ownership validated
+* Assessment ownership validated
+* OpenAPI synchronization complete
+* Codegen stability validated
+
+Current status:
+
+* 1119 tests passing
+* Architecture compliant
+* No authorization debt
+
+# Architecture Rules
+
+Controllers:
+
+* validation only
+* service invocation only
+* response mapping only
+
+Repositories:
+
+* database access only
+
+Services:
+
+* business logic only
+
+Policies:
+
+* authorization only
+
+Validators:
+
+* ownership and scope decisions only
+
+Authorization logic must not be implemented in:
+
+* controllers
+* repositories
+
+Reuse existing ownership infrastructure.
+
+# Student Ownership Requirements
+
+Students may only access announcements that belong to:
+
+* actively enrolled courses
+
+Use existing:
+
+* ScopeContext
+* enrolledCourseIds
+* CourseScopePolicy
+* ownership validators
+
+Do not introduce alternate ownership models.
+
+# Existing Announcement Schema
+
+Current table:
+
+announcements
+
+Columns:
+
+* id
+* courseId
+* title
+* content
+* authorName
+* priority
+* createdAt
+* updatedAt
+* deletedAt
+
+No studentId exists.
+
+Announcements are course-scoped only.
+
+Ownership must be enforced using enrolledCourseIds.
+
+# Endpoints
+
+Implement:
+
+## List Announcements
+
+GET /student/announcements
+
+Returns announcements visible to the authenticated student.
+
+Student must only see announcements from enrolled courses.
+
+---
+
+## Announcement Detail
+
+GET /student/announcements/{announcementId}
+
+Returns announcement details.
+
+Access must be denied when:
+
+* announcement does not exist
+* announcement belongs to a non-enrolled course
+* announcement is soft deleted
+
+# Response Requirements
+
+Announcement List
+
+Return:
+
+* announcementId
+* courseId
+* title
+* priority
+* authorName
+* createdAt
+
+Announcement Detail
+
+Return:
+
+* announcementId
+* courseId
+* title
+* content
+* priority
+* authorName
+* createdAt
+* updatedAt
+
+Use existing DTO conventions.
+
+# Tasks
+
+## 1. DTO Design
+
+Create:
+
+* StudentAnnouncementSummaryDto
+* StudentAnnouncementDetailDto
+
+Ensure OpenAPI compatibility.
+
+---
+
+## 2. Repository Layer
+
+Implement student-scoped announcement queries.
+
+Requirements:
+
+* ownership-aware
+* course-scoped
+* soft-delete aware
+* avoid N+1 queries
+
+Primary ownership filter:
+
+courseId IN enrolledCourseIds
+
+---
+
+## 3. Service Layer
+
+Create StudentAnnouncementService.
+
+Responsibilities:
+
+* retrieve visible announcements
+* retrieve announcement details
+* coordinate repositories
+* apply business rules
+
+No SQL in services.
+
+---
+
+## 4. Controller Layer
+
+Implement announcement endpoints.
+
+Responsibilities:
+
+* validation
+* service invocation
+* response mapping
+
+No ownership logic.
+
+---
+
+## 5. Authorization Validation
+
+Verify:
+
+* student can access announcements from enrolled courses
+* student cannot access announcements from non-enrolled courses
+* direct ID enumeration attempts fail
+* unauthorized roles denied
+
+Reuse existing authorization middleware.
+
+---
+
+## 6. OpenAPI Integration
+
+Update:
+
+* endpoint definitions
+* DTO schemas
+* response schemas
+* status codes
+
+Regenerate generated artifacts if required.
+
+Verify:
+
+* barrel validation passes
+* codegen validation passes
+* generated clients compile
+
+---
+
+## 7. Testing
+
+Add tests covering:
+
+### Authorization
+
+* authenticated student access
+* unauthorized access denied
+* role validation
+
+### Ownership
+
+* enrolled-course announcement visible
+* non-enrolled-course announcement blocked
+* IDOR protection verified
+
+### Soft Delete
+
+* deleted announcements hidden
+
+### Regression
+
+Verify all existing tests remain green.
+
+# Deliverables
+
+Provide:
+
+1. Files created
+2. Files modified
+3. DTO definitions
+4. Repository implementation
+5. Service implementation
+6. Endpoint details
+7. OpenAPI updates
+8. Test coverage summary
+9. Performance considerations
+
+# Acceptance Criteria
+
+1. Announcement list endpoint implemented
+2. Announcement detail endpoint implemented
+3. Only enrolled-course announcements visible
+4. Soft-deleted announcements hidden
+5. Ownership enforcement verified
+6. OpenAPI updated
+7. Generated clients compile
+8. Existing tests remain green
+9. No authorization regressions introduced
+
+# Final Output
+
+Provide:
+
+* implementation summary
+* architecture compliance review
+* security review
+* performance review
+* test results
+
+Provide a formal:
+
+GO / NO-GO
+
+recommendation for:
+
+Sprint 5 – Chunk 7
+Student Notes

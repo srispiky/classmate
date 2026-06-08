@@ -692,6 +692,52 @@ paths:
                 $ref: "#/components/schemas/AiSuggestions"
 
   # ---- STUDENT PORTAL ----
+  /student/announcements:
+    get:
+      operationId: getStudentAnnouncements
+      tags: [students]
+      summary: List all announcements visible to the authenticated student
+      responses:
+        "200":
+          description: Announcement list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/StudentAnnouncementSummary"
+        "401":
+          description: Not authenticated
+        "403":
+          description: Access denied — caller is not a student
+
+  /student/announcements/{announcementId}:
+    get:
+      operationId: getStudentAnnouncement
+      tags: [students]
+      summary: Get announcement detail for the authenticated student
+      parameters:
+        - in: path
+          name: announcementId
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Announcement detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StudentAnnouncementDetail"
+        "400":
+          description: Invalid announcement ID format
+        "401":
+          description: Not authenticated
+        "403":
+          description: Access denied — caller is not a student
+        "404":
+          description: Announcement not found or student not enrolled in the course
+
   /student/assessments:
     get:
       operationId: getStudentAssessments
@@ -1474,6 +1520,44 @@ components:
         fCount:
           type: integer
       required: [courseName, courseId, averageScore, aCount, bCount, cCount, dCount, fCount]
+
+    StudentAnnouncementSummary:
+      type: object
+      properties:
+        announcementId:
+          type: integer
+        courseId:
+          type: integer
+        title:
+          type: string
+        priority:
+          type: string
+        authorName:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - announcementId
+        - courseId
+        - title
+        - priority
+        - authorName
+        - createdAt
+
+    StudentAnnouncementDetail:
+      allOf:
+        - $ref: "#/components/schemas/StudentAnnouncementSummary"
+        - type: object
+          properties:
+            content:
+              type: string
+            updatedAt:
+              type: string
+              format: date-time
+          required:
+            - content
+            - updatedAt
 
     StudentAssessmentSummary:
       type: object

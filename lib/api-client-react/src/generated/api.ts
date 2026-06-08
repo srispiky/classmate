@@ -44,6 +44,8 @@ import type {
   Logout200,
   Note,
   Student,
+  StudentAnnouncementDetail,
+  StudentAnnouncementSummary,
   StudentAssessmentDetail,
   StudentAssessmentSummary,
   StudentAssignmentDetail,
@@ -2870,6 +2872,180 @@ export function useGetStudentAiSuggestions<
   },
 ): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
   const queryOptions = getGetStudentAiSuggestionsQueryOptions(id, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary List all announcements visible to the authenticated student
+ */
+export const getGetStudentAnnouncementsUrl = () => {
+  return `/api/student/announcements`;
+};
+
+export const getStudentAnnouncements = async (
+  options?: RequestInit,
+): Promise<StudentAnnouncementSummary[]> => {
+  return customFetch<StudentAnnouncementSummary[]>(
+    getGetStudentAnnouncementsUrl(),
+    {
+      ...options,
+      method: "GET",
+    },
+  );
+};
+
+export const getGetStudentAnnouncementsQueryKey = () => {
+  return [`/api/student/announcements`] as const;
+};
+
+export const getGetStudentAnnouncementsQueryOptions = <
+  TData = Awaited<ReturnType<typeof getStudentAnnouncements>>,
+  TError = ErrorType<void>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getStudentAnnouncements>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getGetStudentAnnouncementsQueryKey();
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getStudentAnnouncements>>
+  > = ({ signal }) => getStudentAnnouncements({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getStudentAnnouncements>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetStudentAnnouncementsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getStudentAnnouncements>>
+>;
+export type GetStudentAnnouncementsQueryError = ErrorType<void>;
+
+/**
+ * @summary List all announcements visible to the authenticated student
+ */
+
+export function useGetStudentAnnouncements<
+  TData = Awaited<ReturnType<typeof getStudentAnnouncements>>,
+  TError = ErrorType<void>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getStudentAnnouncements>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetStudentAnnouncementsQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Get announcement detail for the authenticated student
+ */
+export const getGetStudentAnnouncementUrl = (announcementId: number) => {
+  return `/api/student/announcements/${announcementId}`;
+};
+
+export const getStudentAnnouncement = async (
+  announcementId: number,
+  options?: RequestInit,
+): Promise<StudentAnnouncementDetail> => {
+  return customFetch<StudentAnnouncementDetail>(
+    getGetStudentAnnouncementUrl(announcementId),
+    {
+      ...options,
+      method: "GET",
+    },
+  );
+};
+
+export const getGetStudentAnnouncementQueryKey = (announcementId: number) => {
+  return [`/api/student/announcements/${announcementId}`] as const;
+};
+
+export const getGetStudentAnnouncementQueryOptions = <
+  TData = Awaited<ReturnType<typeof getStudentAnnouncement>>,
+  TError = ErrorType<void>,
+>(
+  announcementId: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getStudentAnnouncement>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getGetStudentAnnouncementQueryKey(announcementId);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getStudentAnnouncement>>
+  > = ({ signal }) =>
+    getStudentAnnouncement(announcementId, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!announcementId,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof getStudentAnnouncement>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetStudentAnnouncementQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getStudentAnnouncement>>
+>;
+export type GetStudentAnnouncementQueryError = ErrorType<void>;
+
+/**
+ * @summary Get announcement detail for the authenticated student
+ */
+
+export function useGetStudentAnnouncement<
+  TData = Awaited<ReturnType<typeof getStudentAnnouncement>>,
+  TError = ErrorType<void>,
+>(
+  announcementId: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getStudentAnnouncement>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetStudentAnnouncementQueryOptions(
+    announcementId,
+    options,
+  );
 
   const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
     queryKey: QueryKey;

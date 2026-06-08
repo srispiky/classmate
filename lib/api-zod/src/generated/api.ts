@@ -624,6 +624,44 @@ export const GetStudentAiSuggestionsResponse = zod.object({
 });
 
 /**
+ * @summary List all announcements visible to the authenticated student
+ */
+export const GetStudentAnnouncementsResponseItem = zod.object({
+  announcementId: zod.number(),
+  courseId: zod.number(),
+  title: zod.string(),
+  priority: zod.string(),
+  authorName: zod.string(),
+  createdAt: zod.coerce.date(),
+});
+export const GetStudentAnnouncementsResponse = zod.array(
+  GetStudentAnnouncementsResponseItem,
+);
+
+/**
+ * @summary Get announcement detail for the authenticated student
+ */
+export const GetStudentAnnouncementParams = zod.object({
+  announcementId: zod.coerce.number(),
+});
+
+export const GetStudentAnnouncementResponse = zod
+  .object({
+    announcementId: zod.number(),
+    courseId: zod.number(),
+    title: zod.string(),
+    priority: zod.string(),
+    authorName: zod.string(),
+    createdAt: zod.coerce.date(),
+  })
+  .and(
+    zod.object({
+      content: zod.string(),
+      updatedAt: zod.coerce.date(),
+    }),
+  );
+
+/**
  * @summary List all assessments visible to the authenticated student
  */
 export const GetStudentAssessmentsResponseItem = zod
