@@ -15,6 +15,8 @@ export const studentsTable = pgTable(
     enrolledCourseIds: json("enrolled_course_ids").$type<number[]>().notNull().default([]),
     userId: integer("user_id").references(() => usersTable.id, { onDelete: "set null" }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    deletedAt: timestamp("deleted_at", { withTimezone: true }),
+    deletedBy: integer("deleted_by").references(() => usersTable.id, { onDelete: "set null" }),
   },
   (table) => ({
     userIdUnique: uniqueIndex("uq_students_user_id")
@@ -26,6 +28,8 @@ export const studentsTable = pgTable(
 export const insertStudentSchema = createInsertSchema(studentsTable).omit({
   id: true,
   createdAt: true,
+  deletedAt: true,
+  deletedBy: true,
 });
 export type InsertStudent = z.infer<typeof insertStudentSchema>;
 export type Student = typeof studentsTable.$inferSelect;

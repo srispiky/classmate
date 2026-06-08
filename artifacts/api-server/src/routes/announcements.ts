@@ -18,6 +18,7 @@ import {
   UpdateAnnouncementBody,
   UpdateAnnouncementResponse,
 } from "@workspace/api-zod";
+import { requireRole } from "../middleware/require-role";
 
 const router: IRouter = Router();
 
@@ -39,152 +40,212 @@ function serializeAnnouncement(a: AnnouncementRow) {
 
 // ── GET /api/announcements ────────────────────────────────────────────────────
 
-router.get("/announcements", async (req, res): Promise<void> => {
-  const scope = buildScopeContext(req.session as ClassmateSession);
+// Layer 1: only admin and teacher may access the teacher-facing announcement list.
+// Student/parent access is served by /student/announcements instead.
+router.get(
+  "/announcements",
+  requireRole("admin", "teacher"),
+  async (req, res): Promise<void> => {
+    const scope = buildScopeContext(req.session as ClassmateSession);
 
-  const queryParams = ListAnnouncementsQueryParams.safeParse(req.query);
-  if (!queryParams.success) {
-    res.status(400).json({ error: queryParams.error.message });
-    return;
-  }
+    const queryParams = ListAnnouncementsQueryParams.safeParse(req.query);
+    if (!queryParams.success) {
+      res.status(400).json({ error: queryParams.error.message });
+      return;
+    }
 
-  // Layer 2: announcementPolicy.getScopeCondition() applied inside listAnnouncements().
-  // Admin/teacher see all; student filtered to enrolledCourseIds;
-  // parent filtered to childCourseIds. DB-level filtering, no in-memory post-processing.
-  const announcements = await listAnnouncements(scope, {
-    courseId: queryParams.data.courseId,
-  });
+    // Layer 2: announcementPolicy.getScopeCondition() applied inside listAnnouncements().
+    const announcements = await listAnnouncements(scope, {
+      courseId: queryParams.data.courseId,
+    });
 
-  res.json(ListAnnouncementsResponse.parse(announcements.map(serializeAnnouncement)));
-});
+    res.json(ListAnnouncementsResponse.parse(announcements.map(serializeAnnouncement)));
+  },
+);
 
 // ── POST /api/announcements ───────────────────────────────────────────────────
 
-router.post("/announcements", async (req, res): Promise<void> => {
-  const scope = buildScopeContext(req.session as ClassmateSession);
-  const parsed = CreateAnnouncementBody.safeParse(req.body);
-  if (!parsed.success) {
-    res.status(400).json({ error: parsed.error.message });
-    return;
-  }
+// Layer 1: only admin and teacher may create announcements.
+router.post(
+  "/announcements",
+  requireRole("admin", "teacher"),
+  async (req, res): Promise<void> => {
+    const scope = buildScopeContext(req.session as ClassmateSession);
+    const parsed = CreateAnnouncementBody.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({ error: parsed.error.message });
+      return;
+    }
 
-  const [course] = await db
-    .select({ name: coursesTable.name })
-    .from(coursesTable)
-    .where(eq(coursesTable.id, parsed.data.courseId));
+    const [course] = await db
+      .select({ name: coursesTable.name })
+      .from(coursesTable)
+      .where(eq(coursesTable.id, parsed.data.courseId));
 
-  const [announcement] = await db
-    .insert(announcementsTable)
-    .values({
-      ...parsed.data,
-      priority: parsed.data.priority ?? "normal",
-      createdBy: scope.userId,
-    })
-    .returning();
+    const [announcement] = await db
+      .insert(announcementsTable)
+      .values({
+        ...parsed.data,
+        priority: parsed.data.priority ?? "normal",
+        createdBy: scope.userId,
+      })
+      .returning();
 
-  res.status(201).json(
-    GetAnnouncementResponse.parse(
-      serializeAnnouncement({
-        ...announcement,
-        courseName: course?.name ?? "Unknown",
-        deletedAt: null,
-      }),
-    ),
-  );
-});
+    res.status(201).json(
+      GetAnnouncementResponse.parse(
+        serializeAnnouncement({
+          ...announcement,
+          courseName: course?.name ?? "Unknown",
+          deletedAt: null,
+        }),
+      ),
+    );
+  },
+);
 
 // ── GET /api/announcements/:id ────────────────────────────────────────────────
 
-router.get("/announcements/:id", async (req, res): Promise<void> => {
-  const scope = buildScopeContext(req.session as ClassmateSession);
+// Layer 1: only admin and teacher may access announcement detail.
+router.get(
+  "/announcements/:id",
+  requireRole("admin", "teacher"),
+  async (req, res): Promise<void> => {
+    const scope = buildScopeContext(req.session as ClassmateSession);
 
-  const params = GetAnnouncementParams.safeParse(req.params);
-  if (!params.success) {
-    res.status(400).json({ error: params.error.message });
-    return;
-  }
-
-  // Step 1: fetch by ID + soft-delete guard only. No scope filter in query —
-  //         Layer 3 below is the defense-in-depth IDOR safeguard.
-  const announcement = await getAnnouncementById(params.data.id);
-  if (!announcement) {
-    res.status(404).json({ error: "Announcement not found" });
-    return;
-  }
-
-  // Step 2: Layer 3 — delegate course-access check to AnnouncementScopePolicy.
-  // Services do not contain authorization rules — policies own that logic.
-  // Throws CourseAuthorizationError (extends PolicyAuthorizationError) on denial.
-  try {
-    announcementPolicy.validateAccess(scope, announcement);
-  } catch (err) {
-    if (err instanceof PolicyAuthorizationError) {
-      res.status(403).json({ error: "Access denied", code: "COURSE_ACCESS_DENIED" });
+    const params = GetAnnouncementParams.safeParse(req.params);
+    if (!params.success) {
+      res.status(400).json({ error: params.error.message });
       return;
     }
-    throw err;
-  }
 
-  res.json(GetAnnouncementResponse.parse(serializeAnnouncement(announcement)));
-});
+    const announcement = await getAnnouncementById(params.data.id);
+    if (!announcement) {
+      res.status(404).json({ error: "Announcement not found" });
+      return;
+    }
+
+    // Layer 3: delegate course-access check to AnnouncementScopePolicy.
+    try {
+      announcementPolicy.validateAccess(scope, announcement);
+    } catch (err) {
+      if (err instanceof PolicyAuthorizationError) {
+        res.status(403).json({ error: "Access denied", code: "COURSE_ACCESS_DENIED" });
+        return;
+      }
+      throw err;
+    }
+
+    res.json(GetAnnouncementResponse.parse(serializeAnnouncement(announcement)));
+  },
+);
 
 // ── PATCH /api/announcements/:id ──────────────────────────────────────────────
 
-router.patch("/announcements/:id", async (req, res): Promise<void> => {
-  const scope = buildScopeContext(req.session as ClassmateSession);
+// Layer 1: only admin and teacher may update announcements.
+router.patch(
+  "/announcements/:id",
+  requireRole("admin", "teacher"),
+  async (req, res): Promise<void> => {
+    const scope = buildScopeContext(req.session as ClassmateSession);
 
-  const params = UpdateAnnouncementParams.safeParse(req.params);
-  if (!params.success) {
-    res.status(400).json({ error: params.error.message });
-    return;
-  }
-
-  const parsed = UpdateAnnouncementBody.safeParse(req.body);
-  if (!parsed.success) {
-    res.status(400).json({ error: parsed.error.message });
-    return;
-  }
-
-  // Pre-fetch with soft-delete guard so we (a) return 404 for deleted announcements
-  // and (b) have the courseId required for Layer 3 authorization.
-  const existing = await getAnnouncementById(params.data.id);
-  if (!existing) {
-    res.status(404).json({ error: "Announcement not found" });
-    return;
-  }
-
-  // Layer 3: enforce course-access before mutating.
-  // Announcements are course-owned; editing is restricted to the course scope.
-  try {
-    announcementPolicy.validateAccess(scope, existing);
-  } catch (err) {
-    if (err instanceof PolicyAuthorizationError) {
-      res.status(403).json({ error: "Access denied", code: "COURSE_ACCESS_DENIED" });
+    const params = UpdateAnnouncementParams.safeParse(req.params);
+    if (!params.success) {
+      res.status(400).json({ error: params.error.message });
       return;
     }
-    throw err;
-  }
 
-  const [announcement] = await db
-    .update(announcementsTable)
-    .set({ ...parsed.data, updatedAt: new Date(), updatedBy: scope.userId })
-    .where(eq(announcementsTable.id, params.data.id))
-    .returning();
+    const parsed = UpdateAnnouncementBody.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({ error: parsed.error.message });
+      return;
+    }
 
-  if (!announcement) {
-    res.status(404).json({ error: "Announcement not found" });
-    return;
-  }
+    const existing = await getAnnouncementById(params.data.id);
+    if (!existing) {
+      res.status(404).json({ error: "Announcement not found" });
+      return;
+    }
 
-  res.json(
-    UpdateAnnouncementResponse.parse(
-      serializeAnnouncement({
-        ...announcement,
-        courseName: existing.courseName,
-        deletedAt: announcement.deletedAt ?? null,
-      }),
-    ),
-  );
-});
+    // Layer 3: enforce course-access before mutating.
+    try {
+      announcementPolicy.validateAccess(scope, existing);
+    } catch (err) {
+      if (err instanceof PolicyAuthorizationError) {
+        res.status(403).json({ error: "Access denied", code: "COURSE_ACCESS_DENIED" });
+        return;
+      }
+      throw err;
+    }
+
+    const [announcement] = await db
+      .update(announcementsTable)
+      .set({ ...parsed.data, updatedAt: new Date(), updatedBy: scope.userId })
+      .where(eq(announcementsTable.id, params.data.id))
+      .returning();
+
+    if (!announcement) {
+      res.status(404).json({ error: "Announcement not found" });
+      return;
+    }
+
+    res.json(
+      UpdateAnnouncementResponse.parse(
+        serializeAnnouncement({
+          ...announcement,
+          courseName: existing.courseName,
+          deletedAt: announcement.deletedAt ?? null,
+        }),
+      ),
+    );
+  },
+);
+
+// ── DELETE /api/announcements/:id — soft delete ───────────────────────────────
+
+// Layer 1: only admin and teacher may delete announcements.
+router.delete(
+  "/announcements/:id",
+  requireRole("admin", "teacher"),
+  async (req, res): Promise<void> => {
+    const scope = buildScopeContext(req.session as ClassmateSession);
+
+    const params = GetAnnouncementParams.safeParse(req.params);
+    if (!params.success) {
+      res.status(400).json({ error: params.error.message });
+      return;
+    }
+
+    // Pre-fetch with soft-delete guard (getAnnouncementById filters isNull(deletedAt)).
+    const existing = await getAnnouncementById(params.data.id);
+    if (!existing) {
+      res.status(404).json({ error: "Announcement not found" });
+      return;
+    }
+
+    // Layer 3: enforce course-access before deleting.
+    try {
+      announcementPolicy.validateAccess(scope, existing);
+    } catch (err) {
+      if (err instanceof PolicyAuthorizationError) {
+        res.status(403).json({ error: "Access denied", code: "COURSE_ACCESS_DENIED" });
+        return;
+      }
+      throw err;
+    }
+
+    // Soft delete — never physically remove rows.
+    await db
+      .update(announcementsTable)
+      .set({
+        deletedAt: new Date(),
+        updatedAt: new Date(),
+        updatedBy: scope.userId,
+        deletedBy: scope.userId,
+      })
+      .where(eq(announcementsTable.id, params.data.id));
+
+    res.status(204).send();
+  },
+);
 
 export default router;

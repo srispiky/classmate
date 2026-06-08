@@ -14,6 +14,7 @@ import {
 import { buildScopeContext, type ClassmateSession } from "../lib/scope-context";
 import { notesPolicy, PolicyAuthorizationError } from "../lib/policies";
 import { listNotes, getNoteById, type NoteRow } from "../lib/notes.queries";
+import { requireRole } from "../middleware/require-role";
 
 const router: IRouter = Router();
 
@@ -35,7 +36,9 @@ function serializeNote(n: NoteRow) {
 
 // ── GET /api/notes ───────────────────────────────────────────────────────────
 
-router.get("/notes", async (req, res): Promise<void> => {
+// Layer 1: only admin and teacher may access the teacher-facing notes list.
+// Student/parent access is served by /student/notes instead.
+router.get("/notes", requireRole("admin", "teacher"), async (req, res): Promise<void> => {
   const scope = buildScopeContext(req.session as ClassmateSession);
 
   const queryParams = ListNotesQueryParams.safeParse(req.query);
@@ -45,8 +48,6 @@ router.get("/notes", async (req, res): Promise<void> => {
   }
 
   // Layer 2: notesPolicy.getScopeCondition() applied inside listNotes().
-  // Admin/teacher see all notes; student filtered to enrolledCourseIds;
-  // parent filtered to childCourseIds. No in-memory filtering.
   const notes = await listNotes(scope, { courseId: queryParams.data.courseId });
 
   res.json(ListNotesResponse.parse(notes.map(serializeNote)));
@@ -54,7 +55,8 @@ router.get("/notes", async (req, res): Promise<void> => {
 
 // ── POST /api/notes ──────────────────────────────────────────────────────────
 
-router.post("/notes", async (req, res): Promise<void> => {
+// Layer 1: only admin and teacher may create lesson notes.
+router.post("/notes", requireRole("admin", "teacher"), async (req, res): Promise<void> => {
   const scope = buildScopeContext(req.session as ClassmateSession);
   const parsed = CreateNoteBody.safeParse(req.body);
   if (!parsed.success) {
@@ -92,7 +94,8 @@ router.post("/notes", async (req, res): Promise<void> => {
 
 // ── GET /api/notes/:id ───────────────────────────────────────────────────────
 
-router.get("/notes/:id", async (req, res): Promise<void> => {
+// Layer 1: only admin and teacher may access note detail.
+router.get("/notes/:id", requireRole("admin", "teacher"), async (req, res): Promise<void> => {
   const scope = buildScopeContext(req.session as ClassmateSession);
 
   const params = GetNoteParams.safeParse(req.params);
@@ -101,17 +104,13 @@ router.get("/notes/:id", async (req, res): Promise<void> => {
     return;
   }
 
-  // Step 1: fetch by ID + soft-delete guard only. No scope filter in the query —
-  //         Layer 3 below is the defence-in-depth IDOR safeguard.
   const note = await getNoteById(params.data.id);
   if (!note) {
     res.status(404).json({ error: "Note not found" });
     return;
   }
 
-  // Step 2: Layer 3 — delegate course-access check to NotesScopePolicy.
-  // Services do not contain authorization rules — policies own that logic.
-  // Throws CourseAuthorizationError (extends PolicyAuthorizationError) on denial.
+  // Layer 3: delegate course-access check to NotesScopePolicy.
   try {
     notesPolicy.validateAccess(scope, note);
   } catch (err) {
@@ -127,7 +126,8 @@ router.get("/notes/:id", async (req, res): Promise<void> => {
 
 // ── PATCH /api/notes/:id ─────────────────────────────────────────────────────
 
-router.patch("/notes/:id", async (req, res): Promise<void> => {
+// Layer 1: only admin and teacher may update notes.
+router.patch("/notes/:id", requireRole("admin", "teacher"), async (req, res): Promise<void> => {
   const scope = buildScopeContext(req.session as ClassmateSession);
 
   const params = UpdateNoteParams.safeParse(req.params);
@@ -142,10 +142,6 @@ router.patch("/notes/:id", async (req, res): Promise<void> => {
     return;
   }
 
-  // Pre-fetch with soft-delete guard so we (a) return 404 for deleted notes
-  // and (b) have the courseId required for Layer 3 authorization.
-  // Previously this went straight to UPDATE, which could mutate soft-deleted
-  // records and bypassed authorization entirely.
   const existing = await getNoteById(params.data.id);
   if (!existing) {
     res.status(404).json({ error: "Note not found" });
@@ -153,8 +149,6 @@ router.patch("/notes/:id", async (req, res): Promise<void> => {
   }
 
   // Layer 3: enforce course-access before mutating.
-  // Students may only edit notes in courses they are enrolled in.
-  // Parents and guests are denied entirely (course notes are teacher-authored).
   try {
     notesPolicy.validateAccess(scope, existing);
   } catch (err) {
@@ -185,6 +179,50 @@ router.patch("/notes/:id", async (req, res): Promise<void> => {
       }),
     ),
   );
+});
+
+// ── DELETE /api/notes/:id — soft delete ──────────────────────────────────────
+
+// Layer 1: only admin and teacher may delete notes.
+router.delete("/notes/:id", requireRole("admin", "teacher"), async (req, res): Promise<void> => {
+  const scope = buildScopeContext(req.session as ClassmateSession);
+
+  const params = GetNoteParams.safeParse(req.params);
+  if (!params.success) {
+    res.status(400).json({ error: params.error.message });
+    return;
+  }
+
+  // Pre-fetch with soft-delete guard (getNoteById filters isNull(deletedAt)).
+  const existing = await getNoteById(params.data.id);
+  if (!existing) {
+    res.status(404).json({ error: "Note not found" });
+    return;
+  }
+
+  // Layer 3: enforce course-access before deleting.
+  try {
+    notesPolicy.validateAccess(scope, existing);
+  } catch (err) {
+    if (err instanceof PolicyAuthorizationError) {
+      res.status(403).json({ error: "Access denied", code: "COURSE_ACCESS_DENIED" });
+      return;
+    }
+    throw err;
+  }
+
+  // Soft delete — never physically remove rows.
+  await db
+    .update(notesTable)
+    .set({
+      deletedAt: new Date(),
+      updatedAt: new Date(),
+      updatedBy: scope.userId,
+      deletedBy: scope.userId,
+    })
+    .where(eq(notesTable.id, params.data.id));
+
+  res.status(204).send();
 });
 
 export default router;

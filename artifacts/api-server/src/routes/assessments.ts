@@ -21,6 +21,7 @@ import {
   type AssessmentRow,
 } from "../lib/assessments.queries";
 import { assessmentPolicy, PolicyAuthorizationError } from "../lib/policies";
+import { requireRole } from "../middleware/require-role";
 
 const router: IRouter = Router();
 
@@ -60,7 +61,8 @@ function generateAiSuggestions(
 
   const avgScore =
     assessments.length > 0
-      ? assessments.reduce((sum, a) => sum + (a.score / a.maxScore) * 100, 0) / assessments.length
+      ? assessments.reduce((sum, a) => sum + (a.score / a.maxScore) * 100, 0) /
+        assessments.length
       : 0;
 
   const uniqueWeaknesses = [...new Set(allWeaknesses)];
@@ -119,168 +121,242 @@ function generateAiSuggestions(
 
 // ── GET /api/assessments ─────────────────────────────────────────────────────
 
-router.get("/assessments", async (req, res): Promise<void> => {
-  const scope = buildScopeContext(req.session as ClassmateSession);
+// Layer 1: only admin and teacher may access the teacher-facing assessment list.
+// Student/parent access is served by /student/assessments instead.
+router.get(
+  "/assessments",
+  requireRole("admin", "teacher"),
+  async (req, res): Promise<void> => {
+    const scope = buildScopeContext(req.session as ClassmateSession);
 
-  const queryParams = ListAssessmentsQueryParams.safeParse(req.query);
-  if (!queryParams.success) {
-    res.status(400).json({ error: queryParams.error.message });
-    return;
-  }
+    const queryParams = ListAssessmentsQueryParams.safeParse(req.query);
+    if (!queryParams.success) {
+      res.status(400).json({ error: queryParams.error.message });
+      return;
+    }
 
-  // Layer 2 applied inside listAssessments() via assessmentPolicy.getScopeCondition()
-  const assessments = await listAssessments(scope, {
-    studentId: queryParams.data.studentId,
-    courseId: queryParams.data.courseId,
-  });
+    // Layer 2 applied inside listAssessments() via assessmentPolicy.getScopeCondition()
+    const assessments = await listAssessments(scope, {
+      studentId: queryParams.data.studentId,
+      courseId: queryParams.data.courseId,
+    });
 
-  res.json(ListAssessmentsResponse.parse(assessments.map(serializeAssessment)));
-});
+    res.json(ListAssessmentsResponse.parse(assessments.map(serializeAssessment)));
+  },
+);
 
 // ── POST /api/assessments ────────────────────────────────────────────────────
 
-router.post("/assessments", async (req, res): Promise<void> => {
-  const scope = buildScopeContext(req.session as ClassmateSession);
-  const parsed = CreateAssessmentBody.safeParse(req.body);
-  if (!parsed.success) {
-    res.status(400).json({ error: parsed.error.message });
-    return;
-  }
+// Layer 1: only admin and teacher may record assessments.
+router.post(
+  "/assessments",
+  requireRole("admin", "teacher"),
+  async (req, res): Promise<void> => {
+    const scope = buildScopeContext(req.session as ClassmateSession);
+    const parsed = CreateAssessmentBody.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({ error: parsed.error.message });
+      return;
+    }
 
-  const [student] = await db
-    .select({ name: studentsTable.name })
-    .from(studentsTable)
-    .where(eq(studentsTable.id, parsed.data.studentId));
+    const [student] = await db
+      .select({ name: studentsTable.name })
+      .from(studentsTable)
+      .where(eq(studentsTable.id, parsed.data.studentId));
 
-  const [course] = await db
-    .select({ name: coursesTable.name })
-    .from(coursesTable)
-    .where(eq(coursesTable.id, parsed.data.courseId));
+    const [course] = await db
+      .select({ name: coursesTable.name })
+      .from(coursesTable)
+      .where(eq(coursesTable.id, parsed.data.courseId));
 
-  const [assessment] = await db
-    .insert(assessmentsTable)
-    .values({ ...parsed.data, createdBy: scope.userId })
-    .returning();
+    const [assessment] = await db
+      .insert(assessmentsTable)
+      .values({ ...parsed.data, createdBy: scope.userId })
+      .returning();
 
-  await db.insert(activityTable).values({
-    type: "assessment_completed",
-    description: `Assessment "${parsed.data.title}" completed with score ${parsed.data.score}/${parsed.data.maxScore}`,
-    studentName: student?.name ?? "Unknown",
-    courseName: course?.name ?? "Unknown",
-  });
-
-  res.status(201).json(
-    serializeAssessment({
-      ...assessment,
+    await db.insert(activityTable).values({
+      type: "assessment_completed",
+      description: `Assessment "${parsed.data.title}" completed with score ${parsed.data.score}/${parsed.data.maxScore}`,
       studentName: student?.name ?? "Unknown",
       courseName: course?.name ?? "Unknown",
-      deletedAt: null,
-    }),
-  );
-});
+    });
+
+    res.status(201).json(
+      serializeAssessment({
+        ...assessment,
+        studentName: student?.name ?? "Unknown",
+        courseName: course?.name ?? "Unknown",
+        deletedAt: null,
+      }),
+    );
+  },
+);
 
 // ── GET /api/assessments/:id ─────────────────────────────────────────────────
 
-router.get("/assessments/:id", async (req, res): Promise<void> => {
-  const scope = buildScopeContext(req.session as ClassmateSession);
+// Layer 1: only admin and teacher may access assessment detail.
+router.get(
+  "/assessments/:id",
+  requireRole("admin", "teacher"),
+  async (req, res): Promise<void> => {
+    const scope = buildScopeContext(req.session as ClassmateSession);
 
-  const params = GetAssessmentParams.safeParse(req.params);
-  if (!params.success) {
-    res.status(400).json({ error: params.error.message });
-    return;
-  }
-
-  const assessment = await getAssessmentById(params.data.id);
-  if (!assessment) {
-    res.status(404).json({ error: "Assessment not found" });
-    return;
-  }
-
-  // Layer 3: delegate ownership check to AssessmentScopePolicy.
-  // Services do not contain authorization rules — policies own that logic.
-  try {
-    assessmentPolicy.validateAccess(scope, assessment);
-  } catch (err) {
-    if (err instanceof PolicyAuthorizationError) {
-      res.status(403).json(ownershipDenied("assessment", params.data.id));
+    const params = GetAssessmentParams.safeParse(req.params);
+    if (!params.success) {
+      res.status(400).json({ error: params.error.message });
       return;
     }
-    throw err;
-  }
 
-  res.json(GetAssessmentResponse.parse(serializeAssessment(assessment)));
-});
+    const assessment = await getAssessmentById(params.data.id);
+    if (!assessment) {
+      res.status(404).json({ error: "Assessment not found" });
+      return;
+    }
+
+    // Layer 3: delegate ownership check to AssessmentScopePolicy.
+    try {
+      assessmentPolicy.validateAccess(scope, assessment);
+    } catch (err) {
+      if (err instanceof PolicyAuthorizationError) {
+        res.status(403).json(ownershipDenied("assessment", params.data.id));
+        return;
+      }
+      throw err;
+    }
+
+    res.json(GetAssessmentResponse.parse(serializeAssessment(assessment)));
+  },
+);
 
 // ── GET /api/assessments/:id/ai-suggestions ──────────────────────────────────
 
-router.get("/assessments/:id/ai-suggestions", async (req, res): Promise<void> => {
-  const scope = buildScopeContext(req.session as ClassmateSession);
+// Layer 1: AI suggestions are teacher-facing; restricted to admin and teacher.
+router.get(
+  "/assessments/:id/ai-suggestions",
+  requireRole("admin", "teacher"),
+  async (req, res): Promise<void> => {
+    const scope = buildScopeContext(req.session as ClassmateSession);
 
-  const params = GetAiSuggestionsParams.safeParse(req.params);
-  if (!params.success) {
-    res.status(400).json({ error: params.error.message });
-    return;
-  }
-
-  const assessment = await getAssessmentById(params.data.id);
-  if (!assessment) {
-    res.status(404).json({ error: "Assessment not found" });
-    return;
-  }
-
-  // Layer 3: same policy as the detail endpoint — access to AI suggestions
-  // is gated by the same student-ownership rules as the assessment itself.
-  try {
-    assessmentPolicy.validateAccess(scope, assessment);
-  } catch (err) {
-    if (err instanceof PolicyAuthorizationError) {
-      res.status(403).json(ownershipDenied("assessment", params.data.id));
+    const params = GetAiSuggestionsParams.safeParse(req.params);
+    if (!params.success) {
+      res.status(400).json({ error: params.error.message });
       return;
     }
-    throw err;
-  }
 
-  const allAssessments = await listAssessmentsForStudent(assessment.studentId);
-  const suggestions = generateAiSuggestions(allAssessments, assessment.studentName, assessment.studentId);
-  res.json(GetAiSuggestionsResponse.parse(suggestions));
-});
+    const assessment = await getAssessmentById(params.data.id);
+    if (!assessment) {
+      res.status(404).json({ error: "Assessment not found" });
+      return;
+    }
+
+    // Layer 3: same policy as the detail endpoint.
+    try {
+      assessmentPolicy.validateAccess(scope, assessment);
+    } catch (err) {
+      if (err instanceof PolicyAuthorizationError) {
+        res.status(403).json(ownershipDenied("assessment", params.data.id));
+        return;
+      }
+      throw err;
+    }
+
+    const allAssessments = await listAssessmentsForStudent(assessment.studentId);
+    const suggestions = generateAiSuggestions(
+      allAssessments,
+      assessment.studentName,
+      assessment.studentId,
+    );
+    res.json(GetAiSuggestionsResponse.parse(suggestions));
+  },
+);
 
 // ── GET /api/students/:id/ai-suggestions ─────────────────────────────────────
 
-router.get("/students/:id/ai-suggestions", async (req, res): Promise<void> => {
-  const scope = buildScopeContext(req.session as ClassmateSession);
+// Layer 1: teacher-facing AI suggestions for a student; restricted to admin and teacher.
+router.get(
+  "/students/:id/ai-suggestions",
+  requireRole("admin", "teacher"),
+  async (req, res): Promise<void> => {
+    const scope = buildScopeContext(req.session as ClassmateSession);
 
-  const params = GetStudentAiSuggestionsParams.safeParse(req.params);
-  if (!params.success) {
-    res.status(400).json({ error: params.error.message });
-    return;
-  }
-
-  // Layer 3: student-level access check via assessmentPolicy.
-  // Uses the structural { studentId } interface — the policy delegates to
-  // canAccessStudentResource which checks scope.studentId / childStudentIds.
-  try {
-    assessmentPolicy.validateAccess(scope, { studentId: params.data.id });
-  } catch (err) {
-    if (err instanceof PolicyAuthorizationError) {
-      res.status(403).json(ownershipDenied("student", params.data.id));
+    const params = GetStudentAiSuggestionsParams.safeParse(req.params);
+    if (!params.success) {
+      res.status(400).json({ error: params.error.message });
       return;
     }
-    throw err;
-  }
 
-  const [student] = await db
-    .select({ name: studentsTable.name })
-    .from(studentsTable)
-    .where(eq(studentsTable.id, params.data.id));
-  if (!student) {
-    res.status(404).json({ error: "Student not found" });
-    return;
-  }
+    // Layer 3: student-level access check via assessmentPolicy.
+    try {
+      assessmentPolicy.validateAccess(scope, { studentId: params.data.id });
+    } catch (err) {
+      if (err instanceof PolicyAuthorizationError) {
+        res.status(403).json(ownershipDenied("student", params.data.id));
+        return;
+      }
+      throw err;
+    }
 
-  const assessments = await listAssessmentsForStudent(params.data.id);
-  const suggestions = generateAiSuggestions(assessments, student.name, params.data.id);
-  res.json(GetStudentAiSuggestionsResponse.parse(suggestions));
-});
+    const [student] = await db
+      .select({ name: studentsTable.name })
+      .from(studentsTable)
+      .where(eq(studentsTable.id, params.data.id));
+    if (!student) {
+      res.status(404).json({ error: "Student not found" });
+      return;
+    }
+
+    const assessments = await listAssessmentsForStudent(params.data.id);
+    const suggestions = generateAiSuggestions(assessments, student.name, params.data.id);
+    res.json(GetStudentAiSuggestionsResponse.parse(suggestions));
+  },
+);
+
+// ── DELETE /api/assessments/:id — soft delete ─────────────────────────────────
+
+// Layer 1: only admin and teacher may delete assessments.
+router.delete(
+  "/assessments/:id",
+  requireRole("admin", "teacher"),
+  async (req, res): Promise<void> => {
+    const scope = buildScopeContext(req.session as ClassmateSession);
+
+    const params = GetAssessmentParams.safeParse(req.params);
+    if (!params.success) {
+      res.status(400).json({ error: params.error.message });
+      return;
+    }
+
+    // Pre-fetch with soft-delete guard (getAssessmentById filters isNull(deletedAt)).
+    const existing = await getAssessmentById(params.data.id);
+    if (!existing) {
+      res.status(404).json({ error: "Assessment not found" });
+      return;
+    }
+
+    // Layer 3: enforce ownership before deleting.
+    try {
+      assessmentPolicy.validateAccess(scope, existing);
+    } catch (err) {
+      if (err instanceof PolicyAuthorizationError) {
+        res.status(403).json(ownershipDenied("assessment", params.data.id));
+        return;
+      }
+      throw err;
+    }
+
+    // Soft delete — never physically remove rows.
+    await db
+      .update(assessmentsTable)
+      .set({
+        deletedAt: new Date(),
+        updatedAt: new Date(),
+        updatedBy: scope.userId,
+        deletedBy: scope.userId,
+      })
+      .where(eq(assessmentsTable.id, params.data.id));
+
+    res.status(204).send();
+  },
+);
 
 export default router;

@@ -711,6 +711,90 @@ export const useUpdateStudent = <
 };
 
 /**
+ * @summary Soft-delete a student
+ */
+export const getDeleteStudentUrl = (id: number) => {
+  return `/api/students/${id}`;
+};
+
+export const deleteStudent = async (
+  id: number,
+  options?: RequestInit,
+): Promise<void> => {
+  return customFetch<void>(getDeleteStudentUrl(id), {
+    ...options,
+    method: "DELETE",
+  });
+};
+
+export const getDeleteStudentMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteStudent>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof deleteStudent>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  const mutationKey = ["deleteStudent"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof deleteStudent>>,
+    { id: number }
+  > = (props) => {
+    const { id } = props ?? {};
+
+    return deleteStudent(id, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type DeleteStudentMutationResult = NonNullable<
+  Awaited<ReturnType<typeof deleteStudent>>
+>;
+
+export type DeleteStudentMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Soft-delete a student
+ */
+export const useDeleteStudent = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteStudent>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof deleteStudent>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  return useMutation(getDeleteStudentMutationOptions(options));
+};
+
+/**
  * @summary Get student progress summary
  */
 export const getGetStudentProgressUrl = (id: number) => {
@@ -1739,6 +1823,90 @@ export const useUpdateAssignment = <
 };
 
 /**
+ * @summary Soft-delete an assignment
+ */
+export const getDeleteAssignmentUrl = (id: number) => {
+  return `/api/assignments/${id}`;
+};
+
+export const deleteAssignment = async (
+  id: number,
+  options?: RequestInit,
+): Promise<void> => {
+  return customFetch<void>(getDeleteAssignmentUrl(id), {
+    ...options,
+    method: "DELETE",
+  });
+};
+
+export const getDeleteAssignmentMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteAssignment>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof deleteAssignment>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  const mutationKey = ["deleteAssignment"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof deleteAssignment>>,
+    { id: number }
+  > = (props) => {
+    const { id } = props ?? {};
+
+    return deleteAssignment(id, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type DeleteAssignmentMutationResult = NonNullable<
+  Awaited<ReturnType<typeof deleteAssignment>>
+>;
+
+export type DeleteAssignmentMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Soft-delete an assignment
+ */
+export const useDeleteAssignment = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteAssignment>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof deleteAssignment>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  return useMutation(getDeleteAssignmentMutationOptions(options));
+};
+
+/**
  * @summary List lesson notes/topics
  */
 export const getListNotesUrl = (params?: ListNotesParams) => {
@@ -2080,6 +2248,90 @@ export const useUpdateNote = <
   TContext
 > => {
   return useMutation(getUpdateNoteMutationOptions(options));
+};
+
+/**
+ * @summary Soft-delete a lesson note
+ */
+export const getDeleteNoteUrl = (id: number) => {
+  return `/api/notes/${id}`;
+};
+
+export const deleteNote = async (
+  id: number,
+  options?: RequestInit,
+): Promise<void> => {
+  return customFetch<void>(getDeleteNoteUrl(id), {
+    ...options,
+    method: "DELETE",
+  });
+};
+
+export const getDeleteNoteMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteNote>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof deleteNote>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  const mutationKey = ["deleteNote"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof deleteNote>>,
+    { id: number }
+  > = (props) => {
+    const { id } = props ?? {};
+
+    return deleteNote(id, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type DeleteNoteMutationResult = NonNullable<
+  Awaited<ReturnType<typeof deleteNote>>
+>;
+
+export type DeleteNoteMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Soft-delete a lesson note
+ */
+export const useDeleteNote = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteNote>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof deleteNote>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  return useMutation(getDeleteNoteMutationOptions(options));
 };
 
 /**
@@ -2440,6 +2692,90 @@ export const useUpdateAnnouncement = <
 };
 
 /**
+ * @summary Soft-delete an announcement
+ */
+export const getDeleteAnnouncementUrl = (id: number) => {
+  return `/api/announcements/${id}`;
+};
+
+export const deleteAnnouncement = async (
+  id: number,
+  options?: RequestInit,
+): Promise<void> => {
+  return customFetch<void>(getDeleteAnnouncementUrl(id), {
+    ...options,
+    method: "DELETE",
+  });
+};
+
+export const getDeleteAnnouncementMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteAnnouncement>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof deleteAnnouncement>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  const mutationKey = ["deleteAnnouncement"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof deleteAnnouncement>>,
+    { id: number }
+  > = (props) => {
+    const { id } = props ?? {};
+
+    return deleteAnnouncement(id, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type DeleteAnnouncementMutationResult = NonNullable<
+  Awaited<ReturnType<typeof deleteAnnouncement>>
+>;
+
+export type DeleteAnnouncementMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Soft-delete an announcement
+ */
+export const useDeleteAnnouncement = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteAnnouncement>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof deleteAnnouncement>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  return useMutation(getDeleteAnnouncementMutationOptions(options));
+};
+
+/**
  * @summary List assessments
  */
 export const getListAssessmentsUrl = (params?: ListAssessmentsParams) => {
@@ -2705,6 +3041,90 @@ export function useGetAssessment<
 
   return { ...query, queryKey: queryOptions.queryKey };
 }
+
+/**
+ * @summary Soft-delete an assessment
+ */
+export const getDeleteAssessmentUrl = (id: number) => {
+  return `/api/assessments/${id}`;
+};
+
+export const deleteAssessment = async (
+  id: number,
+  options?: RequestInit,
+): Promise<void> => {
+  return customFetch<void>(getDeleteAssessmentUrl(id), {
+    ...options,
+    method: "DELETE",
+  });
+};
+
+export const getDeleteAssessmentMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteAssessment>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof deleteAssessment>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  const mutationKey = ["deleteAssessment"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof deleteAssessment>>,
+    { id: number }
+  > = (props) => {
+    const { id } = props ?? {};
+
+    return deleteAssessment(id, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type DeleteAssessmentMutationResult = NonNullable<
+  Awaited<ReturnType<typeof deleteAssessment>>
+>;
+
+export type DeleteAssessmentMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Soft-delete an assessment
+ */
+export const useDeleteAssessment = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteAssessment>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof deleteAssessment>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  return useMutation(getDeleteAssessmentMutationOptions(options));
+};
 
 /**
  * @summary Get AI-powered improvement suggestions for a student based on assessment

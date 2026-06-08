@@ -180,6 +180,19 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Student"
+    delete:
+      operationId: deleteStudent
+      tags: [students]
+      summary: Soft-delete a student
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: No Content
 
   /students/{id}/progress:
     get:
@@ -427,6 +440,19 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Assignment"
+    delete:
+      operationId: deleteAssignment
+      tags: [assignments]
+      summary: Soft-delete an assignment
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: No Content
 
   # ---- NOTES / LESSONS ----
   /notes:
@@ -508,6 +534,19 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Note"
+    delete:
+      operationId: deleteNote
+      tags: [notes]
+      summary: Soft-delete a lesson note
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: No Content
 
   # ---- ANNOUNCEMENTS ----
   /announcements:
@@ -589,6 +628,19 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Announcement"
+    delete:
+      operationId: deleteAnnouncement
+      tags: [announcements]
+      summary: Soft-delete an announcement
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: No Content
 
   # ---- ASSESSMENTS ----
   /assessments:
@@ -652,6 +704,19 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Assessment"
+    delete:
+      operationId: deleteAssessment
+      tags: [assessments]
+      summary: Soft-delete an assessment
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: No Content
 
   /assessments/{id}/ai-suggestions:
     get:

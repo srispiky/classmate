@@ -1,0 +1,257 @@
+# Sprint 6A — Security Hardening and Production Launch Blockers
+
+## Objective
+
+Address all known production-blocking security and architecture findings identified during the Functional Gap Analysis.
+
+No new business features should be introduced.
+
+The goal is to eliminate launch blockers and prepare the platform for pilot deployment.
+
+---
+
+## Security Findings to Address
+
+### SEC-001
+
+Protect Student Management endpoints.
+
+Apply:
+
+```ts
+requireRole("admin", "teacher")
+```
+
+to:
+
+* GET /students
+* POST /students
+* GET /students/:id
+* PATCH /students/:id
+* GET /students/:id/progress
+* GET /students/:id/ai-suggestions
+
+---
+
+### SEC-002
+
+Protect Assignment Management endpoints.
+
+Apply:
+
+```ts
+requireRole("admin", "teacher")
+```
+
+to all assignment CRUD routes.
+
+Validate that students cannot:
+
+* create assignments
+* modify assignments
+* grade assignments
+
+---
+
+### SEC-003
+
+Protect Assessment Management endpoints.
+
+Apply:
+
+```ts
+requireRole("admin", "teacher")
+```
+
+to all assessment CRUD routes.
+
+Validate that students cannot create assessments.
+
+---
+
+### SEC-004
+
+Protect Announcement Management endpoints.
+
+Apply:
+
+```ts
+requireRole("admin", "teacher")
+```
+
+to all announcement CRUD routes.
+
+---
+
+### SEC-005
+
+Protect Notes Management endpoints.
+
+Apply:
+
+```ts
+requireRole("admin", "teacher")
+```
+
+to all notes CRUD routes.
+
+---
+
+### SEC-010
+
+Protect teacher/admin dashboard endpoints.
+
+Apply:
+
+```ts
+requireRole("admin", "teacher")
+```
+
+to all dashboard routes exposing class-wide statistics.
+
+---
+
+## Teacher Ownership Enforcement
+
+Review course update/delete operations.
+
+Implement ownership validation:
+
+* Admin = full access
+* Teacher = only owned courses
+
+Use existing ownership patterns:
+
+* ScopeContext
+* CourseScopePolicy
+* TeacherScopeValidator
+
+No ownership logic in controllers or repositories.
+
+---
+
+## Soft Delete Consistency
+
+Review all repositories.
+
+Ensure:
+
+```sql
+deleted_at IS NULL
+```
+
+is consistently applied to:
+
+* assignments
+* assessments
+* announcements
+* notes
+* students (if soft delete is introduced)
+
+Validate list and detail endpoints.
+
+---
+
+## Audit Field Population
+
+Review POST/PATCH/DELETE flows.
+
+Populate:
+
+* created_by
+* updated_by
+* deleted_by
+
+using authenticated session identity.
+
+Ensure consistency across all resources.
+
+---
+
+## Enrollment Source-of-Truth Review
+
+Review:
+
+* students.enrolledCourseIds
+* course_enrollments
+
+Determine authoritative source.
+
+Target architecture:
+
+course_enrollments is the only source of truth.
+
+Prepare migration plan.
+
+Do not introduce breaking changes without migration strategy.
+
+---
+
+## Missing DELETE Endpoints
+
+Implement soft-delete endpoints:
+
+* DELETE /students/:id
+* DELETE /assignments/:id
+* DELETE /assessments/:id
+* DELETE /announcements/:id
+* DELETE /notes/:id
+
+Requirements:
+
+* soft delete only
+* deleted_at populated
+* deleted_by populated
+* ownership validation preserved
+
+---
+
+## Testing Requirements
+
+Add regression tests covering:
+
+### Authorization
+
+* unauthorized role access
+* student access attempts
+* parent access attempts
+
+### Ownership
+
+* teacher ownership validation
+* cross-course modification attempts
+
+### Soft Deletes
+
+* deleted records excluded
+
+### Audit
+
+* created_by written
+* updated_by written
+* deleted_by written
+
+### Security
+
+* IDOR attempts
+* privilege escalation attempts
+
+---
+
+## Validation Checklist
+
+Must pass:
+
+* npm run lint
+* npm run typecheck
+* npm run test
+* npm run build
+
+Expected Outcome:
+
+* All identified launch-blocking security findings resolved
+* Teacher ownership enforced
+* Audit fields populated
+* Soft-delete consistency achieved
+* Production launch blockers removed
+* Platform ready for Sprint 6B feature completion

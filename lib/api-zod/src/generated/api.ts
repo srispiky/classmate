@@ -112,6 +112,13 @@ export const UpdateStudentResponse = zod.object({
 });
 
 /**
+ * @summary Soft-delete a student
+ */
+export const DeleteStudentParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+/**
  * @summary Get student progress summary
  */
 export const GetStudentProgressParams = zod.object({
@@ -345,6 +352,13 @@ export const UpdateAssignmentResponse = zod.object({
 });
 
 /**
+ * @summary Soft-delete an assignment
+ */
+export const DeleteAssignmentParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+/**
  * @summary List lesson notes/topics
  */
 export const ListNotesQueryParams = zod.object({
@@ -424,6 +438,13 @@ export const UpdateNoteResponse = zod.object({
   updatedAt: zod.string().optional(),
   createdBy: zod.number().nullish(),
   updatedBy: zod.number().nullish(),
+});
+
+/**
+ * @summary Soft-delete a lesson note
+ */
+export const DeleteNoteParams = zod.object({
+  id: zod.coerce.number(),
 });
 
 /**
@@ -511,6 +532,13 @@ export const UpdateAnnouncementResponse = zod.object({
 });
 
 /**
+ * @summary Soft-delete an announcement
+ */
+export const DeleteAnnouncementParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+/**
  * @summary List assessments
  */
 export const ListAssessmentsQueryParams = zod.object({
@@ -573,6 +601,13 @@ export const GetAssessmentResponse = zod.object({
   updatedAt: zod.string().optional(),
   createdBy: zod.number().nullish(),
   updatedBy: zod.number().nullish(),
+});
+
+/**
+ * @summary Soft-delete an assessment
+ */
+export const DeleteAssessmentParams = zod.object({
+  id: zod.coerce.number(),
 });
 
 /**
