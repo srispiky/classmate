@@ -1,0 +1,199 @@
+Classmate Connect
+
+Phase 2 – Sprint 5
+
+Chunk 7 Review and Closure
+
+# Objective
+
+Determine whether Sprint 5 Chunk 7 (Student Notes) has been fully implemented, tested, and is ready for closure.
+
+Do not implement new functionality.
+
+Perform an architecture and implementation review only.
+
+# Background
+
+Chunk 7 was intended to introduce student note access.
+
+Expected scope:
+
+* student note list endpoint
+* student note detail endpoint
+* ownership enforcement
+* OpenAPI integration
+* test coverage
+
+Before proceeding to Chunk 8, verify actual implementation status.
+
+# Review Tasks
+
+## 1. Feature Verification
+
+Determine whether the following endpoints exist:
+
+* GET /student/notes
+* GET /student/notes/{noteId}
+
+Review:
+
+* routes
+* controllers
+* services
+* repositories
+* DTOs
+* OpenAPI definitions
+
+Confirm whether student notes functionality was implemented.
+
+---
+
+## 2. DTO Review
+
+Verify existence of:
+
+* StudentNoteSummaryDto
+* StudentNoteDetailDto
+
+Report actual fields exposed.
+
+Confirm alignment with current notes schema.
+
+---
+
+## 3. Ownership Validation Review
+
+Verify:
+
+* only enrolled-course notes are visible
+* non-enrolled-course notes are inaccessible
+* IDOR attempts fail
+* soft-deleted notes are hidden
+
+Review use of:
+
+* ScopeContext
+* enrolledCourseIds
+* CourseScopePolicy
+* ownership validators
+
+Identify any ownership gaps.
+
+---
+
+## 4. Architecture Compliance Review
+
+Verify alignment with project standards.
+
+Controllers:
+
+* validation only
+* service invocation only
+* response mapping only
+
+Repositories:
+
+* data access only
+
+Services:
+
+* business logic only
+
+Policies:
+
+* authorization only
+
+Validators:
+
+* ownership decisions only
+
+Identify any deviations.
+
+---
+
+## 5. OpenAPI Review
+
+Verify:
+
+* endpoints documented
+* DTO schemas documented
+* generated clients regenerated if required
+* barrel validation passes
+* codegen stability checks pass
+
+Identify any contract drift.
+
+---
+
+## 6. Testing Review
+
+Verify tests exist for:
+
+### Authorization
+
+* authenticated student access
+* unauthorized access denied
+
+### Ownership
+
+* enrolled-course note visibility
+* non-enrolled-course note protection
+* IDOR protection
+
+### Soft Delete
+
+* deleted notes hidden
+
+Report actual coverage.
+
+---
+
+## 7. Build and Regression Review
+
+Verify:
+
+* backend build passes
+* frontend build passes
+* typecheck passes
+* tests pass
+
+Provide latest counts.
+
+# Deliverables
+
+Provide:
+
+1. Chunk 7 implementation status
+
+   * COMPLETE
+   * COMPLETE WITH RISKS
+   * INCOMPLETE
+   * NOT STARTED
+
+2. Features implemented
+
+3. Features missing
+
+4. Files created
+
+5. Files modified
+
+6. Test coverage summary
+
+7. Security review
+
+8. Architecture compliance review
+
+9. OpenAPI review
+
+10. Remaining risks
+
+# Final Decision
+
+Provide a formal recommendation:
+
+* GO to Chunk 8 (Dashboard Aggregation Enhancements)
+* COMPLETE Chunk 7 first
+* Additional remediation required
+
+Explain the reasoning for the recommendation.
