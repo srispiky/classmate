@@ -355,6 +355,22 @@ export interface GradeBreakdown {
   fCount: number;
 }
 
+export interface StudentAssignmentSummary {
+  assignmentId: number;
+  courseId: number;
+  title: string;
+  status: string;
+  dueDate: string;
+  score?: number | null;
+  maxScore: number;
+}
+
+export type StudentAssignmentDetail = StudentAssignmentSummary & {
+  description: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
 export interface StudentCourseWorkspace {
   courseId: number;
   title: string;

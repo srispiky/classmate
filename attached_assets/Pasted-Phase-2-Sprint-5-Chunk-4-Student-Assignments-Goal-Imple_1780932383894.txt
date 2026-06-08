@@ -1,0 +1,305 @@
+Phase 2 – Sprint 5
+
+Chunk 4 – Student Assignments
+
+# Goal
+
+Implement student assignment access.
+
+This chunk introduces assignment visibility for students and establishes assignment-level ownership enforcement.
+
+Students must only see assignments that belong to courses in which they are actively enrolled.
+
+Do not implement assignment submission workflows.
+
+Do not implement grading workflows.
+
+Do not implement assignment creation, editing, or deletion.
+
+Focus exclusively on student assignment visibility and assignment detail retrieval.
+
+# Background
+
+Completed:
+
+✓ Chunk 1 – Student Dashboard
+
+✓ Chunk 2 – Student Courses
+
+✓ Chunk 3 – Student Course Workspace
+
+Verified:
+
+* Student ownership enforcement operational
+* ScopeContext established
+* enrolledCourseIds available and tested
+* Course ownership filtering validated
+* OpenAPI synchronization complete
+* Codegen stability validated
+
+Current status:
+
+* 1067 tests passing
+* Architecture compliant
+* No known authorization debt
+
+# Architecture Rules
+
+Controllers:
+
+* validation only
+* service invocation only
+* response mapping only
+
+Repositories:
+
+* database access only
+
+Services:
+
+* business logic only
+
+Policies:
+
+* authorization only
+
+Validators:
+
+* ownership and scope decisions only
+
+Authorization logic must not be implemented in:
+
+* controllers
+* repositories
+
+Reuse existing ownership infrastructure.
+
+# Student Ownership Requirements
+
+Students may only access assignments that belong to:
+
+* actively enrolled courses
+
+Use existing:
+
+* ScopeContext
+* enrolledCourseIds
+* CourseScopePolicy
+* ownership validators
+
+Do not introduce alternate ownership models.
+
+# Endpoints
+
+Implement:
+
+## List Assignments
+
+GET /student/assignments
+
+Returns assignments visible to the authenticated student.
+
+Student must only see assignments from enrolled courses.
+
+---
+
+## Assignment Detail
+
+GET /student/assignments/{assignmentId}
+
+Returns assignment details.
+
+Access must be denied when:
+
+* assignment does not exist
+* assignment belongs to a non-enrolled course
+* assignment is soft deleted
+
+# Response Requirements
+
+Assignment List
+
+Return:
+
+* assignmentId
+* courseId
+* title
+* status
+* dueDate
+* score
+* maxScore
+
+Assignment Detail
+
+Return:
+
+* assignmentId
+* courseId
+* title
+* description
+* status
+* dueDate
+* score
+* maxScore
+* createdAt
+* updatedAt
+
+Use existing DTO conventions.
+
+# Tasks
+
+## 1. DTO Design
+
+Create:
+
+* StudentAssignmentSummaryDto
+* StudentAssignmentDetailDto
+
+Ensure OpenAPI compatibility.
+
+---
+
+## 2. Repository Layer
+
+Implement student-scoped assignment queries.
+
+Requirements:
+
+* ownership-aware
+* course-scoped
+* soft-delete aware
+* avoid N+1 queries
+
+Use enrolledCourseIds filtering.
+
+---
+
+## 3. Service Layer
+
+Create StudentAssignmentService.
+
+Responsibilities:
+
+* retrieve visible assignments
+* retrieve assignment details
+* coordinate repositories
+* apply business rules
+
+No SQL in services.
+
+---
+
+## 4. Controller Layer
+
+Implement assignment endpoints.
+
+Responsibilities:
+
+* validation
+* service invocation
+* response mapping
+
+No ownership logic.
+
+---
+
+## 5. Authorization Validation
+
+Verify:
+
+* student can access assignments from enrolled courses
+* student cannot access assignments from non-enrolled courses
+* direct ID enumeration attempts fail
+* unauthorized roles denied
+
+Reuse existing authorization middleware.
+
+---
+
+## 6. OpenAPI Integration
+
+Update:
+
+* endpoint definitions
+* DTO schemas
+* response schemas
+* status codes
+
+Regenerate generated artifacts if required.
+
+Verify:
+
+* barrel validation passes
+* codegen validation passes
+* generated clients compile
+
+---
+
+## 7. Testing
+
+Add tests covering:
+
+### Authorization
+
+* authenticated student access
+* unauthorized access denied
+* role validation
+
+### Ownership
+
+* enrolled-course assignment visible
+* non-enrolled-course assignment blocked
+* IDOR protection verified
+
+### Soft Delete
+
+* deleted assignments hidden
+
+### Regression
+
+Verify all existing tests remain green.
+
+# Deliverables
+
+Provide:
+
+1. Files created
+2. Files modified
+3. DTO definitions
+4. Repository implementation
+5. Service implementation
+6. Endpoint details
+7. OpenAPI updates
+8. Test coverage summary
+9. Performance considerations
+
+# Acceptance Criteria
+
+1. Assignment list endpoint implemented
+2. Assignment detail endpoint implemented
+3. Only enrolled-course assignments visible
+4. Soft-deleted assignments hidden
+5. Ownership enforcement verified
+6. OpenAPI updated
+7. Generated clients compile
+8. Existing tests remain green
+9. No authorization regressions introduced
+
+# Final Output
+
+Provide:
+
+* implementation summary
+* architecture compliance review
+* security review
+* performance review
+* test results
+
+Provide a formal:
+
+GO / NO-GO
+
+recommendation for:
+
+Sprint 5 – Chunk 5
+Student Assessments

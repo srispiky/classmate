@@ -44,6 +44,8 @@ import type {
   Logout200,
   Note,
   Student,
+  StudentAssignmentDetail,
+  StudentAssignmentSummary,
   StudentCourseDetail,
   StudentCourseSummary,
   StudentCourseWorkspace,
@@ -2866,6 +2868,179 @@ export function useGetStudentAiSuggestions<
   },
 ): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
   const queryOptions = getGetStudentAiSuggestionsQueryOptions(id, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary List all assignments visible to the authenticated student
+ */
+export const getGetStudentAssignmentsUrl = () => {
+  return `/api/student/assignments`;
+};
+
+export const getStudentAssignments = async (
+  options?: RequestInit,
+): Promise<StudentAssignmentSummary[]> => {
+  return customFetch<StudentAssignmentSummary[]>(
+    getGetStudentAssignmentsUrl(),
+    {
+      ...options,
+      method: "GET",
+    },
+  );
+};
+
+export const getGetStudentAssignmentsQueryKey = () => {
+  return [`/api/student/assignments`] as const;
+};
+
+export const getGetStudentAssignmentsQueryOptions = <
+  TData = Awaited<ReturnType<typeof getStudentAssignments>>,
+  TError = ErrorType<void>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getStudentAssignments>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetStudentAssignmentsQueryKey();
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getStudentAssignments>>
+  > = ({ signal }) => getStudentAssignments({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getStudentAssignments>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetStudentAssignmentsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getStudentAssignments>>
+>;
+export type GetStudentAssignmentsQueryError = ErrorType<void>;
+
+/**
+ * @summary List all assignments visible to the authenticated student
+ */
+
+export function useGetStudentAssignments<
+  TData = Awaited<ReturnType<typeof getStudentAssignments>>,
+  TError = ErrorType<void>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getStudentAssignments>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetStudentAssignmentsQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Get assignment detail for the authenticated student
+ */
+export const getGetStudentAssignmentUrl = (assignmentId: number) => {
+  return `/api/student/assignments/${assignmentId}`;
+};
+
+export const getStudentAssignment = async (
+  assignmentId: number,
+  options?: RequestInit,
+): Promise<StudentAssignmentDetail> => {
+  return customFetch<StudentAssignmentDetail>(
+    getGetStudentAssignmentUrl(assignmentId),
+    {
+      ...options,
+      method: "GET",
+    },
+  );
+};
+
+export const getGetStudentAssignmentQueryKey = (assignmentId: number) => {
+  return [`/api/student/assignments/${assignmentId}`] as const;
+};
+
+export const getGetStudentAssignmentQueryOptions = <
+  TData = Awaited<ReturnType<typeof getStudentAssignment>>,
+  TError = ErrorType<void>,
+>(
+  assignmentId: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getStudentAssignment>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getGetStudentAssignmentQueryKey(assignmentId);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getStudentAssignment>>
+  > = ({ signal }) =>
+    getStudentAssignment(assignmentId, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!assignmentId,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof getStudentAssignment>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetStudentAssignmentQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getStudentAssignment>>
+>;
+export type GetStudentAssignmentQueryError = ErrorType<void>;
+
+/**
+ * @summary Get assignment detail for the authenticated student
+ */
+
+export function useGetStudentAssignment<
+  TData = Awaited<ReturnType<typeof getStudentAssignment>>,
+  TError = ErrorType<void>,
+>(
+  assignmentId: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getStudentAssignment>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetStudentAssignmentQueryOptions(
+    assignmentId,
+    options,
+  );
 
   const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
     queryKey: QueryKey;

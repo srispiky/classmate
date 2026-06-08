@@ -40,6 +40,8 @@ export * from "./loginBody";
 export * from "./logout200";
 export * from "./note";
 export * from "./student";
+export * from "./studentAssignmentDetail";
+export * from "./studentAssignmentSummary";
 export * from "./studentCourseDetail";
 export * from "./studentCourseSummary";
 export * from "./studentCourseSummaryEnrollmentStatus";

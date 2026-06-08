@@ -692,6 +692,52 @@ paths:
                 $ref: "#/components/schemas/AiSuggestions"
 
   # ---- STUDENT PORTAL ----
+  /student/assignments:
+    get:
+      operationId: getStudentAssignments
+      tags: [students]
+      summary: List all assignments visible to the authenticated student
+      responses:
+        "200":
+          description: Assignment list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/StudentAssignmentSummary"
+        "401":
+          description: Not authenticated
+        "403":
+          description: Access denied — caller is not a student
+
+  /student/assignments/{assignmentId}:
+    get:
+      operationId: getStudentAssignment
+      tags: [students]
+      summary: Get assignment detail for the authenticated student
+      parameters:
+        - in: path
+          name: assignmentId
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Assignment detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StudentAssignmentDetail"
+        "400":
+          description: Invalid assignment ID format
+        "401":
+          description: Not authenticated
+        "403":
+          description: Access denied — caller is not a student
+        "404":
+          description: Assignment not found or student not enrolled in the course
+
   /student/courses:
     get:
       operationId: getStudentCourses
@@ -1382,6 +1428,50 @@ components:
         fCount:
           type: integer
       required: [courseName, courseId, averageScore, aCount, bCount, cCount, dCount, fCount]
+
+    StudentAssignmentSummary:
+      type: object
+      properties:
+        assignmentId:
+          type: integer
+        courseId:
+          type: integer
+        title:
+          type: string
+        status:
+          type: string
+        dueDate:
+          type: string
+        score:
+          type: number
+          nullable: true
+        maxScore:
+          type: number
+      required:
+        - assignmentId
+        - courseId
+        - title
+        - status
+        - dueDate
+        - maxScore
+
+    StudentAssignmentDetail:
+      allOf:
+        - $ref: "#/components/schemas/StudentAssignmentSummary"
+        - type: object
+          properties:
+            description:
+              type: string
+            createdAt:
+              type: string
+              format: date-time
+            updatedAt:
+              type: string
+              format: date-time
+          required:
+            - description
+            - createdAt
+            - updatedAt
 
     StudentCourseWorkspace:
       type: object
