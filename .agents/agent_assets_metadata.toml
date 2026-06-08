@@ -60,3 +60,9 @@ id = "rH8X7XCXVCHDqREn3oyg4"
 uri = "file://docs/chunk-0b-review-closure.md"
 type = "text"
 title = "Chunk 0B Review & Closure — AB-002 Audit Field Remediation"
+
+[[outputs]]
+id = "nmdxCmo3G6_gmZZNmRj-3"
+uri = "file://docs/sprint-5-audit.md"
+type = "text"
+title = "Sprint 5 Progress Audit"
