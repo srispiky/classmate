@@ -84,3 +84,9 @@ id = "0HHGd4aeeZLPYpDeTpW-E"
 uri = "file://docs/production-readiness-reassessment.md"
 type = "text"
 title = "Production Readiness Reassessment Report"
+
+[[outputs]]
+id = "2K_2RIP4dzPtAUwYGbLoh"
+uri = "file://docs/security-remediation-verification.md"
+type = "text"
+title = "Security Remediation Verification Report"
