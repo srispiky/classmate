@@ -96,3 +96,9 @@ id = "STYg3wOel6nPdweXeL3rv"
 uri = "file://docs/sprint6-security-remediation-summary.md"
 type = "text"
 title = "Sprint 6 Security Remediation Summary"
+
+[[outputs]]
+id = "Veqgv03wfy9Ec_gTMpkId"
+uri = "file://teacher-portal-readiness-audit.md"
+type = "text"
+title = "Teacher Portal Readiness Audit"
