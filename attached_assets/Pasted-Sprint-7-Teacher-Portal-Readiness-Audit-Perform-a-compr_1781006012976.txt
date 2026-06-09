@@ -1,0 +1,169 @@
+Sprint 7 — Teacher Portal Readiness Audit
+
+Perform a comprehensive source-code audit of the Teacher Portal.
+
+Objective:
+Determine whether a teacher can successfully operate the platform without administrator assistance.
+
+Inspect:
+
+* Frontend pages
+* Route protection
+* API integration
+* OpenAPI contracts
+* Backend endpoints
+* Role enforcement
+* User workflows
+
+Modules to audit:
+
+1. Course Management
+
+   * Course list page
+   * Course details page
+   * Create course UI
+   * Edit course UI
+   * Archive/delete UI
+   * Teacher ownership enforcement
+   * API integration
+
+2. Assignment Management
+
+   * Assignment list page
+   * Assignment details page
+   * Create assignment UI
+   * Edit assignment UI
+   * Delete UI
+   * Submission review UI
+   * Grading workflow
+
+3. Assessment Management
+
+   * Assessment list page
+   * Create assessment UI
+   * Edit assessment UI
+   * Delete UI
+   * Score entry workflow
+   * Verify PATCH support exists end-to-end
+
+4. Notes Management
+
+   * Notes list page
+   * Create note UI
+   * Edit note UI
+   * Delete UI
+   * Attachment handling
+
+5. Announcements Management
+
+   * Announcements page
+   * Create announcement UI
+   * Edit announcement UI
+   * Delete UI
+   * Audience targeting support
+
+6. Teacher Dashboard
+
+   * Summary cards
+   * Teacher-specific data visibility
+   * Navigation completeness
+   * Broken links
+   * Placeholder components
+   * Hardcoded data
+
+7. API Integration Audit
+   For every teacher-facing page:
+
+   * Verify real API usage
+   * Identify mock data
+   * Identify placeholder buttons
+   * Identify unimplemented actions
+   * Verify loading/error states
+
+8. Authorization Audit
+   Verify teachers:
+
+   * Can access their own resources
+   * Cannot modify resources they do not own
+   * Cannot access admin-only features
+
+9. OpenAPI Synchronization
+   Verify:
+
+   * Every teacher-facing endpoint exists in OpenAPI
+   * Generated clients are being used
+   * No manual fetches bypass generated contracts
+
+10. Workflow Simulation
+
+Simulate these end-to-end teacher journeys:
+
+Journey A:
+
+* Create course
+* Enroll students
+* Create assignment
+* Publish assignment
+
+Journey B:
+
+* Create assessment
+* Enter scores
+* Edit scores
+
+Journey C:
+
+* Create announcement
+* Create note
+* Update note
+* Delete note
+
+For each journey identify:
+
+* Complete
+* Partially Complete
+* Blocked
+
+Output format:
+
+# Teacher Portal Readiness Audit
+
+## Executive Summary
+
+## Course Management
+
+## Assignment Management
+
+## Assessment Management
+
+## Notes Management
+
+## Announcements Management
+
+## Dashboard Review
+
+## API Integration Findings
+
+## Authorization Findings
+
+## OpenAPI Findings
+
+## Workflow Simulation Results
+
+## Launch Blockers
+
+Rank blockers by:
+
+* Severity
+* Business impact
+* Estimated effort
+
+End with:
+
+TEACHER PORTAL STATUS:
+
+* READY
+* READY WITH OBSERVATIONS
+* NOT READY
+
+and provide evidence for every conclusion.
