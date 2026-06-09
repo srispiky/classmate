@@ -164,6 +164,9 @@ export const ListStudentsResponseItem = zod.object({
   avatarUrl: zod.string().nullish(),
   enrolledCourseIds: zod.array(zod.number()),
   createdAt: zod.string(),
+  updatedAt: zod.string(),
+  createdBy: zod.number().nullish(),
+  updatedBy: zod.number().nullish(),
 });
 export const ListStudentsResponse = zod.array(ListStudentsResponseItem);
 
@@ -192,6 +195,9 @@ export const GetStudentResponse = zod.object({
   avatarUrl: zod.string().nullish(),
   enrolledCourseIds: zod.array(zod.number()),
   createdAt: zod.string(),
+  updatedAt: zod.string(),
+  createdBy: zod.number().nullish(),
+  updatedBy: zod.number().nullish(),
 });
 
 /**
@@ -216,6 +222,9 @@ export const UpdateStudentResponse = zod.object({
   avatarUrl: zod.string().nullish(),
   enrolledCourseIds: zod.array(zod.number()),
   createdAt: zod.string(),
+  updatedAt: zod.string(),
+  createdBy: zod.number().nullish(),
+  updatedBy: zod.number().nullish(),
 });
 
 /**

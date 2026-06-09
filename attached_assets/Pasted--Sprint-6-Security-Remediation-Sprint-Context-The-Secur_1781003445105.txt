@@ -1,0 +1,369 @@
+# Sprint 6 — Security Remediation Sprint
+
+## Context
+
+The Security Remediation Verification Audit failed.
+
+The following findings remain OPEN and block pilot deployment.
+
+### S-01
+
+Admin routes exposed to all authenticated users.
+
+Affected endpoints:
+
+* GET /admin/db-status
+* POST /admin/test-db
+
+Current state:
+
+* protected only by requireAuth
+* no requireRole("admin")
+* Settings page exposes functionality to all users
+
+Severity:
+
+CRITICAL
+
+---
+
+### S-02
+
+Student ownership enforcement missing.
+
+Affected routes:
+
+* GET /students
+* GET /students/:id
+* PATCH /students/:id
+* DELETE /students/:id
+* GET /students/:id/progress
+
+Current state:
+
+Teachers can access students outside their ownership scope.
+
+Severity:
+
+HIGH
+
+---
+
+### AF-01
+
+Student creation does not populate createdBy.
+
+Severity:
+
+MEDIUM
+
+---
+
+### AF-02
+
+Student updates do not populate audit fields.
+
+Severity:
+
+MEDIUM
+
+---
+
+# Objective
+
+Fully remediate all findings.
+
+Follow existing architecture patterns already used successfully in:
+
+* courses
+* assignments
+* assessments
+* announcements
+* notes
+
+Do not invent a new authorization model.
+
+Reuse existing patterns.
+
+---
+
+# Task 1
+
+Admin Route Hardening
+
+## Backend
+
+Protect:
+
+```ts
+GET  /admin/db-status
+POST /admin/test-db
+```
+
+Requirements:
+
+```ts
+requireAuth()
+requireRole("admin")
+```
+
+Verify middleware order.
+
+---
+
+## Frontend
+
+Review:
+
+Settings page
+
+Requirements:
+
+* admin-only visibility
+* admin-only navigation
+* non-admin redirect
+* direct URL access blocked
+
+A teacher, student, parent, or guest must never see database diagnostic tooling.
+
+---
+
+# Task 2
+
+Student Ownership Enforcement
+
+Implement the full 3-layer model.
+
+---
+
+## Layer 1
+
+Existing:
+
+```ts
+requireRole("admin","teacher")
+```
+
+Retain.
+
+---
+
+## Layer 2
+
+Implement scope-aware filtering for:
+
+```ts
+GET /students
+```
+
+Teachers should only receive students they teach.
+
+Admins receive all students.
+
+Use existing ScopeContext patterns.
+
+---
+
+## Layer 3
+
+Implement ownership validation for:
+
+```ts
+GET    /students/:id
+PATCH  /students/:id
+DELETE /students/:id
+GET    /students/:id/progress
+```
+
+Requirements:
+
+Teacher:
+
+* may access own students only
+
+Admin:
+
+* global access
+
+Reuse existing policy architecture.
+
+If a StudentScopePolicy does not exist:
+
+Create one.
+
+Do not place authorization logic inside controllers.
+
+Do not place authorization logic inside repositories.
+
+---
+
+# Task 3
+
+Student Audit Compliance
+
+Review:
+
+POST /students
+
+Requirement:
+
+```ts
+createdBy
+createdAt
+```
+
+must be populated.
+
+---
+
+Review:
+
+PATCH /students/:id
+
+Requirement:
+
+```ts
+updatedBy
+updatedAt
+```
+
+must be populated.
+
+If schema lacks fields:
+
+Create migration.
+
+Update OpenAPI.
+
+Update DTOs.
+
+Regenerate client.
+
+---
+
+# Task 4
+
+Regression Tests
+
+Add tests.
+
+---
+
+## Admin Security
+
+Verify:
+
+* admin allowed
+* teacher denied
+* student denied
+* parent denied
+
+For:
+
+```ts
+GET /admin/db-status
+POST /admin/test-db
+```
+
+---
+
+## Student Ownership
+
+Create:
+
+Teacher A
+
+Teacher B
+
+Student A
+
+Student B
+
+Enrollment relationships.
+
+Verify:
+
+Teacher A:
+
+* can access Student A
+
+Teacher A:
+
+* cannot access Student B
+
+For:
+
+```ts
+GET /students
+GET /students/:id
+PATCH /students/:id
+DELETE /students/:id
+GET /students/:id/progress
+```
+
+---
+
+## Admin Override
+
+Verify:
+
+Admin can access all students.
+
+---
+
+# Task 5
+
+Architecture Verification
+
+Confirm:
+
+Authorization remains only in:
+
+* policies
+* validators
+
+Not:
+
+* controllers
+* repositories
+
+Confirm consistency with:
+
+* CourseScopePolicy
+* AssignmentScopePolicy
+* AssessmentScopePolicy
+
+---
+
+# Deliverable
+
+Provide:
+
+## Remediation Summary
+
+## Files Modified
+
+## Security Verification
+
+## Architecture Review
+
+## OpenAPI Changes
+
+## Migration Details
+
+## Test Results
+
+Include:
+
+PASS / FAIL
+
+for:
+
+* S-01
+* S-02
+* AF-01
+* AF-02
+
+Expected outcome:
+
+All launch-blocking security findings closed.

@@ -128,6 +128,37 @@ export function mixedResourceScopeFilter(
 }
 
 /**
+ * WHERE clause for the students table list endpoint.
+ *
+ * Teachers are restricted to students enrolled in at least one of their owned courses.
+ * Uses a correlated subquery against course_enrollments (no session cache for student IDs).
+ *
+ * | Role    | Condition                                                              |
+ * |---------|------------------------------------------------------------------------|
+ * | admin   | undefined — no filter, full table visible                              |
+ * | teacher | students.id IN (SELECT student_id FROM course_enrollments              |
+ * |         |   WHERE course_id = ANY(ownedCourseIds) AND is_active = true)          |
+ * |         |   — or SQL_FALSE if teacher owns no courses                            |
+ * | other   | SQL_FALSE                                                              |
+ *
+ * @param studentIdColumn - The primary key column of the students table.
+ * @param ownedCourseIds  - The teacher's owned course IDs from scope.
+ */
+export function teacherStudentEnrollmentFilter(
+  studentIdColumn: Column,
+  ownedCourseIds: number[],
+): SQL {
+  if (ownedCourseIds.length === 0) return SQL_FALSE;
+  const idsLiteral = ownedCourseIds.map(String).join(",");
+  return sql`${studentIdColumn} IN (
+    SELECT DISTINCT ce.student_id
+    FROM course_enrollments ce
+    WHERE ce.course_id = ANY(ARRAY[${sql.raw(idsLiteral)}]::integer[])
+    AND ce.is_active = true
+  )`;
+}
+
+/**
  * Low-level WHERE clause that restricts a course_id column to courses attended
  * by any of the supplied child students.
  *

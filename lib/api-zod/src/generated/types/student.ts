@@ -14,4 +14,7 @@ export interface Student {
   avatarUrl?: string | null;
   enrolledCourseIds: number[];
   createdAt: string;
+  updatedAt: string;
+  createdBy?: number | null;
+  updatedBy?: number | null;
 }

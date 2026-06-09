@@ -6,13 +6,16 @@ import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { useState } from "react";
 import { useAuth } from "@/lib/auth";
 
-const navItems = [
+const baseNavItems = [
   { href: "/", label: "Dashboard", icon: LayoutDashboard },
   { href: "/students", label: "Students", icon: Users },
   { href: "/courses", label: "Courses", icon: BookOpen },
   { href: "/assignments", label: "Assignments", icon: CheckSquare },
   { href: "/notes", label: "Notes", icon: FileText },
   { href: "/assessments", label: "Assessments", icon: BrainCircuit },
+];
+
+const adminNavItems = [
   { href: "/settings", label: "Settings", icon: Settings },
 ];
 
@@ -20,6 +23,9 @@ export function Layout({ children }: { children: React.ReactNode }) {
   const [location] = useLocation();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const { user, logout } = useAuth();
+
+  const isAdmin = user?.role === "admin";
+  const navItems = isAdmin ? [...baseNavItems, ...adminNavItems] : baseNavItems;
 
   const initials = user?.displayName
     .split(" ")

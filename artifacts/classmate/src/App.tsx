@@ -39,6 +39,10 @@ function ProtectedRouter() {
     if (!loading && user && location === "/login") {
       setLocation("/");
     }
+    // Redirect non-admins away from /settings to dashboard.
+    if (!loading && user && user.role !== "admin" && location.startsWith("/settings")) {
+      setLocation("/");
+    }
   }, [loading, user, location, setLocation]);
 
   if (loading) {
@@ -66,7 +70,7 @@ function ProtectedRouter() {
         <Route path="/notes" component={Notes} />
         <Route path="/notes/:id" component={NoteDetail} />
         <Route path="/assessments" component={Assessments} />
-        <Route path="/settings" component={Settings} />
+        {user.role === "admin" && <Route path="/settings" component={Settings} />}
         <Route component={NotFound} />
       </Switch>
     </Layout>

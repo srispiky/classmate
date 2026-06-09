@@ -1,6 +1,6 @@
-import { Router, type IRouter } from "express";
-import { eq, isNull, sql } from "drizzle-orm";
-import { db, studentsTable, assignmentsTable, assessmentsTable } from "@workspace/db";
+import { Router, type IRouter, type Response } from "express";
+import { eq, isNull, and } from "drizzle-orm";
+import { db, studentsTable, courseEnrollmentsTable, assignmentsTable, assessmentsTable } from "@workspace/db";
 import {
   CreateStudentBody,
   GetStudentParams,
@@ -14,33 +14,86 @@ import {
 } from "@workspace/api-zod";
 import { buildScopeContext, type ClassmateSession } from "../lib/scope-context";
 import { requireRole } from "../middleware/require-role";
+import { studentPolicy } from "../lib/policies/student-scope-policy";
+import { PolicyAuthorizationError } from "../lib/policies/resource-scope-policy";
 
 const router: IRouter = Router();
 
-// ── GET /api/students ─────────────────────────────────────────────────────────
+/**
+ * Fetches the active enrolled course IDs for a student from course_enrollments.
+ * Called by Layer 3 ownership checks — provides data the policy needs without
+ * making DB calls inside the policy itself.
+ */
+async function fetchStudentEnrolledCourseIds(studentId: number): Promise<number[]> {
+  const rows = await db
+    .select({ courseId: courseEnrollmentsTable.courseId })
+    .from(courseEnrollmentsTable)
+    .where(
+      and(
+        eq(courseEnrollmentsTable.studentId, studentId),
+        eq(courseEnrollmentsTable.isActive, true),
+      ),
+    );
+  return rows.map((r) => r.courseId);
+}
 
-// Layer 1: only admin and teacher may list students.
-router.get("/students", requireRole("admin", "teacher"), async (_req, res): Promise<void> => {
+/**
+ * Serializes a student DB row to a plain object ready for JSON/Zod parsing.
+ * Normalises nullable fields and converts timestamps to ISO strings.
+ */
+function serializeStudent(s: typeof studentsTable.$inferSelect) {
+  return {
+    ...s,
+    avatarUrl: s.avatarUrl ?? null,
+    createdAt: s.createdAt.toISOString(),
+    updatedAt: s.updatedAt.toISOString(),
+    createdBy: s.createdBy ?? null,
+    updatedBy: s.updatedBy ?? null,
+  };
+}
+
+/**
+ * Applies Layer 3 ownership guard and sends 403 if denied.
+ * Returns true when access is denied (caller must return early).
+ */
+async function applyLayer3Guard(
+  scope: ReturnType<typeof buildScopeContext>,
+  studentId: number,
+  res: Response,
+): Promise<boolean> {
+  const enrolledCourseIds = await fetchStudentEnrolledCourseIds(studentId);
+  try {
+    studentPolicy.validateAccess(scope, { id: studentId, enrolledCourseIds });
+    return false;
+  } catch (err) {
+    if (err instanceof PolicyAuthorizationError) {
+      res.status(403).json({ error: "Access denied" });
+      return true;
+    }
+    throw err;
+  }
+}
+
+// ── GET /api/students ─────────────────────────────────────────────────────────
+// Layer 1: admin + teacher only (requireRole).
+// Layer 2: teachers see only students enrolled in at least one of their courses.
+// Admins receive all active students (no filter).
+router.get("/students", requireRole("admin", "teacher"), async (req, res): Promise<void> => {
+  const scope = buildScopeContext(req.session as ClassmateSession);
+  const scopeCondition = studentPolicy.getScopeCondition(scope);
+
   const students = await db
     .select()
     .from(studentsTable)
-    .where(isNull(studentsTable.deletedAt))
+    .where(and(isNull(studentsTable.deletedAt), scopeCondition))
     .orderBy(studentsTable.name);
 
-  res.json(
-    ListStudentsResponse.parse(
-      students.map((s) => ({
-        ...s,
-        avatarUrl: s.avatarUrl ?? null,
-        createdAt: s.createdAt.toISOString(),
-      })),
-    ),
-  );
+  res.json(ListStudentsResponse.parse(students.map(serializeStudent)));
 });
 
 // ── POST /api/students ────────────────────────────────────────────────────────
-
-// Layer 1: only admin and teacher may create students.
+// Layer 1: admin + teacher only (requireRole).
+// Audit compliance: createdBy and updatedBy populated from session.
 router.post("/students", requireRole("admin", "teacher"), async (req, res): Promise<void> => {
   const scope = buildScopeContext(req.session as ClassmateSession);
   const parsed = CreateStudentBody.safeParse(req.body);
@@ -57,24 +110,19 @@ router.post("/students", requireRole("admin", "teacher"), async (req, res): Prom
       grade: parsed.data.grade,
       avatarUrl: parsed.data.avatarUrl ?? null,
       enrolledCourseIds: [],
+      createdBy: scope.userId,
+      updatedBy: scope.userId,
     })
     .returning();
 
-  res.status(201).json(
-    GetStudentResponse.parse({
-      ...student,
-      avatarUrl: student.avatarUrl ?? null,
-      createdAt: student.createdAt.toISOString(),
-    }),
-  );
-
-  void scope;
+  res.status(201).json(GetStudentResponse.parse(serializeStudent(student!)));
 });
 
 // ── GET /api/students/:id ─────────────────────────────────────────────────────
-
-// Layer 1: only admin and teacher may view student detail.
+// Layer 1: admin + teacher only (requireRole).
+// Layer 3: teachers may only access students enrolled in their courses.
 router.get("/students/:id", requireRole("admin", "teacher"), async (req, res): Promise<void> => {
+  const scope = buildScopeContext(req.session as ClassmateSession);
   const params = GetStudentParams.safeParse(req.params);
   if (!params.success) {
     res.status(400).json({ error: params.error.message });
@@ -91,19 +139,18 @@ router.get("/students/:id", requireRole("admin", "teacher"), async (req, res): P
     return;
   }
 
-  res.json(
-    GetStudentResponse.parse({
-      ...student,
-      avatarUrl: student.avatarUrl ?? null,
-      createdAt: student.createdAt.toISOString(),
-    }),
-  );
+  const denied = await applyLayer3Guard(scope, student.id, res);
+  if (denied) return;
+
+  res.json(GetStudentResponse.parse(serializeStudent(student)));
 });
 
 // ── PATCH /api/students/:id ───────────────────────────────────────────────────
-
-// Layer 1: only admin and teacher may update students.
+// Layer 1: admin + teacher only (requireRole).
+// Layer 3: teachers may only update their own students.
+// Audit compliance: updatedBy and updatedAt populated from session.
 router.patch("/students/:id", requireRole("admin", "teacher"), async (req, res): Promise<void> => {
+  const scope = buildScopeContext(req.session as ClassmateSession);
   const params = UpdateStudentParams.safeParse(req.params);
   if (!params.success) {
     res.status(400).json({ error: params.error.message });
@@ -116,7 +163,6 @@ router.patch("/students/:id", requireRole("admin", "teacher"), async (req, res):
     return;
   }
 
-  // Soft-delete guard: refuse to mutate a deleted student.
   const [existing] = await db
     .select({ id: studentsTable.id, deletedAt: studentsTable.deletedAt })
     .from(studentsTable)
@@ -127,9 +173,16 @@ router.patch("/students/:id", requireRole("admin", "teacher"), async (req, res):
     return;
   }
 
+  const denied = await applyLayer3Guard(scope, params.data.id, res);
+  if (denied) return;
+
   const [student] = await db
     .update(studentsTable)
-    .set(parsed.data)
+    .set({
+      ...parsed.data,
+      updatedBy: scope.userId,
+      updatedAt: new Date(),
+    })
     .where(eq(studentsTable.id, params.data.id))
     .returning();
 
@@ -138,22 +191,17 @@ router.patch("/students/:id", requireRole("admin", "teacher"), async (req, res):
     return;
   }
 
-  res.json(
-    UpdateStudentResponse.parse({
-      ...student,
-      avatarUrl: student.avatarUrl ?? null,
-      createdAt: student.createdAt.toISOString(),
-    }),
-  );
+  res.json(UpdateStudentResponse.parse(serializeStudent(student)));
 });
 
 // ── GET /api/students/:id/progress ───────────────────────────────────────────
-
-// Layer 1: only admin and teacher may view student progress.
+// Layer 1: admin + teacher only (requireRole).
+// Layer 3: teachers may only view progress for their own students.
 router.get(
   "/students/:id/progress",
   requireRole("admin", "teacher"),
   async (req, res): Promise<void> => {
+    const scope = buildScopeContext(req.session as ClassmateSession);
     const params = GetStudentProgressParams.safeParse(req.params);
     if (!params.success) {
       res.status(400).json({ error: params.error.message });
@@ -171,15 +219,13 @@ router.get(
       return;
     }
 
-    const assignments = await db
-      .select()
-      .from(assignmentsTable)
-      .where(eq(assignmentsTable.studentId, studentId));
+    const denied = await applyLayer3Guard(scope, studentId, res);
+    if (denied) return;
 
-    const assessments = await db
-      .select()
-      .from(assessmentsTable)
-      .where(eq(assessmentsTable.studentId, studentId));
+    const [assignments, assessments] = await Promise.all([
+      db.select().from(assignmentsTable).where(eq(assignmentsTable.studentId, studentId)),
+      db.select().from(assessmentsTable).where(eq(assessmentsTable.studentId, studentId)),
+    ]);
 
     const completed = assignments.filter(
       (a) => a.status === "graded" || a.status === "submitted",
@@ -202,26 +248,26 @@ router.get(
       topicsNeedingWork.push(...(assessment.weaknesses as string[]));
     }
 
-    const progress = {
-      studentId,
-      totalAssignments: assignments.length,
-      completedAssignments: completed,
-      averageScore: Math.round(avgScore * 10) / 10,
-      completionRate:
-        assignments.length > 0
-          ? Math.round((completed / assignments.length) * 100) / 100
-          : 0,
-      topicsMastered: [...new Set(topicsMastered)].slice(0, 5),
-      topicsNeedingWork: [...new Set(topicsNeedingWork)].slice(0, 5),
-    };
-
-    res.json(GetStudentProgressResponse.parse(progress));
+    res.json(
+      GetStudentProgressResponse.parse({
+        studentId,
+        totalAssignments: assignments.length,
+        completedAssignments: completed,
+        averageScore: Math.round(avgScore * 10) / 10,
+        completionRate:
+          assignments.length > 0
+            ? Math.round((completed / assignments.length) * 100) / 100
+            : 0,
+        topicsMastered: [...new Set(topicsMastered)].slice(0, 5),
+        topicsNeedingWork: [...new Set(topicsNeedingWork)].slice(0, 5),
+      }),
+    );
   },
 );
 
 // ── DELETE /api/students/:id — soft delete ────────────────────────────────────
-
-// Layer 1: only admin and teacher may delete students.
+// Layer 1: admin + teacher only (requireRole).
+// Layer 3: teachers may only delete their own students.
 router.delete(
   "/students/:id",
   requireRole("admin", "teacher"),
@@ -234,7 +280,6 @@ router.delete(
       return;
     }
 
-    // Soft-delete guard: refuse to delete an already-deleted student.
     const [existing] = await db
       .select({ id: studentsTable.id, deletedAt: studentsTable.deletedAt })
       .from(studentsTable)
@@ -245,7 +290,9 @@ router.delete(
       return;
     }
 
-    // Soft delete — never physically remove rows.
+    const denied = await applyLayer3Guard(scope, params.data.id, res);
+    if (denied) return;
+
     await db
       .update(studentsTable)
       .set({ deletedAt: new Date(), deletedBy: scope.userId })

@@ -1263,7 +1263,15 @@ components:
             type: integer
         createdAt:
           type: string
-      required: [id, name, email, grade, enrolledCourseIds, createdAt]
+        updatedAt:
+          type: string
+        createdBy:
+          type: integer
+          nullable: true
+        updatedBy:
+          type: integer
+          nullable: true
+      required: [id, name, email, grade, enrolledCourseIds, createdAt, updatedAt]
 
     CreateStudentBody:
       type: object

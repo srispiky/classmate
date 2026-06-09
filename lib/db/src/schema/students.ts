@@ -1,4 +1,5 @@
 import { pgTable, text, serial, timestamp, integer, json, uniqueIndex } from "drizzle-orm/pg-core";
+import type { AnyPgColumn } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
@@ -13,10 +14,13 @@ export const studentsTable = pgTable(
     grade: text("grade").notNull(),
     avatarUrl: text("avatar_url"),
     enrolledCourseIds: json("enrolled_course_ids").$type<number[]>().notNull().default([]),
-    userId: integer("user_id").references(() => usersTable.id, { onDelete: "set null" }),
+    userId: integer("user_id").references((): AnyPgColumn => usersTable.id, { onDelete: "set null" }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+    createdBy: integer("created_by").references((): AnyPgColumn => usersTable.id, { onDelete: "set null" }),
+    updatedBy: integer("updated_by").references((): AnyPgColumn => usersTable.id, { onDelete: "set null" }),
     deletedAt: timestamp("deleted_at", { withTimezone: true }),
-    deletedBy: integer("deleted_by").references(() => usersTable.id, { onDelete: "set null" }),
+    deletedBy: integer("deleted_by").references((): AnyPgColumn => usersTable.id, { onDelete: "set null" }),
   },
   (table) => ({
     userIdUnique: uniqueIndex("uq_students_user_id")
@@ -28,6 +32,7 @@ export const studentsTable = pgTable(
 export const insertStudentSchema = createInsertSchema(studentsTable).omit({
   id: true,
   createdAt: true,
+  updatedAt: true,
   deletedAt: true,
   deletedBy: true,
 });

@@ -1,10 +1,14 @@
 import { Router, type IRouter } from "express";
 import { pool, db, testConnection, studentsTable, coursesTable, assignmentsTable, notesTable, assessmentsTable } from "@workspace/db";
 import { sql } from "drizzle-orm";
+import { requireRole } from "../middleware/require-role";
 
 const router: IRouter = Router();
 
-router.get("/admin/db-status", async (_req, res): Promise<void> => {
+// All admin endpoints require authentication (enforced by routes/index.ts requireAuth)
+// plus admin role (enforced here at Layer 1).
+
+router.get("/admin/db-status", requireRole("admin"), async (_req, res): Promise<void> => {
   try {
     const client = await pool.connect();
     let version = "";
@@ -59,7 +63,7 @@ router.get("/admin/db-status", async (_req, res): Promise<void> => {
   }
 });
 
-router.post("/admin/test-db", async (req, res): Promise<void> => {
+router.post("/admin/test-db", requireRole("admin"), async (req, res): Promise<void> => {
   const { host, port, database, user, password } = req.body as {
     host?: string;
     port?: string;
