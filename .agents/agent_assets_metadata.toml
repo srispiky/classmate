@@ -102,3 +102,9 @@ id = "Veqgv03wfy9Ec_gTMpkId"
 uri = "file://teacher-portal-readiness-audit.md"
 type = "text"
 title = "Teacher Portal Readiness Audit"
+
+[[outputs]]
+id = "tdJIg_AVyA8Wql3QKWXJE"
+uri = "file://sprint-7-chunk-1-completion-report.md"
+type = "text"
+title = "Sprint 7 Chunk 1 — Completion Report"
