@@ -1,0 +1,98 @@
+Act as a Principal Staff Engineer and Product Readiness Auditor.
+
+Review the current codebase and produce a detailed Teacher Portal Implementation Plan.
+
+DO NOT assume the audit findings are correct.
+Verify everything directly from source code.
+
+Scope:
+- Frontend pages
+- Generated API hooks
+- OpenAPI contracts
+- Backend routes
+- Authorization policies
+- Existing UI components and patterns
+
+Objectives:
+
+1. Produce an implementation roadmap that gets the Teacher Portal from NOT READY to PILOT READY.
+
+2. Group work into implementation chunks that can be completed independently.
+
+3. For every chunk identify:
+   - Files to modify
+   - Existing hooks that can be reused
+   - Existing components that can be reused
+   - OpenAPI changes required
+   - Backend changes required
+   - Estimated complexity
+   - Regression risk
+
+4. Prioritize work by:
+   - Business impact
+   - User workflow impact
+   - Engineering effort
+
+5. Evaluate whether these items should be completed in this order:
+
+   Phase 1
+   - Course CRUD UI
+   - Enrollment UI
+
+   Phase 2
+   - Assignment CRUD UI
+   - Assignment grading workflow
+
+   Phase 3
+   - Assessment CRUD UI
+   - Add missing PATCH /assessments/:id
+
+   Phase 4
+   - Announcements module UI
+
+   Phase 5
+   - Notes CRUD UI
+
+   Phase 6
+   - Dashboard teacher-scoping
+
+6. For each phase produce:
+   - Exact deliverables
+   - Dependencies
+   - Backend readiness
+   - Frontend readiness
+   - Expected test coverage additions
+
+7. Identify any hidden blockers that would prevent implementation,
+   including:
+   - missing API contracts
+   - missing generated hooks
+   - missing reusable form components
+   - broken data models
+   - enrollment data inconsistencies
+   - authorization edge cases
+
+8. Produce a final recommended Sprint 7 execution order.
+
+Output format:
+
+# Teacher Portal Delivery Plan
+
+## Executive Summary
+
+## Phase 1
+...
+
+## Phase 2
+...
+
+## Hidden Risks
+
+## Recommended Sprint 7 Order
+
+## Pilot Readiness Projection
+
+Estimate:
+- Days to complete
+- Which phase unlocks first usable teacher workflow
+- Which phase changes Teacher Portal status from NOT READY to READY FOR PILOT
