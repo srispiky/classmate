@@ -1,18 +1,104 @@
 import { useState } from "react";
 import { Link } from "wouter";
-import { useListCourses } from "@workspace/api-client-react";
+import { useQueryClient } from "@tanstack/react-query";
+import {
+  useListCourses,
+  useCreateCourse,
+  getListCoursesQueryKey,
+  useGetMe,
+} from "@workspace/api-client-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Search, BookOpen, Users, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { useToast } from "@/hooks/use-toast";
+
+const EMPTY_FORM = {
+  name: "",
+  subject: "",
+  grade: "",
+  academicYear: "",
+  description: "",
+};
 
 export default function Courses() {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
   const { data: courses, isLoading } = useListCourses();
+  const { data: me } = useGetMe();
   const [search, setSearch] = useState("");
+  const [open, setOpen] = useState(false);
+  const [form, setForm] = useState(EMPTY_FORM);
+  const [formError, setFormError] = useState<string | null>(null);
 
-  const filteredCourses = courses?.filter(course => 
-    course.name.toLowerCase().includes(search.toLowerCase()) || 
+  const { mutate: createCourse, isPending } = useCreateCourse({
+    mutation: {
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: getListCoursesQueryKey() });
+        setOpen(false);
+        setForm(EMPTY_FORM);
+        setFormError(null);
+        toast({ title: "Course created", description: "The course has been added successfully." });
+      },
+      onError: (err: unknown) => {
+        const msg =
+          err && typeof err === "object" && "message" in err
+            ? String((err as { message: unknown }).message)
+            : "Failed to create course. Please try again.";
+        setFormError(msg);
+      },
+    },
+  });
+
+  function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setFormError(null);
+    if (!form.name.trim()) {
+      setFormError("Course name is required.");
+      return;
+    }
+    if (!form.subject.trim()) {
+      setFormError("Subject is required.");
+      return;
+    }
+    if (!form.grade.trim()) {
+      setFormError("Grade level is required.");
+      return;
+    }
+    if (!form.academicYear.trim()) {
+      setFormError("Academic year is required.");
+      return;
+    }
+    if (!me?.id) {
+      setFormError("Could not determine your user account. Please refresh and try again.");
+      return;
+    }
+    createCourse({
+      data: {
+        name: form.name.trim(),
+        subject: form.subject.trim(),
+        grade: form.grade.trim(),
+        academicYear: form.academicYear.trim(),
+        description: form.description.trim() || undefined,
+        teacherId: me.id,
+      },
+    });
+  }
+
+  const filteredCourses = courses?.filter(course =>
+    course.name.toLowerCase().includes(search.toLowerCase()) ||
     course.subject.toLowerCase().includes(search.toLowerCase()) ||
     course.teacherName.toLowerCase().includes(search.toLowerCase())
   ) || [];
@@ -24,10 +110,110 @@ export default function Courses() {
           <h1 className="text-3xl font-bold tracking-tight">Courses</h1>
           <p className="text-muted-foreground mt-1">Manage classes and course materials.</p>
         </div>
-        <Button>
-          <Plus className="mr-2 h-4 w-4" />
-          Add Course
-        </Button>
+
+        <Dialog
+          open={open}
+          onOpenChange={(next) => {
+            setOpen(next);
+            if (!next) {
+              setForm(EMPTY_FORM);
+              setFormError(null);
+            }
+          }}
+        >
+          <DialogTrigger asChild>
+            <Button>
+              <Plus className="mr-2 h-4 w-4" />
+              Add Course
+            </Button>
+          </DialogTrigger>
+
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle>Create Course</DialogTitle>
+              <DialogDescription>
+                Enter the course details below. Name, subject, grade, and academic year are required.
+              </DialogDescription>
+            </DialogHeader>
+
+            <form onSubmit={handleSubmit} className="space-y-4 py-2">
+              <div className="space-y-2">
+                <Label htmlFor="course-name">Course Name *</Label>
+                <Input
+                  id="course-name"
+                  placeholder="e.g. Introduction to Algebra"
+                  value={form.name}
+                  onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
+                  disabled={isPending}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="course-subject">Subject *</Label>
+                <Input
+                  id="course-subject"
+                  placeholder="e.g. Mathematics"
+                  value={form.subject}
+                  onChange={(e) => setForm((f) => ({ ...f, subject: e.target.value }))}
+                  disabled={isPending}
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="course-grade">Grade Level *</Label>
+                  <Input
+                    id="course-grade"
+                    placeholder="e.g. Grade 9"
+                    value={form.grade}
+                    onChange={(e) => setForm((f) => ({ ...f, grade: e.target.value }))}
+                    disabled={isPending}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="course-year">Academic Year *</Label>
+                  <Input
+                    id="course-year"
+                    placeholder="e.g. 2024–2025"
+                    value={form.academicYear}
+                    onChange={(e) => setForm((f) => ({ ...f, academicYear: e.target.value }))}
+                    disabled={isPending}
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="course-description">Description (optional)</Label>
+                <Textarea
+                  id="course-description"
+                  placeholder="Brief description of the course..."
+                  rows={3}
+                  value={form.description}
+                  onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
+                  disabled={isPending}
+                />
+              </div>
+
+              {formError && (
+                <p className="text-sm text-destructive">{formError}</p>
+              )}
+
+              <DialogFooter className="pt-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setOpen(false)}
+                  disabled={isPending}
+                >
+                  Cancel
+                </Button>
+                <Button type="submit" disabled={isPending || !me?.id}>
+                  {isPending ? "Creating…" : "Create Course"}
+                </Button>
+              </DialogFooter>
+            </form>
+          </DialogContent>
+        </Dialog>
       </div>
 
       <div className="flex items-center space-x-2">
