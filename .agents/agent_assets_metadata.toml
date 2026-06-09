@@ -108,3 +108,9 @@ id = "tdJIg_AVyA8Wql3QKWXJE"
 uri = "file://sprint-7-chunk-1-completion-report.md"
 type = "text"
 title = "Sprint 7 Chunk 1 — Completion Report"
+
+[[outputs]]
+id = "xGbadFNcx1A65o35RYw4i"
+uri = "file://sprint-7-chunk-2-completion-report.md"
+type = "text"
+title = "Sprint 7 Chunk 2 — Completion Report"

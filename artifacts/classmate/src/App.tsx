@@ -11,6 +11,7 @@ import StudentDetail from "@/pages/students/detail";
 import Courses from "@/pages/courses";
 import CourseDetail from "@/pages/courses/detail";
 import Assignments from "@/pages/assignments";
+import AssignmentDetail from "@/pages/assignments/detail";
 import Notes from "@/pages/notes";
 import NoteDetail from "@/pages/notes/detail";
 import Assessments from "@/pages/assessments";
@@ -67,6 +68,7 @@ function ProtectedRouter() {
         <Route path="/courses" component={Courses} />
         <Route path="/courses/:id" component={CourseDetail} />
         <Route path="/assignments" component={Assignments} />
+        <Route path="/assignments/:id" component={AssignmentDetail} />
         <Route path="/notes" component={Notes} />
         <Route path="/notes/:id" component={NoteDetail} />
         <Route path="/assessments" component={Assessments} />

@@ -1,0 +1,199 @@
+# Sprint 7 Chunk 2 — Assignment Management + Grading Workflow
+
+Act as a Principal Frontend Engineer working on the Classmate platform.
+
+Implement Sprint 7 Chunk 2 completely.
+
+GOAL
+
+Make Assignment Management fully usable for teachers.
+
+Before making changes:
+
+1. Review current assignment pages.
+2. Review OpenAPI-generated hooks.
+3. Reuse existing patterns established in Sprint 7 Chunk 1.
+4. Follow existing architecture, styling, query invalidation, dialog, toast, and testing conventions.
+
+Required Deliverables
+
+## Assignment List Page
+
+Enhance `/assignments` with:
+
+* Create Assignment button
+* Edit Assignment action
+* Delete Assignment action
+* Assignment detail navigation
+* Empty states
+* Loading states
+* Error states
+
+Use existing generated hooks:
+
+* useCreateAssignment
+* useUpdateAssignment
+* useDeleteAssignment
+
+---
+
+## Assignment Detail Page
+
+Create new route:
+
+`/assignments/:id`
+
+Implement:
+
+* Assignment summary
+* Course information
+* Due date
+* Status
+* Student submissions
+* Grading status indicators
+
+Add:
+
+* Edit button
+* Delete button
+* Grade Submission action
+
+---
+
+## Create Assignment Dialog
+
+Fields:
+
+* Title
+* Description
+* Course
+* Due Date
+* Status
+
+Requirements:
+
+* Client-side validation
+* Inline validation messages
+* Toast notifications
+* Query invalidation on success
+
+---
+
+## Edit Assignment Dialog
+
+Requirements:
+
+* Pre-populated values
+* Validation
+* Success/error handling
+* Query invalidation
+
+---
+
+## Delete Assignment
+
+Requirements:
+
+* AlertDialog confirmation
+* Soft delete via existing endpoint
+* Navigation back to list if currently on detail page
+
+---
+
+## Grading Workflow
+
+Current audit finding:
+
+Assignments display "Needs Grading" but teachers cannot act on it.
+
+Implement:
+
+* Grade Assignment dialog
+* Score entry
+* Feedback entry
+* Status update support
+
+Use existing backend PATCH endpoint.
+
+Teacher should be able to:
+
+* Open assignment
+* Review student submission
+* Enter score
+* Enter feedback
+* Mark graded
+
+---
+
+## Authorization Handling
+
+Gracefully handle:
+
+* 403
+* 404
+* 409
+* validation errors
+
+Do not bypass backend ownership enforcement.
+
+---
+
+## Query Management
+
+Follow Sprint 7 Chunk 1 patterns:
+
+* queryClient.setQueryData when appropriate
+* invalidateQueries after mutation success
+* immediate UI refresh after grading
+
+---
+
+## Testing
+
+Add comprehensive tests covering:
+
+Create Assignment
+Edit Assignment
+Delete Assignment
+Assignment Detail Page
+Grade Workflow
+Validation Failures
+Mutation Failures
+Cache Updates
+Query Invalidations
+Navigation
+
+Add Playwright workflow covering:
+
+1. Create assignment
+2. Open assignment detail
+3. Edit assignment
+4. Grade assignment
+5. Verify graded status updates
+6. Delete assignment
+
+---
+
+Output Format
+
+# Sprint 7 Chunk 2 Completion Report
+
+## Files Modified
+
+## Components Added
+
+## Routes Added
+
+## Hooks Used
+
+## Tests Added
+
+## Workflow Verification
+
+## Risks
+
+## Remaining Teacher Portal Gaps
+
+Do not stop at partial implementation.
+
+Complete the entire chunk before reporting.
