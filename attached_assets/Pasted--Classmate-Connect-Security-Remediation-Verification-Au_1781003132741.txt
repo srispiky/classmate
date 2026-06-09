@@ -1,0 +1,266 @@
+# Classmate Connect — Security Remediation Verification Audit
+
+## Context
+
+A production readiness reassessment identified the following launch blockers:
+
+### S-01
+
+Admin routes exposed to all authenticated users:
+
+Routes:
+
+* GET /admin/db-status
+* POST /admin/test-db
+
+Finding:
+
+* mounted behind requireAuth only
+* no requireRole("admin")
+* accessible from Settings page
+* allows database connectivity probing
+
+Severity:
+
+CRITICAL
+
+---
+
+### S-02
+
+Student Management ownership enforcement gap.
+
+Routes:
+
+* GET /students/:id
+* PATCH /students/:id
+* DELETE /students/:id
+* GET /students/:id/progress
+
+Finding:
+
+Teachers may access students outside their ownership scope.
+
+Severity:
+
+HIGH
+
+---
+
+The implementation team has completed fixes.
+
+Do not assume fixes are correct.
+
+Verify current code only.
+
+---
+
+# Objective
+
+Perform a focused security verification audit.
+
+Validate whether:
+
+* S-01 is fully remediated
+* S-02 is fully remediated
+
+---
+
+# Verification Scope
+
+Review:
+
+## Route Registration
+
+Validate:
+
+* routes/index.ts
+* admin router registration
+* student router registration
+
+Confirm:
+
+* middleware order
+* auth enforcement
+* role enforcement
+
+---
+
+## Admin Endpoint Review
+
+Inspect:
+
+* GET /admin/db-status
+* POST /admin/test-db
+
+Verify:
+
+### Authentication
+
+requireAuth
+
+### Authorization
+
+requireRole("admin")
+
+### Defense In Depth
+
+Controller-level validation
+
+### Frontend Exposure
+
+Settings page
+
+Confirm:
+
+* non-admin users cannot access
+* menu items hidden appropriately
+* direct navigation blocked
+
+Attempt logical bypass analysis.
+
+---
+
+## Student Ownership Review
+
+Inspect:
+
+* GET /students/:id
+* PATCH /students/:id
+* DELETE /students/:id
+* GET /students/:id/progress
+
+Verify full 3-layer model:
+
+### Layer 1
+
+requireRole
+
+### Layer 2
+
+query filtering
+
+### Layer 3
+
+ownership validation
+
+Confirm:
+
+* teacher can access own students
+* teacher cannot access another teacher's students
+* admin retains global access
+
+---
+
+## IDOR Analysis
+
+Attempt to identify:
+
+* direct object reference bypasses
+* missing ownership checks
+* route parameter manipulation risks
+
+Review:
+
+students
+courses
+assignments
+assessments
+announcements
+notes
+
+Determine whether similar patterns exist elsewhere.
+
+---
+
+## Regression Analysis
+
+Confirm fixes did not introduce:
+
+* duplicated authorization logic
+* controller authorization
+* repository authorization
+* architecture violations
+
+Authorization must remain in:
+
+* policies
+* validators
+
+Not:
+
+* controllers
+* repositories
+
+---
+
+## Test Coverage Review
+
+Validate:
+
+* positive ownership tests
+* negative ownership tests
+* admin access tests
+* teacher denial tests
+
+Determine whether tests would catch regression.
+
+---
+
+# Deliverable
+
+Produce:
+
+# Security Remediation Verification Report
+
+Include:
+
+## S-01 Verification
+
+PASS or FAIL
+
+Evidence
+
+---
+
+## S-02 Verification
+
+PASS or FAIL
+
+Evidence
+
+---
+
+## Additional Security Findings
+
+Any newly discovered issues.
+
+---
+
+## Authorization Architecture Review
+
+PASS or FAIL
+
+---
+
+## Regression Risk Assessment
+
+LOW
+MEDIUM
+HIGH
+
+---
+
+## Launch Security Verdict
+
+Choose exactly one:
+
+* FAIL
+* PASS WITH OBSERVATIONS
+* PASS
+
+Justify with evidence from code inspection.
+
+Do not implement code.
+
+Audit only.
