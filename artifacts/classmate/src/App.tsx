@@ -15,6 +15,7 @@ import AssignmentDetail from "@/pages/assignments/detail";
 import Notes from "@/pages/notes";
 import NoteDetail from "@/pages/notes/detail";
 import Assessments from "@/pages/assessments";
+import AssessmentDetail from "@/pages/assessments/detail";
 import StudentAi from "@/pages/students/ai";
 import Settings from "@/pages/settings";
 import Login from "@/pages/login";
@@ -72,6 +73,7 @@ function ProtectedRouter() {
         <Route path="/notes" component={Notes} />
         <Route path="/notes/:id" component={NoteDetail} />
         <Route path="/assessments" component={Assessments} />
+        <Route path="/assessments/:id" component={AssessmentDetail} />
         {user.role === "admin" && <Route path="/settings" component={Settings} />}
         <Route component={NotFound} />
       </Switch>

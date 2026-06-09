@@ -23,6 +23,7 @@ import type {
   AnnouncementInput,
   AnnouncementUpdate,
   Assessment,
+  AssessmentUpdate,
   Assignment,
   AuthUser,
   Course,
@@ -3450,6 +3451,93 @@ export function useGetAssessment<
 
   return { ...query, queryKey: queryOptions.queryKey };
 }
+
+/**
+ * @summary Update an assessment (score, title, strengths, weaknesses)
+ */
+export const getUpdateAssessmentUrl = (id: number) => {
+  return `/api/assessments/${id}`;
+};
+
+export const updateAssessment = async (
+  id: number,
+  assessmentUpdate: AssessmentUpdate,
+  options?: RequestInit,
+): Promise<Assessment> => {
+  return customFetch<Assessment>(getUpdateAssessmentUrl(id), {
+    ...options,
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(assessmentUpdate),
+  });
+};
+
+export const getUpdateAssessmentMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateAssessment>>,
+    TError,
+    { id: number; data: BodyType<AssessmentUpdate> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof updateAssessment>>,
+  TError,
+  { id: number; data: BodyType<AssessmentUpdate> },
+  TContext
+> => {
+  const mutationKey = ["updateAssessment"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof updateAssessment>>,
+    { id: number; data: BodyType<AssessmentUpdate> }
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return updateAssessment(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type UpdateAssessmentMutationResult = NonNullable<
+  Awaited<ReturnType<typeof updateAssessment>>
+>;
+export type UpdateAssessmentMutationBody = BodyType<AssessmentUpdate>;
+export type UpdateAssessmentMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Update an assessment (score, title, strengths, weaknesses)
+ */
+export const useUpdateAssessment = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateAssessment>>,
+    TError,
+    { id: number; data: BodyType<AssessmentUpdate> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof updateAssessment>>,
+  TError,
+  { id: number; data: BodyType<AssessmentUpdate> },
+  TContext
+> => {
+  return useMutation(getUpdateAssessmentMutationOptions(options));
+};
 
 /**
  * @summary Soft-delete an assessment

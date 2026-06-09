@@ -16,6 +16,7 @@ export * from "./announcementPriority";
 export * from "./announcementUpdate";
 export * from "./announcementUpdatePriority";
 export * from "./assessment";
+export * from "./assessmentUpdate";
 export * from "./assignment";
 export * from "./assignmentStatus";
 export * from "./authUser";

@@ -828,6 +828,29 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Assessment"
+    patch:
+      operationId: updateAssessment
+      tags: [assessments]
+      summary: Update an assessment (score, title, strengths, weaknesses)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AssessmentUpdate"
+      responses:
+        "200":
+          description: Updated assessment
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Assessment"
     delete:
       operationId: deleteAssessment
       tags: [assessments]
@@ -1650,6 +1673,25 @@ components:
           items:
             type: string
       required: [studentId, courseId, title, score, maxScore, strengths, weaknesses]
+
+    AssessmentUpdate:
+      type: object
+      properties:
+        title:
+          type: string
+          minLength: 1
+        score:
+          type: number
+        maxScore:
+          type: number
+        strengths:
+          type: array
+          items:
+            type: string
+        weaknesses:
+          type: array
+          items:
+            type: string
 
     AiSuggestions:
       type: object

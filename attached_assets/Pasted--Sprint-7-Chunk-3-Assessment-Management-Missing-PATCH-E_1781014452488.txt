@@ -1,0 +1,244 @@
+# Sprint 7 Chunk 3 — Assessment Management + Missing PATCH Endpoint
+
+Act as a Principal Full-Stack Engineer working on the Classmate platform.
+
+Implement Sprint 7 Chunk 3 completely.
+
+GOAL
+
+Make Assessment Management fully usable for teachers.
+
+This chunk includes BOTH backend and frontend work.
+
+Before making changes:
+
+1. Review current assessments frontend.
+2. Review backend route implementation in assessments.ts.
+3. Review OpenAPI contract.
+4. Review generated API hooks.
+5. Follow all patterns established in Sprint 7 Chunks 1 and 2.
+
+IMPORTANT
+
+The Teacher Portal audit identified that:
+
+* PATCH /assessments/:id does not exist
+* OpenAPI has no PATCH entry
+* Generated hooks do not exist
+* Assessments are effectively write-once
+
+This must be fixed end-to-end.
+
+---
+
+## Backend Deliverables
+
+### Add PATCH /assessments/:id
+
+Implement:
+
+* Layer 1 authorization
+* Layer 2 scope filtering
+* Layer 3 ownership validation
+* Audit field updates (`updatedAt`, `updatedBy`)
+* Soft-delete protection
+* Validation
+
+Teachers must only update assessments they own.
+
+Support updates to:
+
+* score
+* strengths
+* weaknesses
+* notes/feedback (if supported by schema)
+
+Do NOT allow ownership transfer.
+
+---
+
+## OpenAPI Deliverables
+
+Update OpenAPI spec:
+
+Add:
+
+PATCH /assessments/{id}
+
+Request schema:
+
+* score
+* strengths
+* weaknesses
+* feedback/notes (if supported)
+
+Response schema:
+
+* updated assessment
+
+Regenerate:
+
+* Zod schemas
+* API client
+* React hooks
+
+Verify generated hook exists:
+
+* useUpdateAssessment
+
+---
+
+## Frontend Deliverables
+
+### Assessment List Page
+
+Enhance `/assessments` with:
+
+* Create Assessment button
+* Edit Assessment action
+* Delete Assessment action
+* Assessment detail navigation
+
+Use:
+
+* useCreateAssessment
+* useUpdateAssessment
+* useDeleteAssessment
+
+---
+
+### Assessment Detail Page
+
+Create route:
+
+/assessments/:id
+
+Display:
+
+* Student
+* Course
+* Score
+* Percentage
+* Strengths
+* Weaknesses
+* Teacher feedback
+
+Add:
+
+* Edit button
+* Delete button
+
+---
+
+## Create Assessment Dialog
+
+Fields:
+
+* Course
+* Student
+* Score
+* Max Score
+* Strengths
+* Weaknesses
+* Feedback
+
+Requirements:
+
+* Validation
+* Error handling
+* Query invalidation
+
+---
+
+## Edit Assessment Dialog
+
+Must use the new PATCH endpoint.
+
+Allow:
+
+* Score correction
+* Strength updates
+* Weakness updates
+* Feedback updates
+
+Requirements:
+
+* Pre-populated values
+* Validation
+* Query invalidation
+* Immediate cache updates
+
+---
+
+## Delete Assessment
+
+Implement:
+
+* AlertDialog confirmation
+* Soft delete
+* Remove from cache
+* Redirect if currently on detail page
+
+---
+
+## Testing
+
+Backend Tests
+
+Add:
+
+* PATCH ownership enforcement
+* PATCH admin access
+* PATCH teacher access
+* PATCH soft-delete protection
+* PATCH audit field updates
+* PATCH validation failures
+
+Frontend Tests
+
+Add:
+
+* Create assessment
+* Edit assessment
+* Delete assessment
+* Assessment detail page
+* Cache update behavior
+* Query invalidation behavior
+* Validation failures
+
+Playwright Flow
+
+1. Create assessment
+2. Open assessment detail
+3. Edit score
+4. Edit strengths
+5. Edit weaknesses
+6. Save changes
+7. Verify updates persist
+8. Delete assessment
+
+---
+
+## Output Format
+
+# Sprint 7 Chunk 3 Completion Report
+
+## Backend Files Modified
+
+## Frontend Files Modified
+
+## OpenAPI Changes
+
+## Generated Hooks Added
+
+## Tests Added
+
+## Workflow Verification
+
+## Risks
+
+## Remaining Teacher Portal Gaps
+
+Do not stop at partial implementation.
+
+Complete backend, OpenAPI, generated client, frontend, and tests before reporting.

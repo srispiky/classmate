@@ -285,6 +285,15 @@ export interface CreateAssessmentBody {
   weaknesses: string[];
 }
 
+export interface AssessmentUpdate {
+  /** @minLength 1 */
+  title?: string;
+  score?: number;
+  maxScore?: number;
+  strengths?: string[];
+  weaknesses?: string[];
+}
+
 export type SuggestionPriority =
   (typeof SuggestionPriority)[keyof typeof SuggestionPriority];
 

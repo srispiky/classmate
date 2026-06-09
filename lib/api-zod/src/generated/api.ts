@@ -720,6 +720,39 @@ export const GetAssessmentResponse = zod.object({
 });
 
 /**
+ * @summary Update an assessment (score, title, strengths, weaknesses)
+ */
+export const UpdateAssessmentParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const UpdateAssessmentBody = zod.object({
+  title: zod.string().min(1).optional(),
+  score: zod.number().optional(),
+  maxScore: zod.number().optional(),
+  strengths: zod.array(zod.string()).optional(),
+  weaknesses: zod.array(zod.string()).optional(),
+});
+
+export const UpdateAssessmentResponse = zod.object({
+  id: zod.number(),
+  studentId: zod.number(),
+  studentName: zod.string(),
+  courseId: zod.number(),
+  courseName: zod.string(),
+  title: zod.string(),
+  score: zod.number(),
+  maxScore: zod.number(),
+  percentage: zod.number(),
+  strengths: zod.array(zod.string()),
+  weaknesses: zod.array(zod.string()),
+  createdAt: zod.string(),
+  updatedAt: zod.string().optional(),
+  createdBy: zod.number().nullish(),
+  updatedBy: zod.number().nullish(),
+});
+
+/**
  * @summary Soft-delete an assessment
  */
 export const DeleteAssessmentParams = zod.object({

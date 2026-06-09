@@ -11,6 +11,9 @@ import {
   GetStudentAiSuggestionsResponse,
   ListAssessmentsQueryParams,
   ListAssessmentsResponse,
+  UpdateAssessmentBody,
+  UpdateAssessmentParams,
+  UpdateAssessmentResponse,
 } from "@workspace/api-zod";
 import { buildScopeContext, type ClassmateSession } from "../lib/scope-context";
 import { ownershipDenied } from "../lib/query-contracts";
@@ -225,6 +228,69 @@ router.get(
     }
 
     res.json(GetAssessmentResponse.parse(serializeAssessment(assessment)));
+  },
+);
+
+// ── PATCH /api/assessments/:id ───────────────────────────────────────────────
+
+// Layer 1: only admin and teacher may update assessments.
+router.patch(
+  "/assessments/:id",
+  requireRole("admin", "teacher"),
+  async (req, res): Promise<void> => {
+    const scope = buildScopeContext(req.session as ClassmateSession);
+
+    const params = UpdateAssessmentParams.safeParse(req.params);
+    if (!params.success) {
+      res.status(400).json({ error: params.error.message });
+      return;
+    }
+
+    const parsed = UpdateAssessmentBody.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({ error: parsed.error.message });
+      return;
+    }
+
+    // Pre-fetch with soft-delete guard.
+    const existing = await getAssessmentById(params.data.id);
+    if (!existing) {
+      res.status(404).json({ error: "Assessment not found" });
+      return;
+    }
+
+    // Layer 3: enforce ownership before mutating.
+    try {
+      assessmentPolicy.validateAccess(scope, existing);
+    } catch (err) {
+      if (err instanceof PolicyAuthorizationError) {
+        res.status(403).json(ownershipDenied("assessment", params.data.id));
+        return;
+      }
+      throw err;
+    }
+
+    const [updated] = await db
+      .update(assessmentsTable)
+      .set({ ...parsed.data, updatedAt: new Date(), updatedBy: scope.userId })
+      .where(eq(assessmentsTable.id, params.data.id))
+      .returning();
+
+    if (!updated) {
+      res.status(404).json({ error: "Assessment not found" });
+      return;
+    }
+
+    res.json(
+      UpdateAssessmentResponse.parse(
+        serializeAssessment({
+          ...updated,
+          studentName: existing.studentName,
+          courseName: existing.courseName,
+          deletedAt: updated.deletedAt ?? null,
+        }),
+      ),
+    );
   },
 );
 
