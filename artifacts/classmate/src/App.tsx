@@ -16,6 +16,8 @@ import Notes from "@/pages/notes";
 import NoteDetail from "@/pages/notes/detail";
 import Assessments from "@/pages/assessments";
 import AssessmentDetail from "@/pages/assessments/detail";
+import Announcements from "@/pages/announcements";
+import AnnouncementDetail from "@/pages/announcements/detail";
 import StudentAi from "@/pages/students/ai";
 import Settings from "@/pages/settings";
 import Login from "@/pages/login";
@@ -74,6 +76,12 @@ function ProtectedRouter() {
         <Route path="/notes/:id" component={NoteDetail} />
         <Route path="/assessments" component={Assessments} />
         <Route path="/assessments/:id" component={AssessmentDetail} />
+        {(user.role === "admin" || user.role === "teacher") && (
+          <>
+            <Route path="/announcements" component={Announcements} />
+            <Route path="/announcements/:id" component={AnnouncementDetail} />
+          </>
+        )}
         {user.role === "admin" && <Route path="/settings" component={Settings} />}
         <Route component={NotFound} />
       </Switch>

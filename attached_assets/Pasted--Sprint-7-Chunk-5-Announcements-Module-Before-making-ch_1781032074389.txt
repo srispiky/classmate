@@ -1,0 +1,315 @@
+# Sprint 7 Chunk 5 — Announcements Module
+
+Before making changes:
+
+1. Read and understand:
+   - announcements backend routes
+   - OpenAPI definitions
+   - generated hooks
+   - existing frontend architecture patterns
+
+2. Follow all existing project conventions:
+   - OpenAPI-generated hooks only
+   - React Query cache patterns
+   - AlertDialog confirmations
+   - useToast notifications
+   - inline validation
+   - role-based UI rendering
+
+3. Keep changes strictly scoped to Announcements.
+
+--------------------------------------------------
+OBJECTIVE
+--------------------------------------------------
+
+Implement the complete Announcements module in the Teacher Portal.
+
+Backend already exists:
+
+- GET /announcements
+- POST /announcements
+- GET /announcements/:id
+- PATCH /announcements/:id
+- DELETE /announcements/:id
+
+Authorization already exists.
+
+Frontend currently has:
+
+- No route
+- No page
+- No navigation entry
+
+--------------------------------------------------
+PART 1 — ROUTING
+--------------------------------------------------
+
+Add:
+
+/announcements
+/announcements/:id
+
+Update:
+
+- App.tsx
+- layout navigation
+
+Add navigation item:
+
+Announcements
+
+Visible to:
+
+- admin
+- teacher
+
+Not visible to:
+
+- student
+- parent
+
+--------------------------------------------------
+PART 2 — ANNOUNCEMENTS LIST PAGE
+--------------------------------------------------
+
+Create:
+
+artifacts/classmate/src/pages/announcements/index.tsx
+
+Display:
+
+- title
+- course
+- priority
+- created date
+- preview snippet
+
+Features:
+
+- search
+- priority filter
+- course filter
+
+Empty state:
+
+"No announcements yet"
+
+CTA:
+
+Create Announcement
+
+--------------------------------------------------
+PART 3 — CREATE ANNOUNCEMENT
+--------------------------------------------------
+
+Dialog fields:
+
+- title (required)
+- content (required)
+- course (required)
+- priority
+
+Priority values:
+
+- low
+- normal
+- high
+
+Validation:
+
+- title required
+- content required
+- course required
+
+Use:
+
+useCreateAnnouncement()
+
+Success:
+
+- invalidate list query
+- close dialog
+- reset form
+- toast
+
+Failure:
+
+inline error
+
+--------------------------------------------------
+PART 4 — ANNOUNCEMENT DETAIL PAGE
+--------------------------------------------------
+
+Create:
+
+artifacts/classmate/src/pages/announcements/detail.tsx
+
+Display:
+
+- title
+- content
+- priority badge
+- course
+- created date
+- updated date
+
+Add:
+
+Edit button
+Delete button
+
+--------------------------------------------------
+PART 5 — EDIT ANNOUNCEMENT
+--------------------------------------------------
+
+Dialog pre-populated.
+
+Editable:
+
+- title
+- content
+- priority
+
+Use:
+
+useUpdateAnnouncement()
+
+Success:
+
+update:
+
+- detail cache
+- list cache
+
+using queryClient.setQueryData()
+
+--------------------------------------------------
+PART 6 — DELETE ANNOUNCEMENT
+--------------------------------------------------
+
+AlertDialog confirmation.
+
+Display title in confirmation.
+
+Use:
+
+useDeleteAnnouncement()
+
+Success:
+
+- remove from list cache
+- navigate back to /announcements
+- toast
+
+--------------------------------------------------
+PART 7 — AUTHORIZATION VERIFICATION
+--------------------------------------------------
+
+Verify:
+
+Teacher:
+
+- create own announcement
+- edit own announcement
+- delete own announcement
+
+Teacher cannot:
+
+- edit another teacher's announcement
+- delete another teacher's announcement
+
+Admin retains global access.
+
+Document verification.
+
+--------------------------------------------------
+PART 8 — TESTS
+--------------------------------------------------
+
+Create:
+
+artifacts/classmate/src/tests/announcements.test.tsx
+
+Cover:
+
+LIST
+
+- rendering
+- search
+- filters
+- create dialog
+- validation
+- create success
+- create failure
+
+DETAIL
+
+- render announcement
+- edit dialog
+- update mutation
+- delete confirmation
+- delete mutation
+
+CACHE
+
+- list cache update
+- detail cache update
+- delete cache removal
+
+AUTHORIZATION
+
+- forbidden handling
+- not-found handling
+
+--------------------------------------------------
+PART 9 — E2E VERIFICATION
+--------------------------------------------------
+
+Execute:
+
+1. Create announcement
+2. Verify list display
+3. Open detail page
+4. Edit announcement
+5. Verify update visible
+6. Delete announcement
+7. Verify removal
+
+--------------------------------------------------
+GIT REQUIREMENT
+--------------------------------------------------
+
+After implementation:
+
+Run tests.
+
+Create commit:
+
+git add .
+git commit -m "feat(sprint7): implement announcements module"
+
+Push:
+
+git push origin main
+
+Include commit hash in the completion report.
+
+--------------------------------------------------
+DELIVERABLE FORMAT
+--------------------------------------------------
+
+Provide:
+
+1. Files modified
+2. Routes added
+3. Components added
+4. Cache strategy
+5. Authorization verification
+6. Test results
+7. E2E results
+8. Git commit hash
+9. Remaining Teacher Portal blockers
+
+Do not stop after coding.
+
+Complete implementation, tests, verification, commit, and push before reporting.

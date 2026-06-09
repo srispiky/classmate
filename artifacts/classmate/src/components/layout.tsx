@@ -1,5 +1,5 @@
 import { Link, useLocation } from "wouter";
-import { BookOpen, Users, LayoutDashboard, FileText, CheckSquare, BrainCircuit, Menu, Settings, LogOut } from "lucide-react";
+import { BookOpen, Users, LayoutDashboard, FileText, CheckSquare, BrainCircuit, Menu, Settings, LogOut, Megaphone } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
@@ -15,6 +15,10 @@ const baseNavItems = [
   { href: "/assessments", label: "Assessments", icon: BrainCircuit },
 ];
 
+const teacherNavItems = [
+  { href: "/announcements", label: "Announcements", icon: Megaphone },
+];
+
 const adminNavItems = [
   { href: "/settings", label: "Settings", icon: Settings },
 ];
@@ -25,7 +29,12 @@ export function Layout({ children }: { children: React.ReactNode }) {
   const { user, logout } = useAuth();
 
   const isAdmin = user?.role === "admin";
-  const navItems = isAdmin ? [...baseNavItems, ...adminNavItems] : baseNavItems;
+  const isTeacherOrAdmin = isAdmin || user?.role === "teacher";
+  const navItems = [
+    ...baseNavItems,
+    ...(isTeacherOrAdmin ? teacherNavItems : []),
+    ...(isAdmin ? adminNavItems : []),
+  ];
 
   const initials = user?.displayName
     .split(" ")
