@@ -1,0 +1,204 @@
+# Post-Sprint-5 Security and Architecture Revalidation
+
+## Objective
+
+A previous Functional Gap Analysis identified multiple security, authorization, audit, and architecture concerns.
+
+Since that analysis, defects have been fixed, including the Student Create workflow.
+
+Before implementing additional work, perform a fresh validation of the codebase and determine which findings remain valid.
+
+Do not assume the previous report is correct.
+
+Inspect the current codebase as it exists today.
+
+---
+
+## Review Scope
+
+Review:
+
+* Route registrations
+* Middleware chains
+* Controllers
+* Services
+* Repositories
+* Policies
+* Validators
+* Database schema
+* OpenAPI
+* Frontend API integration
+
+---
+
+## Validate Previous Findings
+
+### Student Management
+
+Verify:
+
+* GET /students
+* POST /students
+* GET /students/:id
+* PATCH /students/:id
+* DELETE /students/:id (if implemented)
+
+Determine:
+
+* Is requireRole enforced?
+* Is ownership enforced where applicable?
+* Is student creation fully functional?
+* Is soft-delete implemented?
+
+---
+
+### Assignment Management
+
+Verify:
+
+* GET /assignments
+* POST /assignments
+* GET /assignments/:id
+* PATCH /assignments/:id
+* DELETE /assignments/:id
+
+Determine:
+
+* Is requireRole enforced?
+* Can students create assignments?
+* Can students modify grades?
+* Is deleted_at filtering enforced?
+
+---
+
+### Assessment Management
+
+Verify:
+
+* GET /assessments
+* POST /assessments
+* GET /assessments/:id
+* PATCH /assessments/:id
+* DELETE /assessments/:id
+
+Determine:
+
+* Is requireRole enforced?
+* Can students create assessments?
+* Is deleted_at filtering enforced?
+
+---
+
+### Announcement Management
+
+Verify authorization and soft-delete behavior.
+
+---
+
+### Notes Management
+
+Verify authorization and soft-delete behavior.
+
+---
+
+### Dashboard Routes
+
+Verify:
+
+* requireRole enforcement
+* authorization model
+* information disclosure risks
+
+---
+
+### Course Ownership
+
+Verify:
+
+* Teachers can only modify owned courses
+* Admins retain global access
+
+---
+
+### Audit Fields
+
+Verify:
+
+* created_by populated
+* updated_by populated
+* deleted_by populated
+
+Determine whether implementation is complete or partial.
+
+---
+
+### Enrollment Architecture
+
+Review:
+
+* students.enrolledCourseIds
+* course_enrollments
+
+Determine:
+
+* active source of truth
+* synchronization risks
+* recommended architecture
+
+---
+
+### RBAC
+
+Review actual enforcement.
+
+Determine:
+
+* Which routes use requireRole
+* Whether role_permissions is active
+* Whether user_roles is active
+* Whether permission-based authorization is implemented
+
+---
+
+## Deliverable
+
+Produce:
+
+# Security & Architecture Revalidation Report
+
+For every previous finding classify as:
+
+* RESOLVED
+* PARTIALLY RESOLVED
+* STILL VALID
+* NOT APPLICABLE
+
+Provide evidence for each conclusion.
+
+---
+
+## Final Recommendation
+
+Recommend exactly one next implementation target:
+
+1. Security Hardening
+2. User Management
+3. Teacher Portal
+4. Student Portal UI
+5. Parent Portal
+6. Gradebook
+7. Attendance
+8. Reporting
+9. Architecture Backlog
+
+Choose the highest-value next step based on the current state of the codebase.
+
+---
+
+## Constraints
+
+Do not implement code.
+
+Perform analysis only.
+
+The goal is to establish an accurate baseline before Sprint 6 planning.
