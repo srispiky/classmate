@@ -90,3 +90,9 @@ id = "2K_2RIP4dzPtAUwYGbLoh"
 uri = "file://docs/security-remediation-verification.md"
 type = "text"
 title = "Security Remediation Verification Report"
+
+[[outputs]]
+id = "STYg3wOel6nPdweXeL3rv"
+uri = "file://docs/sprint6-security-remediation-summary.md"
+type = "text"
+title = "Sprint 6 Security Remediation Summary"
