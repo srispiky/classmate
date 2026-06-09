@@ -1,0 +1,340 @@
+# Classmate Connect — Production Readiness Reassessment
+
+## Context
+
+A previous Functional Gap Analysis identified multiple security, architecture, RBAC, audit, and operational gaps.
+
+Since that report:
+
+* Sprint 5 has been completed
+* Student Portal is complete
+* Dashboard aggregation has been completed
+* Student Create workflow has been fixed
+* Additional fixes may have been implemented
+
+The previous report may no longer accurately represent the current codebase.
+
+Review the CURRENT implementation only.
+
+Do not assume previous findings are still valid.
+
+---
+
+# Objective
+
+Perform a complete production readiness reassessment of Classmate Connect.
+
+Review:
+
+* Backend
+* Frontend
+* Database
+* OpenAPI
+* RBAC
+* Security
+* Audit implementation
+* Student Portal
+* Teacher functionality
+* Administrative workflows
+
+---
+
+# Architecture Audit
+
+Validate compliance with project standards.
+
+Controllers:
+
+* validation only
+* service invocation only
+* response mapping only
+
+Services:
+
+* business logic only
+
+Repositories:
+
+* database access only
+
+Policies:
+
+* authorization only
+
+Validators:
+
+* ownership and scope only
+
+Identify:
+
+* violations
+* architectural drift
+* duplicate logic
+* ownership bypasses
+
+---
+
+# Security Audit
+
+Review every route group.
+
+Validate:
+
+## Authentication
+
+* login
+* logout
+* session handling
+* inactive user handling
+
+## Authorization
+
+Validate route protection for:
+
+* students
+* courses
+* enrollments
+* assignments
+* assessments
+* announcements
+* notes
+* dashboard
+* student portal
+
+Determine:
+
+* requireRole usage
+* ownership enforcement
+* IDOR protection
+* privilege escalation risks
+
+---
+
+# RBAC Audit
+
+Review:
+
+* requireRole
+* requirePermission
+* user_roles
+* role_permissions
+
+Determine:
+
+* actual enforcement model
+* partially implemented features
+* dead code
+* future migration concerns
+
+Classify:
+
+* ACTIVE
+* PARTIAL
+* UNUSED
+
+---
+
+# Audit Field Review
+
+Validate:
+
+* created_by
+* updated_by
+* deleted_by
+
+For:
+
+* students
+* courses
+* assignments
+* assessments
+* announcements
+* notes
+
+Determine:
+
+* schema support
+* API write support
+* update support
+* delete support
+
+---
+
+# Soft Delete Audit
+
+Validate:
+
+* deleted_at filtering
+* repository consistency
+* list endpoints
+* detail endpoints
+
+Identify resources lacking soft-delete enforcement.
+
+---
+
+# Data Integrity Audit
+
+Review:
+
+## Students
+
+* students.userId
+
+## Courses
+
+* courses.teacherId
+
+## Enrollments
+
+* course_enrollments
+
+## Guardians
+
+* student_guardians
+
+Validate:
+
+* orphan records
+* duplicate ownership sources
+* inconsistent relationships
+
+Review:
+
+students.enrolledCourseIds
+
+vs
+
+course_enrollments
+
+Determine authoritative source.
+
+---
+
+# OpenAPI Audit
+
+Validate:
+
+* route coverage
+* schema coverage
+* DTO synchronization
+* generated client stability
+
+Identify:
+
+* undocumented endpoints
+* stale schemas
+* codegen risks
+
+---
+
+# Functional Audit
+
+Classify each module:
+
+READY
+
+READY WITH OBSERVATIONS
+
+NOT READY
+
+Modules:
+
+* Authentication
+* User Management
+* Student Management
+* Teacher Management
+* Parent Management
+* Course Management
+* Enrollment Management
+* Assignment Management
+* Assessment Management
+* Announcement Management
+* Notes Management
+* Student Portal
+* Teacher Portal
+* Parent Portal
+* Attendance
+* Gradebook
+* Reporting
+* Audit Logging
+* OpenAPI
+* RBAC
+
+---
+
+# Launch Readiness
+
+Determine whether the platform can support a pilot deployment.
+
+Assess:
+
+## Security
+
+PASS / FAIL
+
+## Architecture
+
+PASS / FAIL
+
+## Operational Readiness
+
+PASS / FAIL
+
+## Maintainability
+
+PASS / FAIL
+
+## Scalability
+
+PASS / FAIL
+
+---
+
+# Deliverable
+
+Produce:
+
+# Production Readiness Reassessment Report
+
+Include:
+
+## Executive Summary
+
+## Architecture Findings
+
+## Security Findings
+
+## Data Integrity Findings
+
+## Audit Findings
+
+## OpenAPI Findings
+
+## Functional Readiness Matrix
+
+## Remaining Launch Blockers
+
+## Recommended Sprint 6 Priorities
+
+Rank top 10 items by:
+
+* Business impact
+* Security impact
+* Implementation effort
+
+---
+
+# Final Verdict
+
+Choose exactly one:
+
+* NOT READY FOR PILOT
+* READY FOR PILOT WITH OBSERVATIONS
+* READY FOR PILOT
+
+Provide justification supported by code inspection.
+
+Do not implement code.
+
+Audit only.
