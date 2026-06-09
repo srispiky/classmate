@@ -1,0 +1,125 @@
+Sprint 6 Security Remediation Verification Audit
+
+Do NOT trust the implementation summary.
+
+Perform a fresh source-code audit against the current codebase and verify every claim in the Security Remediation Summary.
+
+Required verification:
+
+1. S-01 Admin Route Protection
+
+   * Inspect admin.ts
+   * Verify GET /admin/db-status requires requireRole("admin")
+   * Verify POST /admin/test-db requires requireRole("admin")
+   * Verify routes/index.ts registration order
+   * Verify no alternate route path bypasses admin protection
+
+2. Frontend Settings Protection
+
+   * Inspect App.tsx
+   * Inspect layout.tsx
+   * Verify non-admin users cannot access /settings
+   * Verify direct URL navigation is blocked
+   * Verify settings menu is hidden for non-admin users
+   * Verify there are no alternate navigation paths
+
+3. S-02 Student Ownership Enforcement
+
+   * Inspect students.ts
+   * Inspect student-scope-policy.ts
+   * Inspect scope-filter.ts
+
+Verify:
+
+* GET /students is properly scoped for teachers
+* GET /students/:id enforces ownership
+* PATCH /students/:id enforces ownership
+* DELETE /students/:id enforces ownership
+* GET /students/:id/progress enforces ownership
+
+Determine whether authorization is actually enforced or merely implemented but unused.
+
+4. Layer 2 Verification
+
+   * Verify teacherStudentEnrollmentFilter is actually called
+   * Verify SQL_FALSE behavior
+   * Verify admin behavior
+   * Verify teachers only receive students enrolled in owned courses
+
+5. Layer 3 Verification
+
+   * Verify StudentScopePolicy.validateAccess is called by every student endpoint
+   * Verify policy failures produce HTTP 403
+   * Verify ownership is based on active course enrollments
+
+6. Audit Field Verification
+
+   * Verify students schema contains:
+     createdBy
+     updatedBy
+     updatedAt
+
+   * Verify POST /students populates:
+     createdBy
+     updatedBy
+
+   * Verify PATCH /students/:id populates:
+     updatedBy
+     updatedAt
+
+7. Database Migration Verification
+
+   * Verify migration exists
+   * Verify schema and migration match
+   * Verify ORM models match schema
+
+8. OpenAPI Verification
+
+   * Verify Student schema contains:
+     createdBy
+     updatedBy
+     updatedAt
+
+   * Verify generated types were regenerated correctly
+
+9. Test Verification
+
+   * Inspect security-remediation.test.ts
+   * Verify tests are real and meaningful
+   * Identify any mocked tests that do not prove security behavior
+   * Determine whether the reported 48 tests actually validate the fixes
+
+10. Regression Search
+    Search entire repository for:
+    /admin/db-status
+    /admin/test-db
+    studentsTable
+    validateAccess(
+    requireRole("admin")
+
+Identify any remaining bypasses or duplicate implementations.
+
+Output format:
+
+# Security Remediation Verification Report
+
+For each finding:
+
+* VERIFIED
+* PARTIALLY VERIFIED
+* FAILED
+
+Include exact source evidence.
+
+Do not assume the remediation summary is accurate.
+Only use evidence from actual code inspection.
+
+End with:
+
+FINAL SECURITY STATUS:
+
+* PASS
+* PASS WITH OBSERVATIONS
+* FAIL
+
+and provide justification.
