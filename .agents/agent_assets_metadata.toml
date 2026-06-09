@@ -78,3 +78,9 @@ id = "eW16x4BkbIcLRq99H7In0"
 uri = "file://docs/gap-analysis/functional-gap-analysis.md"
 type = "text"
 title = "Classmate Connect — Functional Gap Analysis"
+
+[[outputs]]
+id = "0HHGd4aeeZLPYpDeTpW-E"
+uri = "file://docs/production-readiness-reassessment.md"
+type = "text"
+title = "Production Readiness Reassessment Report"
