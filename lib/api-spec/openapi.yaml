@@ -13,6 +13,8 @@ security:
 tags:
   - name: health
     description: Health operations
+  - name: users
+    description: User management (admin only)
   - name: students
     description: Student operations
   - name: teachers
@@ -92,6 +94,128 @@ paths:
         "401":
           description: Not authenticated
 
+
+  # ---- USER MANAGEMENT ----
+  /users:
+    get:
+      operationId: listUsers
+      tags: [users]
+      summary: List all users (admin only)
+      responses:
+        "200":
+          description: List of users
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/UserRecord"
+        "403":
+          description: Forbidden
+    post:
+      operationId: createUser
+      tags: [users]
+      summary: Create a new user account (admin only)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UserInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserRecord"
+        "400":
+          description: Validation error or duplicate username
+        "403":
+          description: Forbidden
+
+  /users/{userId}:
+    get:
+      operationId: getUser
+      tags: [users]
+      summary: Get a user by ID (admin only)
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: User record
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserRecord"
+        "403":
+          description: Forbidden
+        "404":
+          description: User not found
+    patch:
+      operationId: updateUser
+      tags: [users]
+      summary: Update a user account (admin only)
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UserUpdate"
+      responses:
+        "200":
+          description: Updated user record
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserRecord"
+        "400":
+          description: Validation error
+        "403":
+          description: Forbidden
+        "404":
+          description: User not found
+
+  /users/{userId}/reset-password:
+    post:
+      operationId: resetUserPassword
+      tags: [users]
+      summary: Reset a user password (admin only)
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ResetPasswordInput"
+      responses:
+        "200":
+          description: Password reset successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ResetPasswordResult"
+        "400":
+          description: Validation error
+        "403":
+          description: Forbidden
+        "404":
+          description: User not found
 
   /healthz:
     get:
@@ -2032,3 +2156,79 @@ components:
         role:
           type: string
       required: [id, username, displayName, role]
+
+    UserRecord:
+      type: object
+      description: A user account record — passwordHash is never included
+      properties:
+        id:
+          type: integer
+        username:
+          type: string
+        displayName:
+          type: string
+        role:
+          type: string
+        isActive:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        createdBy:
+          type: ["integer", "null"]
+        updatedBy:
+          type: ["integer", "null"]
+      required: [id, username, displayName, role, isActive, createdAt, updatedAt, createdBy, updatedBy]
+
+    UserInput:
+      type: object
+      description: Request body for creating a new user account
+      properties:
+        username:
+          type: string
+          minLength: 1
+        displayName:
+          type: string
+          minLength: 1
+        password:
+          type: string
+          minLength: 8
+        role:
+          type: string
+          enum: [admin, teacher, student, parent, guest]
+      required: [username, displayName, password, role]
+
+    UserUpdate:
+      type: object
+      description: Request body for updating a user account (password excluded)
+      properties:
+        displayName:
+          type: string
+          minLength: 1
+        role:
+          type: string
+          enum: [admin, teacher, student, parent, guest]
+        isActive:
+          type: boolean
+
+    ResetPasswordInput:
+      type: object
+      description: Request body for resetting a user password
+      properties:
+        newPassword:
+          type: string
+          minLength: 8
+      required: [newPassword]
+
+    ResetPasswordResult:
+      type: object
+      description: Confirmation that a password was reset
+      properties:
+        ok:
+          type: boolean
+        userId:
+          type: integer
+      required: [ok, userId]

@@ -9,6 +9,7 @@ import assessmentsRouter from "./assessments";
 import dashboardRouter from "./dashboard";
 import downloadsRouter from "./downloads";
 import adminRouter from "./admin";
+import usersRouter from "./users";
 import announcementsRouter from "./announcements";
 import enrollmentsRouter from "./enrollments";
 import studentNotesRouter from "./student-notes";
@@ -43,6 +44,7 @@ router.use(studentCoursesRouter);
 router.use(studentCourseWorkspaceRouter);
 router.use(studentDashboardRouter);
 router.use(dashboardRouter);
+router.use(usersRouter);
 router.use(adminRouter);
 
 export default router;

@@ -1,4 +1,5 @@
-import { pgTable, serial, text, timestamp, boolean, check } from "drizzle-orm/pg-core";
+import { pgTable, serial, text, timestamp, boolean, integer, check } from "drizzle-orm/pg-core";
+import type { AnyPgColumn } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
 import { createInsertSchema, createSelectSchema } from "drizzle-zod";
 import { z } from "zod/v4";
@@ -14,6 +15,14 @@ export const usersTable = pgTable(
     isActive: boolean("is_active").notNull().default(true),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+    createdBy: integer("created_by").references(
+      (): AnyPgColumn => usersTable.id,
+      { onDelete: "set null" },
+    ),
+    updatedBy: integer("updated_by").references(
+      (): AnyPgColumn => usersTable.id,
+      { onDelete: "set null" },
+    ),
   },
   (table) => ({
     roleCheck: check(

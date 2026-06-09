@@ -40,6 +40,113 @@ export const GetMeResponse = zod.object({
 });
 
 /**
+ * @summary List all users (admin only)
+ */
+export const ListUsersResponseItem = zod
+  .object({
+    id: zod.number(),
+    username: zod.string(),
+    displayName: zod.string(),
+    role: zod.string(),
+    isActive: zod.boolean(),
+    createdAt: zod.coerce.date(),
+    updatedAt: zod.coerce.date(),
+    createdBy: zod.number().nullable(),
+    updatedBy: zod.number().nullable(),
+  })
+  .describe("A user account record — passwordHash is never included");
+export const ListUsersResponse = zod.array(ListUsersResponseItem);
+
+/**
+ * @summary Create a new user account (admin only)
+ */
+
+export const createUserBodyPasswordMin = 8;
+
+export const CreateUserBody = zod
+  .object({
+    username: zod.string().min(1),
+    displayName: zod.string().min(1),
+    password: zod.string().min(createUserBodyPasswordMin),
+    role: zod.enum(["admin", "teacher", "student", "parent", "guest"]),
+  })
+  .describe("Request body for creating a new user account");
+
+/**
+ * @summary Get a user by ID (admin only)
+ */
+export const GetUserParams = zod.object({
+  userId: zod.coerce.number(),
+});
+
+export const GetUserResponse = zod
+  .object({
+    id: zod.number(),
+    username: zod.string(),
+    displayName: zod.string(),
+    role: zod.string(),
+    isActive: zod.boolean(),
+    createdAt: zod.coerce.date(),
+    updatedAt: zod.coerce.date(),
+    createdBy: zod.number().nullable(),
+    updatedBy: zod.number().nullable(),
+  })
+  .describe("A user account record — passwordHash is never included");
+
+/**
+ * @summary Update a user account (admin only)
+ */
+export const UpdateUserParams = zod.object({
+  userId: zod.coerce.number(),
+});
+
+export const UpdateUserBody = zod
+  .object({
+    displayName: zod.string().min(1).optional(),
+    role: zod
+      .enum(["admin", "teacher", "student", "parent", "guest"])
+      .optional(),
+    isActive: zod.boolean().optional(),
+  })
+  .describe("Request body for updating a user account (password excluded)");
+
+export const UpdateUserResponse = zod
+  .object({
+    id: zod.number(),
+    username: zod.string(),
+    displayName: zod.string(),
+    role: zod.string(),
+    isActive: zod.boolean(),
+    createdAt: zod.coerce.date(),
+    updatedAt: zod.coerce.date(),
+    createdBy: zod.number().nullable(),
+    updatedBy: zod.number().nullable(),
+  })
+  .describe("A user account record — passwordHash is never included");
+
+/**
+ * @summary Reset a user password (admin only)
+ */
+export const ResetUserPasswordParams = zod.object({
+  userId: zod.coerce.number(),
+});
+
+export const resetUserPasswordBodyNewPasswordMin = 8;
+
+export const ResetUserPasswordBody = zod
+  .object({
+    newPassword: zod.string().min(resetUserPasswordBodyNewPasswordMin),
+  })
+  .describe("Request body for resetting a user password");
+
+export const ResetUserPasswordResponse = zod
+  .object({
+    ok: zod.boolean(),
+    userId: zod.number(),
+  })
+  .describe("Confirmation that a password was reset");
+
+/**
  * @summary Health check
  */
 export const HealthCheckResponse = zod.object({

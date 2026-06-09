@@ -523,6 +523,83 @@ export interface AuthUser {
   role: string;
 }
 
+/**
+ * A user account record — passwordHash is never included
+ */
+export interface UserRecord {
+  id: number;
+  username: string;
+  displayName: string;
+  role: string;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+  /** @nullable */
+  createdBy: number | null;
+  /** @nullable */
+  updatedBy: number | null;
+}
+
+export type UserInputRole = (typeof UserInputRole)[keyof typeof UserInputRole];
+
+export const UserInputRole = {
+  admin: "admin",
+  teacher: "teacher",
+  student: "student",
+  parent: "parent",
+  guest: "guest",
+} as const;
+
+/**
+ * Request body for creating a new user account
+ */
+export interface UserInput {
+  /** @minLength 1 */
+  username: string;
+  /** @minLength 1 */
+  displayName: string;
+  /** @minLength 8 */
+  password: string;
+  role: UserInputRole;
+}
+
+export type UserUpdateRole =
+  (typeof UserUpdateRole)[keyof typeof UserUpdateRole];
+
+export const UserUpdateRole = {
+  admin: "admin",
+  teacher: "teacher",
+  student: "student",
+  parent: "parent",
+  guest: "guest",
+} as const;
+
+/**
+ * Request body for updating a user account (password excluded)
+ */
+export interface UserUpdate {
+  /** @minLength 1 */
+  displayName?: string;
+  role?: UserUpdateRole;
+  isActive?: boolean;
+}
+
+/**
+ * Request body for resetting a user password
+ */
+export interface ResetPasswordInput {
+  /** @minLength 8 */
+  newPassword: string;
+}
+
+/**
+ * Confirmation that a password was reset
+ */
+export interface ResetPasswordResult {
+  ok: boolean;
+  userId: number;
+}
+
 export type Logout200 = {
   ok: boolean;
 };

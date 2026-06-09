@@ -1,0 +1,306 @@
+# Sprint 6 — Chunk 1: User Management Foundation
+
+## Objective
+
+Implement a production-ready User Management module.
+
+This module will become the authoritative mechanism for creating and managing:
+
+* Admin accounts
+* Teacher accounts
+* Student accounts
+* Parent accounts
+
+The goal is to eliminate manual database user provisioning.
+
+---
+
+## Architecture Requirements
+
+Follow existing architecture standards.
+
+### Controllers
+
+Responsibilities:
+
+* request validation
+* service invocation
+* response mapping
+
+No business logic.
+
+---
+
+### Services
+
+Responsibilities:
+
+* user creation
+* password management
+* account activation/deactivation
+* role assignment
+
+---
+
+### Repositories
+
+Responsibilities:
+
+* database access only
+
+---
+
+### Policies
+
+Responsibilities:
+
+* authorization only
+
+---
+
+## Database Review
+
+Review existing tables:
+
+* users
+* roles
+* permissions
+* role_permissions
+* user_roles
+
+Determine whether:
+
+* users.role remains authoritative
+* user_roles becomes authoritative
+
+Provide recommendation.
+
+Do not introduce dual authorization models.
+
+---
+
+## Endpoints
+
+### List Users
+
+```http
+GET /api/users
+```
+
+Authorization:
+
+```ts
+requireRole("admin")
+```
+
+Return:
+
+* id
+* username
+* displayName
+* role
+* isActive
+* createdAt
+
+Exclude:
+
+* passwordHash
+
+---
+
+### Create User
+
+```http
+POST /api/users
+```
+
+Authorization:
+
+```ts
+requireRole("admin")
+```
+
+Request:
+
+```json
+{
+  "username": "teacher1",
+  "displayName": "Teacher One",
+  "password": "temporaryPassword",
+  "role": "teacher"
+}
+```
+
+Requirements:
+
+* unique username validation
+* password hashing
+* audit field population
+
+---
+
+### Get User
+
+```http
+GET /api/users/{userId}
+```
+
+Authorization:
+
+```ts
+requireRole("admin")
+```
+
+---
+
+### Update User
+
+```http
+PATCH /api/users/{userId}
+```
+
+Support:
+
+* displayName
+* role
+* isActive
+
+Do not allow direct password updates.
+
+---
+
+### Reset Password
+
+```http
+POST /api/users/{userId}/reset-password
+```
+
+Authorization:
+
+```ts
+requireRole("admin")
+```
+
+Requirements:
+
+* generate new password hash
+* update audit fields
+
+---
+
+## User Linking
+
+Review relationships:
+
+### Student
+
+```text
+students.userId
+```
+
+### Parent
+
+```text
+student_guardians.userId
+```
+
+### Teacher
+
+```text
+courses.teacherId
+```
+
+Provide architecture recommendation for user linkage consistency.
+
+---
+
+## OpenAPI
+
+Update:
+
+* schemas
+* paths
+* request DTOs
+* response DTOs
+
+Regenerate client.
+
+Verify compilation.
+
+---
+
+## Security
+
+Verify:
+
+* passwordHash never returned
+* username uniqueness enforced
+* admin-only access enforced
+* audit fields populated
+
+---
+
+## Testing
+
+Add tests for:
+
+### Authorization
+
+* admin access
+* teacher denied
+* student denied
+* parent denied
+
+### Validation
+
+* duplicate username
+* invalid role
+* missing password
+
+### Password Security
+
+* password hashed before persistence
+* passwordHash never exposed
+
+### API Contract
+
+* OpenAPI validation
+* generated client validation
+
+---
+
+## Deliverable
+
+Implement:
+
+* UserRepository
+* UserService
+* UserController
+* OpenAPI definitions
+* Tests
+* Generated client updates
+
+Provide implementation report including:
+
+* architecture compliance
+* security review
+* OpenAPI changes
+* test results
+
+---
+
+## Success Criteria
+
+The platform must support:
+
+* creating teacher accounts
+* creating student accounts
+* creating parent accounts
+* deactivating accounts
+* password reset
+
+without direct database access.
+
+Expected outcome:
+
+User Management becomes production-ready and serves as the foundation for future Teacher Portal and Parent Portal work.
