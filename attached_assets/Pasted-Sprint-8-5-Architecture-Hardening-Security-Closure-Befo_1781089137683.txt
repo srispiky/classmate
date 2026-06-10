@@ -1,0 +1,245 @@
+Sprint 8.5 — Architecture Hardening & Security Closure
+
+Before making changes:
+
+1. Review:
+
+   * progress-analytics.service.ts
+   * dashboard.ts
+   * reports.ts
+   * StudentScopePolicy
+   * CourseScopePolicy
+   * downloadsRouter
+   * reporting-security.test.ts
+   * dashboard-scoping.test.ts
+
+2. Follow all authorization architecture:
+
+   Layer 1:
+   requireRole()
+
+   Layer 2:
+   scope filtering
+
+   Layer 3:
+   validateAccess()
+
+3. Do not introduce new product features.
+
+4. This sprint is hardening only.
+
+---
+
+## OBJECTIVE
+
+Resolve all medium-priority findings from the Sprint 8 Architecture Audit.
+
+Improve consistency, maintainability, and defensive programming.
+
+No OpenAPI contract changes.
+
+No database migrations.
+
+---
+
+## PART 1 — DASHBOARD RISK CONSOLIDATION
+
+Review:
+
+dashboard.ts
+
+Current issue:
+
+Dashboard summary uses:
+
+avg < 60
+
+instead of:
+
+computeRiskLevel()
+
+Refactor dashboard summary to use:
+
+ProgressAnalyticsService.computeRiskLevel()
+
+Goal:
+
+Single source of truth for risk calculations.
+
+Add tests proving dashboard and progress endpoint return consistent classifications.
+
+---
+
+## PART 2 — TIMELINE DIVIDE-BY-ZERO HARDENING
+
+Review:
+
+buildTimeline()
+
+Current issue:
+
+scorePercent calculation may divide by:
+
+maxScore = 0
+
+Implement defensive guard.
+
+Expected behavior:
+
+No NaN values.
+
+Document chosen behavior.
+
+Add unit tests covering:
+
+maxScore = 0
+
+---
+
+## PART 3 — POLICY DOCUMENTATION
+
+Review:
+
+StudentScopePolicy.validateAccess()
+
+Add explicit documentation describing:
+
+required inputs
+
+expected enrolledCourseIds behavior
+
+caller responsibilities
+
+No functional changes.
+
+---
+
+## PART 4 — DOWNLOADS ROUTER AUDIT
+
+Review:
+
+downloadsRouter
+
+Verify:
+
+authentication
+
+authorization
+
+file access controls
+
+soft-delete handling
+
+Produce audit findings.
+
+If missing protections exist:
+
+implement fixes.
+
+If already secure:
+
+add tests proving enforcement.
+
+---
+
+## PART 5 — SECURITY TEST EXPANSION
+
+Add tests for:
+
+GET /reports/student-summary
+
+Unauthenticated:
+401
+
+Wrong teacher:
+403
+
+Correct teacher:
+200
+
+Admin:
+200
+
+---
+
+## PART 6 — INTEGRATION TEST COVERAGE
+
+Add full request/response integration coverage for:
+
+GET /reports/student-summary
+
+GET /reports/course-summary
+
+Verify:
+
+authorization
+
+scope filtering
+
+payload shape
+
+---
+
+## PART 7 — REGRESSION REVIEW
+
+Run:
+
+full test suite
+
+Verify:
+
+all Sprint 6 security tests
+
+all Sprint 7 dashboard tests
+
+all Sprint 8 analytics tests
+
+remain green.
+
+---
+
+## PART 8 — ARCHITECTURE REVIEW
+
+Confirm:
+
+No duplicated risk logic remains.
+
+No NaN propagation paths remain.
+
+downloadsRouter security is verified.
+
+Policy contracts are documented.
+
+Authorization layers preserved.
+
+---
+
+## GIT REQUIREMENT
+
+Run full test suite.
+
+Commit:
+
+git add .
+git commit -m "chore(security): harden analytics and reporting architecture"
+
+Push:
+
+git push origin main
+
+Include commit hash in report.
+
+---
+
+## DELIVERABLES
+
+Provide:
+
+1. Files modified
+2. Findings resolved
+3. Security review results
+4. Integration test results
+5. Regression test results
+6. downloadsRouter audit outcome
+7. Commit hash
+8. Remaining launch blockers
