@@ -1,0 +1,286 @@
+# Sprint 7 Chunk 6 — Dashboard Teacher Scoping
+
+Before making changes:
+
+1. Read and understand:
+   - dashboard routes
+   - dashboard service implementation
+   - scope-filter architecture
+   - CourseScopePolicy
+   - StudentScopePolicy
+   - AssignmentScopePolicy
+   - AssessmentScopePolicy
+
+2. Follow all existing authorization patterns:
+   - Layer 1: requireRole()
+   - Layer 2: scope filtering
+   - Layer 3: ownership validation
+
+3. Keep changes strictly scoped to dashboard functionality.
+
+--------------------------------------------------
+OBJECTIVE
+--------------------------------------------------
+
+Fix dashboard privacy and correctness.
+
+Current audit finding:
+
+Teachers see platform-wide:
+
+- total students
+- total courses
+- total assignments
+- total assessments
+- recent activity
+- grade distribution
+- top performers
+
+The dashboard ignores teacher ownership.
+
+Teachers must only see data from their own courses.
+
+Admins continue to see global data.
+
+--------------------------------------------------
+PART 1 — DASHBOARD SUMMARY
+--------------------------------------------------
+
+Review:
+
+GET /dashboard/summary
+
+Current behavior:
+
+Queries:
+
+- studentsTable
+- coursesTable
+- assignmentsTable
+- assessmentsTable
+
+without scope filtering.
+
+Implement:
+
+Admin:
+- unchanged
+
+Teacher:
+- only own courses
+- only students enrolled in own courses
+- only assignments belonging to own courses
+- only assessments belonging to own courses
+
+Verify:
+
+Teacher A cannot see Teacher B metrics.
+
+--------------------------------------------------
+PART 2 — RECENT ACTIVITY
+--------------------------------------------------
+
+Review:
+
+GET /dashboard/recent-activity
+
+Current behavior:
+
+Returns activity across the platform.
+
+Implement:
+
+Teacher:
+
+Only activity generated from:
+
+- owned courses
+- owned assignments
+- owned assessments
+- owned students
+
+Admin:
+
+Unchanged.
+
+--------------------------------------------------
+PART 3 — GRADE BREAKDOWN
+--------------------------------------------------
+
+Review:
+
+GET /dashboard/grade-breakdown
+
+Current behavior:
+
+Uses all assessments.
+
+Implement:
+
+Teacher:
+
+Only assessments tied to owned courses.
+
+Admin:
+
+Global.
+
+--------------------------------------------------
+PART 4 — TOP PERFORMERS
+--------------------------------------------------
+
+Review:
+
+summary.topPerformers
+
+Current behavior:
+
+Global ranking.
+
+Implement:
+
+Teacher:
+
+Only students enrolled in teacher-owned courses.
+
+Admin:
+
+Global ranking.
+
+--------------------------------------------------
+PART 5 — SCOPE IMPLEMENTATION
+--------------------------------------------------
+
+Requirements:
+
+Do NOT duplicate authorization logic.
+
+Reuse:
+
+- ScopeContext
+- ownedCourseIds
+- scope-filter helpers
+- existing policy architecture
+
+Avoid:
+
+- hard-coded role checks scattered through queries
+- duplicate ownership logic
+
+Keep implementation consistent with:
+
+- courses
+- assignments
+- assessments
+- students
+
+--------------------------------------------------
+PART 6 — SECURITY TESTS
+--------------------------------------------------
+
+Add tests proving:
+
+Teacher A:
+
+cannot see Teacher B data.
+
+Teacher B:
+
+cannot see Teacher A data.
+
+Admin:
+
+sees both.
+
+Cover:
+
+- dashboard summary
+- recent activity
+- grade breakdown
+- top performers
+
+--------------------------------------------------
+PART 7 — FRONTEND VALIDATION
+--------------------------------------------------
+
+Verify existing dashboard UI works unchanged.
+
+No mock data.
+
+No contract changes.
+
+Generated hooks should continue working without modification.
+
+Verify:
+
+- summary cards
+- charts
+- activity feed
+- top performers
+
+--------------------------------------------------
+PART 8 — E2E VERIFICATION
+--------------------------------------------------
+
+Create:
+
+Teacher A
+Teacher B
+
+Course A
+Course B
+
+Student A
+Student B
+
+Assignment A
+Assignment B
+
+Assessment A
+Assessment B
+
+Verify:
+
+Teacher A dashboard:
+- sees only A data
+
+Teacher B dashboard:
+- sees only B data
+
+Admin dashboard:
+- sees both
+
+--------------------------------------------------
+GIT REQUIREMENT
+--------------------------------------------------
+
+After implementation:
+
+Run full test suite.
+
+Commit:
+
+git add .
+git commit -m "fix(sprint7): scope dashboard data to teacher ownership"
+
+Push:
+
+git push origin main
+
+Include commit hash in report.
+
+--------------------------------------------------
+DELIVERABLE FORMAT
+--------------------------------------------------
+
+Provide:
+
+1. Files modified
+2. Dashboard queries changed
+3. Scope strategy
+4. Security test results
+5. E2E verification
+6. Git commit hash
+7. Remaining Teacher Portal blockers
+
+Complete implementation, tests, verification, commit, and push before reporting.

@@ -79,6 +79,7 @@ router.post("/notes", requireRole("admin", "teacher"), async (req, res): Promise
     description: `Lesson note "${parsed.data.title}" added for topic "${parsed.data.topic}"`,
     studentName: "Teacher",
     courseName: course?.name ?? "Unknown",
+    courseId: parsed.data.courseId,
   });
 
   res.status(201).json(

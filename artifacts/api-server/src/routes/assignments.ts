@@ -100,6 +100,7 @@ router.post(
       description: `New assignment "${parsed.data.title}" created`,
       studentName: student?.name ?? "Unknown",
       courseName: course?.name ?? "Unknown",
+      courseId: parsed.data.courseId,
     });
 
     res.status(201).json(
@@ -210,6 +211,7 @@ router.patch(
         }`,
         studentName: existing.studentName,
         courseName: existing.courseName,
+        courseId: existing.courseId,
       });
     }
 

@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { desc, eq, isNull } from "drizzle-orm";
+import { and, desc, isNull } from "drizzle-orm";
 import {
   db,
   studentsTable,
@@ -14,35 +14,52 @@ import {
   GetGradeBreakdownResponse,
 } from "@workspace/api-zod";
 import { requireRole } from "../middleware/require-role";
+import { buildScopeContext, type ClassmateSession } from "../lib/scope-context";
+import {
+  buildDashboardCourseFilter,
+  buildDashboardStudentFilter,
+  buildDashboardAssignmentFilter,
+  buildDashboardAssessmentFilter,
+  buildDashboardActivityFilter,
+} from "../lib/dashboard.queries";
 
 const router: IRouter = Router();
 
 // ── GET /api/dashboard/summary ────────────────────────────────────────────────
 
-// Layer 1: dashboard data is class-wide; restricted to admin and teacher only.
+// Layer 1: dashboard data restricted to admin and teacher.
+// Layer 2: teachers see only their own courses / enrolled students / owned assignments+assessments.
 router.get(
   "/dashboard/summary",
   requireRole("admin", "teacher"),
-  async (_req, res): Promise<void> => {
+  async (req, res): Promise<void> => {
+    const scope = buildScopeContext(req.session as ClassmateSession);
+
+    // Build per-resource scope filters (undefined = admin, no filter).
+    const courseFilter = buildDashboardCourseFilter(scope);
+    const studentFilter = buildDashboardStudentFilter(scope);
+    const assignmentFilter = buildDashboardAssignmentFilter(scope);
+    const assessmentFilter = buildDashboardAssessmentFilter(scope);
+
     const students = await db
       .select()
       .from(studentsTable)
-      .where(isNull(studentsTable.deletedAt));
+      .where(and(isNull(studentsTable.deletedAt), studentFilter));
 
     const courses = await db
       .select()
       .from(coursesTable)
-      .where(isNull(coursesTable.deletedAt));
+      .where(and(isNull(coursesTable.deletedAt), courseFilter));
 
     const assignments = await db
       .select()
       .from(assignmentsTable)
-      .where(isNull(assignmentsTable.deletedAt));
+      .where(and(isNull(assignmentsTable.deletedAt), assignmentFilter));
 
     const assessments = await db
       .select()
       .from(assessmentsTable)
-      .where(isNull(assessmentsTable.deletedAt));
+      .where(and(isNull(assessmentsTable.deletedAt), assessmentFilter));
 
     const pending = assignments.filter(
       (a) => a.status === "pending" || a.status === "late",
@@ -101,14 +118,19 @@ router.get(
 
 // ── GET /api/dashboard/recent-activity ───────────────────────────────────────
 
-// Layer 1: restricted to admin and teacher only.
+// Layer 1: restricted to admin and teacher.
+// Layer 2: teachers see only activity from their owned courses.
 router.get(
   "/dashboard/recent-activity",
   requireRole("admin", "teacher"),
-  async (_req, res): Promise<void> => {
+  async (req, res): Promise<void> => {
+    const scope = buildScopeContext(req.session as ClassmateSession);
+    const activityFilter = buildDashboardActivityFilter(scope);
+
     const activities = await db
       .select()
       .from(activityTable)
+      .where(activityFilter)
       .orderBy(desc(activityTable.timestamp))
       .limit(20);
 
@@ -125,20 +147,25 @@ router.get(
 
 // ── GET /api/dashboard/grade-breakdown ───────────────────────────────────────
 
-// Layer 1: restricted to admin and teacher only.
+// Layer 1: restricted to admin and teacher.
+// Layer 2: teachers see only courses they own and assessments from those courses.
 router.get(
   "/dashboard/grade-breakdown",
   requireRole("admin", "teacher"),
-  async (_req, res): Promise<void> => {
+  async (req, res): Promise<void> => {
+    const scope = buildScopeContext(req.session as ClassmateSession);
+    const courseFilter = buildDashboardCourseFilter(scope);
+    const assessmentFilter = buildDashboardAssessmentFilter(scope);
+
     const courses = await db
       .select()
       .from(coursesTable)
-      .where(isNull(coursesTable.deletedAt));
+      .where(and(isNull(coursesTable.deletedAt), courseFilter));
 
     const assessments = await db
       .select()
       .from(assessmentsTable)
-      .where(isNull(assessmentsTable.deletedAt));
+      .where(and(isNull(assessmentsTable.deletedAt), assessmentFilter));
 
     const breakdown = courses.map((course) => {
       const courseAssessments = assessments.filter(

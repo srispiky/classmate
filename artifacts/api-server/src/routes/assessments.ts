@@ -182,6 +182,7 @@ router.post(
       description: `Assessment "${parsed.data.title}" completed with score ${parsed.data.score}/${parsed.data.maxScore}`,
       studentName: student?.name ?? "Unknown",
       courseName: course?.name ?? "Unknown",
+      courseId: parsed.data.courseId,
     });
 
     res.status(201).json(
