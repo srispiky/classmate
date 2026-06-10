@@ -1,0 +1,275 @@
+Sprint 9 Chunk 5 — Performance & Scalability Remediation
+
+Before making changes:
+
+1. Review:
+
+   * dashboard routes
+   * reporting routes
+   * progress analytics service
+   * student health endpoints
+   * database indexes
+   * integration tests added in Chunk 4
+
+2. Preserve:
+
+   OpenAPI contracts
+
+   Authorization architecture
+
+   Existing response shapes
+
+3. No feature additions.
+
+4. No UI changes.
+
+---
+
+## OBJECTIVE
+
+Improve scalability and query efficiency.
+
+Target:
+
+* reduce memory usage
+* reduce query counts
+* reduce full-table scans
+* improve large dataset behavior
+
+without changing functionality.
+
+---
+
+## PART 1 — DASHBOARD PERFORMANCE
+
+Review:
+
+GET /dashboard/summary
+
+GET /dashboard/recent-activity
+
+GET /dashboard/grade-breakdown
+
+GET /dashboard/student-health
+
+Identify:
+
+* in-memory aggregations
+* unnecessary row loading
+* repeated queries
+
+Where safe:
+
+move aggregation into SQL.
+
+Goal:
+
+avoid loading entire datasets into Node.js memory.
+
+---
+
+## PART 2 — REPORTING PERFORMANCE
+
+Review:
+
+GET /reports/student-summary
+
+GET /reports/course-summary
+
+Current concern:
+
+course reports aggregate rows in memory.
+
+Optimize:
+
+GROUP BY
+
+COUNT
+
+AVG
+
+SUM
+
+using SQL where appropriate.
+
+Preserve response shape.
+
+---
+
+## PART 3 — QUERY COUNT REVIEW
+
+Identify:
+
+N+1 patterns
+
+Repeated lookups
+
+Duplicate queries
+
+Particularly in:
+
+dashboard
+
+student health
+
+progress timeline
+
+reports
+
+Reduce query count where possible.
+
+---
+
+## PART 4 — PAGINATION FOUNDATION
+
+Review all list endpoints:
+
+students
+
+courses
+
+assignments
+
+assessments
+
+notes
+
+announcements
+
+Do not change contracts yet.
+
+Produce architecture proposal:
+
+pagination strategy
+
+cursor vs offset
+
+OpenAPI impact
+
+migration path
+
+No implementation.
+
+---
+
+## PART 5 — LOAD TEST HARNESS
+
+Create performance test framework.
+
+Target datasets:
+
+100 students
+
+1,000 students
+
+10,000 students
+
+Measure:
+
+response time
+
+query counts
+
+memory usage
+
+Document findings.
+
+---
+
+## PART 6 — INDEX VALIDATION
+
+Verify indexes introduced in Chunk 3.
+
+Confirm:
+
+queries actually use them.
+
+Document:
+
+before vs after behavior.
+
+---
+
+## PART 7 — REGRESSION TESTING
+
+Run:
+
+full integration suite
+
+full security suite
+
+full analytics suite
+
+Verify:
+
+behavior unchanged.
+
+---
+
+## PART 8 — ARCHITECTURE REVIEW
+
+Confirm:
+
+No authorization changes.
+
+No API contract changes.
+
+No frontend changes.
+
+Only performance improvements.
+
+---
+
+## PART 9 — READINESS UPDATE
+
+Recalculate:
+
+Performance score
+
+Scalability score
+
+Overall readiness score
+
+Estimate:
+
+readiness for
+
+100 users
+
+1,000 users
+
+10,000 users
+
+---
+
+## GIT REQUIREMENT
+
+Run full test suite.
+
+Commit:
+
+git add .
+git commit -m "perf(api): optimize dashboard and reporting queries"
+
+Push:
+
+git push origin main
+
+Include commit hash.
+
+---
+
+## DELIVERABLES
+
+Provide:
+
+1. Queries optimized
+2. Query count reductions
+3. Memory improvements
+4. SQL aggregation changes
+5. Load test results
+6. Regression results
+7. Pagination proposal
+8. Updated readiness score
+9. Remaining launch blockers
+10. Commit hash

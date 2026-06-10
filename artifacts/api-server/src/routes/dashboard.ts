@@ -3,7 +3,6 @@ import { and, desc, isNull } from "drizzle-orm";
 import {
   db,
   studentsTable,
-  coursesTable,
   assignmentsTable,
   assessmentsTable,
   activityTable,
@@ -23,6 +22,10 @@ import {
   buildDashboardAssessmentFilter,
   buildDashboardActivityFilter,
 } from "../lib/dashboard.queries";
+import {
+  getDashboardSummaryCounts,
+  getGradeBreakdownData,
+} from "../lib/teacher-dashboard.queries";
 import { classifyStudentCohorts } from "../services/progress-analytics.service";
 
 const router: IRouter = Router();
@@ -31,84 +34,56 @@ const router: IRouter = Router();
 
 // Layer 1: dashboard data restricted to admin and teacher.
 // Layer 2: teachers see only their own courses / enrolled students / owned assignments+assessments.
+//
+// Performance (Chunk 5):
+//   Before: 4 × SELECT * → full-table loads → all aggregation in Node.js
+//   After:  4 × SQL aggregate queries (parallel) → only scalar/grouped results returned
 router.get(
   "/dashboard/summary",
   requireRole("admin", "teacher"),
   async (req, res): Promise<void> => {
     const scope = buildScopeContext(req.session as ClassmateSession);
 
-    // Build per-resource scope filters (undefined = admin, no filter).
     const courseFilter = buildDashboardCourseFilter(scope);
     const studentFilter = buildDashboardStudentFilter(scope);
     const assignmentFilter = buildDashboardAssignmentFilter(scope);
     const assessmentFilter = buildDashboardAssessmentFilter(scope);
 
-    const students = await db
-      .select()
-      .from(studentsTable)
-      .where(and(isNull(studentsTable.deletedAt), studentFilter));
-
-    const courses = await db
-      .select()
-      .from(coursesTable)
-      .where(and(isNull(coursesTable.deletedAt), courseFilter));
-
-    const assignments = await db
-      .select()
-      .from(assignmentsTable)
-      .where(and(isNull(assignmentsTable.deletedAt), assignmentFilter));
-
-    const assessments = await db
-      .select()
-      .from(assessmentsTable)
-      .where(and(isNull(assessmentsTable.deletedAt), assessmentFilter));
-
-    const pending = assignments.filter(
-      (a) => a.status === "pending" || a.status === "late",
-    ).length;
-    const gradedAssignments = assignments.filter(
-      (a) => a.status === "graded" && a.score != null,
+    const { counts, studentScores } = await getDashboardSummaryCounts(
+      studentFilter,
+      courseFilter,
+      assignmentFilter,
+      assessmentFilter,
     );
-    const avgScore =
-      gradedAssignments.length > 0
-        ? gradedAssignments.reduce(
-            (sum, a) => sum + ((a.score ?? 0) / a.maxScore) * 100,
-            0,
-          ) / gradedAssignments.length
-        : 0;
-    const completed = assignments.filter(
-      (a) => a.status === "graded" || a.status === "submitted",
-    ).length;
-    const completionRate =
-      assignments.length > 0 ? completed / assignments.length : 0;
 
-    const studentScores = new Map<number, number[]>();
-    for (const a of assessments) {
-      if (!studentScores.has(a.studentId)) studentScores.set(a.studentId, []);
-      studentScores.get(a.studentId)!.push((a.score / a.maxScore) * 100);
-    }
+    // Compute atRisk and topPerformers in JS — only over the pre-aggregated per-student rows
+    // returned by getDashboardSummaryCounts (1 row per student, not 1 row per assessment).
     let atRisk = 0;
     const topPerformers: Array<{ id: number; name: string; averageScore: number }> = [];
-    for (const student of students) {
-      const scores = studentScores.get(student.id) ?? [];
-      const avg =
-        scores.length > 0 ? scores.reduce((a, b) => a + b, 0) / scores.length : 0;
-      if (avg < 60 && scores.length > 0) atRisk++;
-      if (avg >= 80)
+
+    for (const s of studentScores) {
+      if (s.avgPct < 60) atRisk++;
+      if (s.avgPct >= 80) {
         topPerformers.push({
-          id: student.id,
-          name: student.name,
-          averageScore: Math.round(avg),
+          id: s.studentId,
+          name: s.studentName,
+          averageScore: Math.round(s.avgPct),
         });
+      }
     }
     topPerformers.sort((a, b) => b.averageScore - a.averageScore);
 
+    const completionRate =
+      counts.totalAssignments > 0
+        ? counts.completedAssignments / counts.totalAssignments
+        : 0;
+
     const summary = {
-      totalStudents: students.length,
-      totalCourses: courses.length,
-      totalAssignments: assignments.length,
-      pendingAssignments: pending,
-      averageClassScore: Math.round(avgScore * 10) / 10,
+      totalStudents: counts.totalStudents,
+      totalCourses: counts.totalCourses,
+      totalAssignments: counts.totalAssignments,
+      pendingAssignments: counts.pendingAssignments,
+      averageClassScore: Math.round((counts.avgAssignmentScore ?? 0) * 10) / 10,
       completionRate: Math.round(completionRate * 100) / 100,
       atRiskStudents: atRisk,
       topPerformers: topPerformers.slice(0, 5),
@@ -122,6 +97,7 @@ router.get(
 
 // Layer 1: restricted to admin and teacher.
 // Layer 2: teachers see only activity from their owned courses.
+// Already uses ORDER BY + LIMIT — no change needed.
 router.get(
   "/dashboard/recent-activity",
   requireRole("admin", "teacher"),
@@ -151,6 +127,10 @@ router.get(
 
 // Layer 1: restricted to admin and teacher.
 // Layer 2: teachers see only courses they own and assessments from those courses.
+//
+// Performance (Chunk 5):
+//   Before: SELECT * courses + SELECT * assessments → JS per-course bucketing
+//   After:  SELECT id,name courses + GROUP BY course_id aggregate (both parallel)
 router.get(
   "/dashboard/grade-breakdown",
   requireRole("admin", "teacher"),
@@ -159,51 +139,25 @@ router.get(
     const courseFilter = buildDashboardCourseFilter(scope);
     const assessmentFilter = buildDashboardAssessmentFilter(scope);
 
-    const courses = await db
-      .select()
-      .from(coursesTable)
-      .where(and(isNull(coursesTable.deletedAt), courseFilter));
+    const { courses, assessmentStats } = await getGradeBreakdownData(
+      courseFilter,
+      assessmentFilter,
+    );
 
-    const assessments = await db
-      .select()
-      .from(assessmentsTable)
-      .where(and(isNull(assessmentsTable.deletedAt), assessmentFilter));
+    // Build a lookup map from the SQL GROUP BY results (1 row per course).
+    const statsMap = new Map(assessmentStats.map((s) => [s.courseId, s]));
 
     const breakdown = courses.map((course) => {
-      const courseAssessments = assessments.filter(
-        (a) => a.courseId === course.id,
-      );
-      const avgScore =
-        courseAssessments.length > 0
-          ? courseAssessments.reduce(
-              (sum, a) => sum + (a.score / a.maxScore) * 100,
-              0,
-            ) / courseAssessments.length
-          : 0;
-
-      let aCount = 0,
-        bCount = 0,
-        cCount = 0,
-        dCount = 0,
-        fCount = 0;
-      for (const a of courseAssessments) {
-        const pct = (a.score / a.maxScore) * 100;
-        if (pct >= 90) aCount++;
-        else if (pct >= 80) bCount++;
-        else if (pct >= 70) cCount++;
-        else if (pct >= 60) dCount++;
-        else fCount++;
-      }
-
+      const stats = statsMap.get(course.id);
       return {
         courseName: course.name,
         courseId: course.id,
-        averageScore: Math.round(avgScore * 10) / 10,
-        aCount,
-        bCount,
-        cCount,
-        dCount,
-        fCount,
+        averageScore: Math.round((stats?.avgPct ?? 0) * 10) / 10,
+        aCount: stats?.aCount ?? 0,
+        bCount: stats?.bCount ?? 0,
+        cCount: stats?.cCount ?? 0,
+        dCount: stats?.dCount ?? 0,
+        fCount: stats?.fCount ?? 0,
       };
     });
 
@@ -214,39 +168,55 @@ router.get(
 // ── GET /api/dashboard/student-health ────────────────────────────────────────
 
 // Layer 1: restricted to admin and teacher.
-// Layer 2: teachers see only students enrolled in their own courses;
-//           admins see all students globally. Reuses existing dashboard scope
-//           helpers — no ad-hoc role checks in handler.
+// Layer 2: teachers see only students enrolled in their own courses.
+//
+// Performance (Chunk 5):
+//   Before: SELECT * (all columns including JSON strengths/weaknesses) for all 3 tables
+//   After:  Minimal column selection — only the columns actually consumed by the handler
 router.get(
   "/dashboard/student-health",
   requireRole("admin", "teacher"),
   async (req, res): Promise<void> => {
     const scope = buildScopeContext(req.session as ClassmateSession);
 
-    // Reuse Sprint 7 Chunk 6 scope helpers — consistent with all other dashboard routes.
     const studentFilter = buildDashboardStudentFilter(scope);
     const assignmentFilter = buildDashboardAssignmentFilter(scope);
     const assessmentFilter = buildDashboardAssessmentFilter(scope);
 
     const [students, assignments, assessments] = await Promise.all([
+      // Minimal columns: id + name only (skip grade, enrolledCourseIds, audit fields, etc.)
       db
-        .select()
+        .select({ id: studentsTable.id, name: studentsTable.name })
         .from(studentsTable)
         .where(and(isNull(studentsTable.deletedAt), studentFilter)),
+
+      // Minimal columns: only what the scoresByStudent builder needs
+      // (skip title, description, dueDate, feedback, courseId, audit fields)
       db
-        .select()
+        .select({
+          studentId: assignmentsTable.studentId,
+          status: assignmentsTable.status,
+          score: assignmentsTable.score,
+          maxScore: assignmentsTable.maxScore,
+          updatedAt: assignmentsTable.updatedAt,
+        })
         .from(assignmentsTable)
         .where(and(isNull(assignmentsTable.deletedAt), assignmentFilter)),
+
+      // Minimal columns: only what the scoresByStudent builder needs
+      // (skip title, strengths/weaknesses JSON, courseId, audit fields)
       db
-        .select()
+        .select({
+          studentId: assessmentsTable.studentId,
+          score: assessmentsTable.score,
+          maxScore: assessmentsTable.maxScore,
+          createdAt: assessmentsTable.createdAt,
+        })
         .from(assessmentsTable)
         .where(and(isNull(assessmentsTable.deletedAt), assessmentFilter)),
     ]);
 
     // Build per-student chronological score arrays.
-    // Assignments: use updatedAt as the grading timestamp (dueDate is text).
-    // Assessments: use createdAt.
-    // Scores are expressed as percentage (0–100) consistent with ProgressAnalyticsService.
     const scoresByStudent = new Map<number, Array<{ ts: number; pct: number }>>();
 
     for (const a of assignments) {
@@ -262,7 +232,6 @@ router.get(
       scoresByStudent.get(a.studentId)!.push({ ts: a.createdAt.getTime(), pct });
     }
 
-    // Delegate classification to ProgressAnalyticsService — no duplicate logic.
     const cohortInput = students.map((s) => {
       const entries = (scoresByStudent.get(s.id) ?? []).sort((a, b) => a.ts - b.ts);
       return { id: s.id, name: s.name, chronologicalScores: entries.map((e) => e.pct) };
