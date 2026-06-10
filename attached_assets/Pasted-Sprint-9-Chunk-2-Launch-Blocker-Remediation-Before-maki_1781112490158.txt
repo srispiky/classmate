@@ -1,0 +1,315 @@
+Sprint 9 Chunk 2 — Launch Blocker Remediation
+
+Before making changes:
+
+1. Review findings from Sprint 9 Production Readiness Audit.
+
+2. Review:
+
+   * app.ts
+   * auth routes
+   * downloads routes
+   * routes/index.ts
+   * deployment scripts
+   * Upgrade-Classmate.ps1
+   * OpenAPI specification
+   * existing authorization middleware
+
+3. Preserve:
+
+   Layer 1: requireRole()
+
+   Layer 2: scope filtering
+
+   Layer 3: ownership validation
+
+4. No feature development.
+
+5. No UI enhancements.
+
+6. Security and launch readiness only.
+
+---
+
+## OBJECTIVE
+
+Resolve all Critical findings and as many High findings as possible.
+
+Target:
+
+Production Readiness Score > 80
+
+Launch Recommendation:
+
+Ready with Conditions
+
+---
+
+## PART 1 — DOWNLOADS SECURITY REMEDIATION
+
+Review:
+
+routes/downloads.ts
+
+Current audit finding:
+
+Unauthenticated access to:
+
+GET /downloads
+
+GET /downloads/:key
+
+Implement:
+
+Layer 1:
+
+requireAuth()
+
+requireRole("admin")
+
+Move router registration behind global auth middleware.
+
+Verify:
+
+Teacher:
+403
+
+Student:
+403
+
+Unauthenticated:
+401
+
+Admin:
+200
+
+Add tests.
+
+---
+
+## PART 2 — SESSION COOKIE HARDENING
+
+Review:
+
+app.ts
+
+Current finding:
+
+secure: false
+
+Implement:
+
+secure:
+process.env.NODE_ENV === "production"
+
+sameSite:
+"strict"
+
+httpOnly:
+true
+
+Verify:
+
+development remains functional.
+
+Add tests where possible.
+
+---
+
+## PART 3 — LOGIN RATE LIMITING
+
+Review:
+
+auth routes
+
+Implement:
+
+express-rate-limit
+
+Suggested:
+
+10 requests / 15 minutes / IP
+
+Apply only to:
+
+POST /auth/login
+
+Verify:
+
+successful login still works.
+
+Add tests.
+
+---
+
+## PART 4 — SECURITY HEADERS
+
+Review:
+
+app.ts
+
+Add:
+
+helmet()
+
+Configure safely for SPA deployment.
+
+Verify:
+
+existing frontend works unchanged.
+
+---
+
+## PART 5 — CORS HARDENING
+
+Review:
+
+CORS configuration
+
+Current:
+
+origin: true
+
+Implement:
+
+environment-driven allow list
+
+Example:
+
+ALLOWED_ORIGINS
+
+Support:
+
+development localhost
+
+production domain
+
+Verify credentials continue functioning.
+
+---
+
+## PART 6 — SECRET REMEDIATION
+
+Review:
+
+Upgrade-Classmate.ps1
+
+Current findings:
+
+hardcoded database credentials
+
+hardcoded encryption key
+
+Implement:
+
+environment-variable driven configuration
+
+Remove secrets from repository.
+
+Document required variables.
+
+---
+
+## PART 7 — OPENAPI COVERAGE REVIEW
+
+Review undocumented endpoints:
+
+* downloads
+* admin db-status
+* admin test-db
+* student notes
+* student announcements
+
+Produce recommendation:
+
+which should be exposed in OpenAPI
+
+which should remain internal
+
+Do not change contracts yet.
+
+---
+
+## PART 8 — SECURITY REGRESSION TESTS
+
+Add tests covering:
+
+downloads authorization
+
+login rate limiting
+
+cookie configuration
+
+CORS restrictions
+
+Verify:
+
+all Sprint 6
+
+all Sprint 7
+
+all Sprint 8
+
+security suites remain green.
+
+---
+
+## PART 9 — ARCHITECTURE REVIEW
+
+Confirm:
+
+No authorization regressions.
+
+No route exposure regressions.
+
+No public access to deployment artifacts.
+
+No hardcoded credentials remain.
+
+---
+
+## PART 10 — READINESS REASSESSMENT
+
+Provide updated score for:
+
+Security
+
+Deployment
+
+Operations
+
+Overall readiness
+
+Estimate launch readiness after remediation.
+
+---
+
+## GIT REQUIREMENT
+
+Run full test suite.
+
+Commit:
+
+git add .
+git commit -m "fix(security): resolve production launch blockers"
+
+Push:
+
+git push origin main
+
+Include commit hash.
+
+---
+
+## DELIVERABLES
+
+Provide:
+
+1. Files modified
+2. Critical findings resolved
+3. High findings resolved
+4. Security test results
+5. Regression results
+6. Updated readiness score
+7. Remaining blockers
+8. Commit hash

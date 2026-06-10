@@ -1,4 +1,5 @@
 import { Router, type IRouter } from "express";
+import rateLimit from "express-rate-limit";
 import { db, usersTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { hashPassword, verifyPassword } from "../lib/password";
@@ -6,7 +7,20 @@ import { SessionEnricherService } from "../lib/session-enricher";
 
 const router: IRouter = Router();
 
-router.post("/auth/login", async (req, res): Promise<void> => {
+// ── Login rate limiter ────────────────────────────────────────────────────────
+// Limits login attempts to 10 per 15-minute window per IP address.
+// Prevents credential-stuffing and brute-force attacks on the auth endpoint.
+// Only applied to POST /auth/login — other auth routes are unaffected.
+const loginRateLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  message: { error: "Too many login attempts, please try again later" },
+  standardHeaders: true,
+  legacyHeaders: false,
+  skipSuccessfulRequests: false,
+});
+
+router.post("/auth/login", loginRateLimiter, async (req, res): Promise<void> => {
   const { username, password } = req.body as { username?: string; password?: string };
 
   if (!username || !password) {

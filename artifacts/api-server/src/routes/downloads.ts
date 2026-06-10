@@ -1,6 +1,7 @@
 import { Router, type IRouter } from "express";
 import path from "path";
 import fs from "fs";
+import { requireRole } from "../middleware/require-role";
 
 const router: IRouter = Router();
 
@@ -37,7 +38,12 @@ const FILES: Record<string, { file: string; name: string; mime: string }> = {
   },
 };
 
-router.get("/downloads", async (_req, res): Promise<void> => {
+// Layer 1 — admin-only.
+// requireAuth is applied globally (see routes/index.ts) before this router is
+// mounted, guaranteeing unauthenticated callers receive 401 before reaching
+// these handlers. requireRole("admin") here provides defence-in-depth at the
+// handler level: teacher, student, parent, and guest roles all receive 403.
+router.get("/downloads", requireRole("admin"), async (_req, res): Promise<void> => {
   res.json({
     message: "Classmate Download Links",
     files: Object.entries(FILES).map(([key, val]) => ({
@@ -48,7 +54,7 @@ router.get("/downloads", async (_req, res): Promise<void> => {
   });
 });
 
-router.get("/downloads/:key", async (req, res): Promise<void> => {
+router.get("/downloads/:key", requireRole("admin"), async (req, res): Promise<void> => {
   const item = FILES[req.params.key as string];
   if (!item) {
     res.status(404).json({ error: "File not found" });

@@ -5,7 +5,6 @@ $ErrorActionPreference = "Stop"
 $BundleRoot     = $PSScriptRoot
 $IisSitePath    = "C:\inetpub\classmate"
 $ServiceName    = "ClassmateAPI"
-$EncryptionKey  = "a020dcdcbaf23bef23af68dcec10c297163de3ecdcb2af1e7442b57bcd843661"
 
 function Write-Step { param($msg) Write-Host "`n>>> $msg" -ForegroundColor Cyan }
 function Write-Ok   { param($msg) Write-Host "    [OK] $msg" -ForegroundColor Green }
@@ -84,8 +83,15 @@ Write-Ok "API files copied to $apiDistDst"
 # ----------------------------------------------------------------
 Write-Step "Updating service environment variables"
 
-# Preserve existing SESSION_SECRET so active sessions survive upgrades
+# Read the current NSSM environment block so we can preserve secrets that
+# already exist on this machine. Secrets must never be hardcoded here —
+# they are set once during the initial Deploy-Classmate.ps1 run and then
+# preserved across upgrades by reading them back from the running service.
 $existingEnv = (nssm get $ServiceName AppEnvironmentExtra 2>$null) -join "`n"
+
+# ── SESSION_SECRET ────────────────────────────────────────────────────────────
+# Preserve the existing secret so active user sessions survive the upgrade.
+# Generate a new secret only on first install when none is present.
 $sessionSecret = $null
 foreach ($line in $existingEnv -split "`n") {
     if ($line -match "^SESSION_SECRET=(.+)$") {
@@ -93,8 +99,6 @@ foreach ($line in $existingEnv -split "`n") {
         break
     }
 }
-
-# Generate a new SESSION_SECRET only if one does not exist yet
 if (-not $sessionSecret) {
     $rng = [System.Security.Cryptography.RandomNumberGenerator]::Create()
     $bytes = New-Object byte[] 32
@@ -103,11 +107,43 @@ if (-not $sessionSecret) {
     Write-Warn "SESSION_SECRET was not set — a new random secret has been generated"
 }
 
-# DATABASE_URL uses a password without special characters to avoid
-# NSSM/pg-library percent-encoding issues (classmate-upgrade.sql sets this password)
-$dbUrl = "postgresql://classmate_user:ClassmateDB2026@localhost:5432/classmate_db"
+# ── PASSWORD_ENCRYPTION_KEY ───────────────────────────────────────────────────
+# Read from the existing service environment. If absent, prompt the operator.
+# Never hardcode this value — it must be treated as a secret.
+$encryptionKey = $null
+foreach ($line in $existingEnv -split "`n") {
+    if ($line -match "^PASSWORD_ENCRYPTION_KEY=(.+)$") {
+        $encryptionKey = $Matches[1].Trim()
+        break
+    }
+}
+if (-not $encryptionKey) {
+    $encSec = Read-Host "    PASSWORD_ENCRYPTION_KEY not found in service — enter value" -AsSecureString
+    $encryptionKey = [Runtime.InteropServices.Marshal]::PtrToStringAuto(
+        [Runtime.InteropServices.Marshal]::SecureStringToBSTR($encSec))
+    if (-not $encryptionKey) { Write-Fail "PASSWORD_ENCRYPTION_KEY is required" }
+}
 
-$envBlock = "NODE_ENV=production`nPORT=3001`nDATABASE_URL=$dbUrl`nPASSWORD_ENCRYPTION_KEY=$EncryptionKey`nSESSION_SECRET=$sessionSecret"
+# ── DATABASE_URL ──────────────────────────────────────────────────────────────
+# Read from the existing service environment. If absent, prompt the operator.
+# The DATABASE_URL contains database credentials and must never be hardcoded.
+# Note: use a password without special characters to avoid NSSM percent-encoding
+# issues (the pg client library does not decode percent-encoded env var values).
+$dbUrl = $null
+foreach ($line in $existingEnv -split "`n") {
+    if ($line -match "^DATABASE_URL=(.+)$") {
+        $dbUrl = $Matches[1].Trim()
+        break
+    }
+}
+if (-not $dbUrl) {
+    $dbSec = Read-Host "    DATABASE_URL not found in service — enter value (e.g. postgresql://user:pass@localhost:5432/db)" -AsSecureString
+    $dbUrl = [Runtime.InteropServices.Marshal]::PtrToStringAuto(
+        [Runtime.InteropServices.Marshal]::SecureStringToBSTR($dbSec))
+    if (-not $dbUrl) { Write-Fail "DATABASE_URL is required" }
+}
+
+$envBlock = "NODE_ENV=production`nPORT=3001`nDATABASE_URL=$dbUrl`nPASSWORD_ENCRYPTION_KEY=$encryptionKey`nSESSION_SECRET=$sessionSecret"
 nssm set $ServiceName AppEnvironmentExtra $envBlock
 Write-Ok "Environment variables updated (DATABASE_URL, NODE_ENV, PORT, keys)"
 

@@ -24,10 +24,12 @@ import { requireAuth } from "../middleware/auth";
 
 const router: IRouter = Router();
 
+// Public routes — no session required.
 router.use(healthRouter);
 router.use(authRouter);
-router.use(downloadsRouter);
 
+// All routes below this point require an authenticated session.
+// requireAuth returns 401 for unauthenticated callers before any handler runs.
 router.use(requireAuth);
 
 router.use(studentsRouter);
@@ -46,6 +48,9 @@ router.use(studentCourseWorkspaceRouter);
 router.use(studentDashboardRouter);
 router.use(dashboardRouter);
 router.use(reportsRouter);
+// downloadsRouter is mounted after requireAuth so unauthenticated callers
+// receive 401 here before the handler's own requireRole("admin") check.
+router.use(downloadsRouter);
 router.use(usersRouter);
 router.use(adminRouter);
 
