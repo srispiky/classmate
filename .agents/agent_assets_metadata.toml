@@ -138,3 +138,9 @@ id = "m0mcsVnaIyW04XbpoMESv"
 uri = "file://sprint8-architecture-audit.md"
 type = "text"
 title = "Sprint 8 Architecture Audit"
+
+[[outputs]]
+id = "JO2NeuXjwanig1ukvYJwx"
+uri = "file://sprint9-production-readiness-audit.md"
+type = "text"
+title = "Sprint 9 — Production Readiness Audit"

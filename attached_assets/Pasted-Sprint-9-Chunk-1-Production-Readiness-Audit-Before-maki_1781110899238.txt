@@ -1,0 +1,283 @@
+Sprint 9 Chunk 1 — Production Readiness Audit
+
+Before making changes:
+
+1. Review entire platform:
+
+Backend:
+
+* authentication
+* authorization
+* routes
+* services
+* database access
+* migrations
+* reporting
+* analytics
+
+Frontend:
+
+* routing
+* protected routes
+* generated API hooks
+* dashboard
+* teacher portal
+* student portal
+
+Infrastructure:
+
+* environment configuration
+* deployment scripts
+* startup scripts
+* build pipelines
+* database configuration
+
+2. Do not implement features.
+
+3. Do not refactor code.
+
+4. This is an audit-only sprint.
+
+---
+
+## OBJECTIVE
+
+Perform a launch-readiness audit of the entire Classmate Connect platform.
+
+Identify:
+
+* security risks
+* scalability concerns
+* operational gaps
+* deployment blockers
+* maintainability concerns
+
+Prioritize findings by severity.
+
+---
+
+## PART 1 — AUTHORIZATION AUDIT
+
+Verify:
+
+Layer 1:
+requireRole()
+
+Layer 2:
+scope filtering
+
+Layer 3:
+ownership validation
+
+Review all major modules:
+
+* students
+* courses
+* assignments
+* assessments
+* notes
+* announcements
+* dashboard
+* reporting
+
+Identify:
+
+* missing guards
+* inconsistent patterns
+* duplicated authorization logic
+
+---
+
+## PART 2 — OPENAPI AUDIT
+
+Verify:
+
+Every endpoint:
+
+* exists in OpenAPI
+* uses generated types
+* uses generated hooks
+
+Identify:
+
+* undocumented endpoints
+* schema drift
+* manual API calls
+
+---
+
+## PART 3 — DATABASE AUDIT
+
+Review:
+
+* foreign keys
+* indexes
+* soft-delete usage
+* audit fields
+
+Verify:
+
+createdBy
+
+updatedBy
+
+updatedAt
+
+usage consistency.
+
+Identify:
+
+missing indexes
+
+expensive joins
+
+N+1 query risks
+
+---
+
+## PART 4 — PERFORMANCE AUDIT
+
+Review:
+
+dashboard
+
+reporting
+
+progress analytics
+
+student health
+
+Identify:
+
+queries likely to degrade at:
+
+* 100 students
+* 1,000 students
+* 10,000 students
+
+Recommend optimizations.
+
+Do not implement.
+
+---
+
+## PART 5 — SECURITY AUDIT
+
+Review:
+
+authentication
+
+authorization
+
+input validation
+
+file downloads
+
+reporting
+
+analytics
+
+Identify:
+
+* IDOR risks
+* privilege escalation risks
+* injection risks
+* information leakage
+
+---
+
+## PART 6 — DEPLOYMENT AUDIT
+
+Review:
+
+deployment scripts
+
+environment variables
+
+database migrations
+
+startup scripts
+
+Identify:
+
+missing production safeguards.
+
+Verify:
+
+repeatable deployment process.
+
+---
+
+## PART 7 — RECOVERY AUDIT
+
+Review:
+
+database migration strategy
+
+rollback strategy
+
+backup strategy
+
+Identify:
+
+production recovery risks.
+
+---
+
+## PART 8 — TEST COVERAGE AUDIT
+
+Review:
+
+unit tests
+
+integration tests
+
+security tests
+
+E2E tests
+
+Identify:
+
+critical areas with insufficient coverage.
+
+---
+
+## PART 9 — DELIVERABLE
+
+Provide:
+
+Executive Summary
+
+Critical Findings
+
+High Findings
+
+Medium Findings
+
+Low Findings
+
+Production Readiness Score (0–100)
+
+Launch Recommendation:
+
+* Ready
+* Ready with Conditions
+* Not Ready
+
+Provide remediation roadmap.
+
+Do not implement fixes.
+
+Audit only.
+
+---
+
+## GIT REQUIREMENT
+
+No code changes.
+
+No commits.
+
+No pushes.
+
+Audit only.
