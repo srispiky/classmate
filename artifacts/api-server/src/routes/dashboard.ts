@@ -12,6 +12,7 @@ import {
   GetDashboardSummaryResponse,
   GetRecentActivityResponse,
   GetGradeBreakdownResponse,
+  GetDashboardStudentHealthResponse,
 } from "@workspace/api-zod";
 import { requireRole } from "../middleware/require-role";
 import { buildScopeContext, type ClassmateSession } from "../lib/scope-context";
@@ -22,6 +23,7 @@ import {
   buildDashboardAssessmentFilter,
   buildDashboardActivityFilter,
 } from "../lib/dashboard.queries";
+import { classifyStudentCohorts } from "../services/progress-analytics.service";
 
 const router: IRouter = Router();
 
@@ -206,6 +208,69 @@ router.get(
     });
 
     res.json(GetGradeBreakdownResponse.parse(breakdown));
+  },
+);
+
+// ── GET /api/dashboard/student-health ────────────────────────────────────────
+
+// Layer 1: restricted to admin and teacher.
+// Layer 2: teachers see only students enrolled in their own courses;
+//           admins see all students globally. Reuses existing dashboard scope
+//           helpers — no ad-hoc role checks in handler.
+router.get(
+  "/dashboard/student-health",
+  requireRole("admin", "teacher"),
+  async (req, res): Promise<void> => {
+    const scope = buildScopeContext(req.session as ClassmateSession);
+
+    // Reuse Sprint 7 Chunk 6 scope helpers — consistent with all other dashboard routes.
+    const studentFilter = buildDashboardStudentFilter(scope);
+    const assignmentFilter = buildDashboardAssignmentFilter(scope);
+    const assessmentFilter = buildDashboardAssessmentFilter(scope);
+
+    const [students, assignments, assessments] = await Promise.all([
+      db
+        .select()
+        .from(studentsTable)
+        .where(and(isNull(studentsTable.deletedAt), studentFilter)),
+      db
+        .select()
+        .from(assignmentsTable)
+        .where(and(isNull(assignmentsTable.deletedAt), assignmentFilter)),
+      db
+        .select()
+        .from(assessmentsTable)
+        .where(and(isNull(assessmentsTable.deletedAt), assessmentFilter)),
+    ]);
+
+    // Build per-student chronological score arrays.
+    // Assignments: use updatedAt as the grading timestamp (dueDate is text).
+    // Assessments: use createdAt.
+    // Scores are expressed as percentage (0–100) consistent with ProgressAnalyticsService.
+    const scoresByStudent = new Map<number, Array<{ ts: number; pct: number }>>();
+
+    for (const a of assignments) {
+      if (a.status !== "graded" || a.score === null) continue;
+      const pct = (a.score / a.maxScore) * 100;
+      if (!scoresByStudent.has(a.studentId)) scoresByStudent.set(a.studentId, []);
+      scoresByStudent.get(a.studentId)!.push({ ts: a.updatedAt.getTime(), pct });
+    }
+
+    for (const a of assessments) {
+      const pct = (a.score / a.maxScore) * 100;
+      if (!scoresByStudent.has(a.studentId)) scoresByStudent.set(a.studentId, []);
+      scoresByStudent.get(a.studentId)!.push({ ts: a.createdAt.getTime(), pct });
+    }
+
+    // Delegate classification to ProgressAnalyticsService — no duplicate logic.
+    const cohortInput = students.map((s) => {
+      const entries = (scoresByStudent.get(s.id) ?? []).sort((a, b) => a.ts - b.ts);
+      return { id: s.id, name: s.name, chronologicalScores: entries.map((e) => e.pct) };
+    });
+
+    const cohorts = classifyStudentCohorts(cohortInput);
+
+    res.json(GetDashboardStudentHealthResponse.parse(cohorts));
   },
 );
 

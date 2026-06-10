@@ -1,14 +1,16 @@
-import { useGetDashboardSummary, useGetRecentActivity, useGetGradeBreakdown } from "@workspace/api-client-react";
+import { useGetDashboardSummary, useGetRecentActivity, useGetGradeBreakdown, useGetDashboardStudentHealth } from "@workspace/api-client-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Users, BookOpen, CheckSquare, AlertCircle, BrainCircuit } from "lucide-react";
+import { Users, BookOpen, CheckSquare, AlertCircle, BrainCircuit, TrendingUp, TrendingDown, ShieldAlert, HelpCircle } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from "recharts";
 import { Link } from "wouter";
+import { Badge } from "@/components/ui/badge";
 
 export default function Dashboard() {
   const { data: summary, isLoading: isLoadingSummary } = useGetDashboardSummary();
   const { data: activity, isLoading: isLoadingActivity } = useGetRecentActivity();
   const { data: gradeBreakdown, isLoading: isLoadingGrades } = useGetGradeBreakdown();
+  const { data: studentHealth, isLoading: isLoadingHealth, isError: isHealthError } = useGetDashboardStudentHealth();
 
   return (
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -77,6 +79,75 @@ export default function Dashboard() {
           </Card>
         </div>
       ) : null}
+
+      {/* Student Health Section */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Student Health</CardTitle>
+          <CardDescription>
+            AI-powered cohort analysis — at-risk, improving, declining, and insufficient data students.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {isLoadingHealth ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+              {[1, 2, 3, 4].map(i => <Skeleton key={i} className="h-48 rounded-lg" />)}
+            </div>
+          ) : isHealthError ? (
+            <div className="flex items-center justify-center py-8 text-destructive gap-2">
+              <AlertCircle className="w-5 h-5" />
+              <span>Failed to load student health data. Please try again.</span>
+            </div>
+          ) : studentHealth ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+
+              {/* At Risk */}
+              <HealthCohortPanel
+                title="At Risk"
+                description="Average score below 60%"
+                icon={<ShieldAlert className="w-4 h-4 text-destructive" />}
+                iconBg="bg-destructive/10"
+                badge="danger"
+                students={studentHealth.atRisk}
+                emptyMessage="No at-risk students"
+              />
+
+              {/* Improving */}
+              <HealthCohortPanel
+                title="Improving"
+                description="Score trend moving upward"
+                icon={<TrendingUp className="w-4 h-4 text-green-600 dark:text-green-400" />}
+                iconBg="bg-green-500/10"
+                badge="success"
+                students={studentHealth.improving}
+                emptyMessage="No improving students"
+              />
+
+              {/* Declining */}
+              <HealthCohortPanel
+                title="Declining"
+                description="Score trend moving downward"
+                icon={<TrendingDown className="w-4 h-4 text-orange-500" />}
+                iconBg="bg-orange-500/10"
+                badge="warning"
+                students={studentHealth.declining}
+                emptyMessage="No declining students"
+              />
+
+              {/* Insufficient Data */}
+              <HealthCohortPanel
+                title="Insufficient Data"
+                description="Not enough scored events yet"
+                icon={<HelpCircle className="w-4 h-4 text-muted-foreground" />}
+                iconBg="bg-muted"
+                badge="secondary"
+                students={studentHealth.noData}
+                emptyMessage="All students have enough data"
+              />
+            </div>
+          ) : null}
+        </CardContent>
+      </Card>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <div className="lg:col-span-2 space-y-8">
@@ -189,6 +260,82 @@ export default function Dashboard() {
             </CardContent>
           </Card>
         </div>
+      </div>
+    </div>
+  );
+}
+
+// ── HealthCohortPanel ─────────────────────────────────────────────────────────
+
+type BadgeVariant = "danger" | "success" | "warning" | "secondary";
+
+interface HealthStudent {
+  id: number;
+  name: string;
+  averageScore: number;
+}
+
+interface HealthCohortPanelProps {
+  title: string;
+  description: string;
+  icon: React.ReactNode;
+  iconBg: string;
+  badge: BadgeVariant;
+  students: HealthStudent[];
+  emptyMessage: string;
+}
+
+const badgeClasses: Record<BadgeVariant, string> = {
+  danger: "bg-destructive/10 text-destructive border-destructive/20",
+  success: "bg-green-500/10 text-green-700 dark:text-green-400 border-green-500/20",
+  warning: "bg-orange-500/10 text-orange-700 dark:text-orange-400 border-orange-500/20",
+  secondary: "bg-muted text-muted-foreground border-border",
+};
+
+function HealthCohortPanel({
+  title,
+  description,
+  icon,
+  iconBg,
+  badge,
+  students,
+  emptyMessage,
+}: HealthCohortPanelProps) {
+  return (
+    <div className="rounded-lg border bg-card p-4 flex flex-col gap-3">
+      <div className="flex items-center gap-2">
+        <div className={`w-7 h-7 rounded-full flex items-center justify-center ${iconBg}`}>
+          {icon}
+        </div>
+        <div>
+          <p className="text-sm font-semibold leading-none">{title}</p>
+          <p className="text-xs text-muted-foreground mt-0.5">{description}</p>
+        </div>
+        <span className={`ml-auto text-xs font-bold px-2 py-0.5 rounded-full border ${badgeClasses[badge]}`}>
+          {students.length}
+        </span>
+      </div>
+
+      <div className="flex flex-col gap-2 min-h-[80px]">
+        {students.length === 0 ? (
+          <div className="flex items-center justify-center flex-1 text-xs text-muted-foreground py-4">
+            {emptyMessage}
+          </div>
+        ) : (
+          students.map(student => (
+            <div
+              key={student.id}
+              className="flex items-center justify-between px-2 py-1.5 rounded-md hover:bg-muted/50 transition-colors"
+            >
+              <Link href={`/students/${student.id}`} className="text-sm font-medium hover:underline truncate max-w-[120px]">
+                {student.name}
+              </Link>
+              <span className="text-xs text-muted-foreground ml-2 shrink-0">
+                {student.averageScore.toFixed(1)}%
+              </span>
+            </div>
+          ))
+        )}
       </div>
     </div>
   );

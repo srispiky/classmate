@@ -1184,3 +1184,46 @@ export const GetGradeBreakdownResponseItem = zod.object({
 export const GetGradeBreakdownResponse = zod.array(
   GetGradeBreakdownResponseItem,
 );
+
+/**
+ * @summary Get student health cohort breakdown. Teacher-scoped (own enrolled students only); admin sees all students globally.
+
+ */
+export const GetDashboardStudentHealthResponse = zod.object({
+  atRisk: zod
+    .array(
+      zod.object({
+        id: zod.number(),
+        name: zod.string(),
+        averageScore: zod.number(),
+      }),
+    )
+    .describe("Students classified as HIGH risk (avg score < 60%)"),
+  improving: zod
+    .array(
+      zod.object({
+        id: zod.number(),
+        name: zod.string(),
+        averageScore: zod.number(),
+      }),
+    )
+    .describe("Students with IMPROVING score trend (not HIGH risk)"),
+  declining: zod
+    .array(
+      zod.object({
+        id: zod.number(),
+        name: zod.string(),
+        averageScore: zod.number(),
+      }),
+    )
+    .describe("Students with DECLINING score trend (not HIGH risk)"),
+  noData: zod
+    .array(
+      zod.object({
+        id: zod.number(),
+        name: zod.string(),
+        averageScore: zod.number(),
+      }),
+    )
+    .describe("Students with insufficient scored events for classification"),
+});

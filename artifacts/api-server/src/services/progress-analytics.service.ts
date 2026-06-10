@@ -2,9 +2,9 @@
  * ProgressAnalyticsService
  *
  * Pure computation functions for student risk classification, score trend
- * analysis, and progress timeline construction. All functions are stateless
- * and DB-free — they operate only on pre-fetched data so they can be
- * unit-tested without mocks.
+ * analysis, progress timeline construction, and cohort classification.
+ * All functions are stateless and DB-free — they operate only on pre-fetched
+ * data so they can be unit-tested without mocks.
  *
  * Risk classification thresholds (consistent with dashboard `atRisk` threshold):
  *   INSUFFICIENT_DATA  < 3 scored events
@@ -18,6 +18,13 @@
  *   delta > +5  → IMPROVING
  *   delta < -5  → DECLINING
  *   otherwise   → STABLE
+ *
+ * Cohort priority (mutually exclusive):
+ *   noData     both riskLevel and trend are INSUFFICIENT_DATA
+ *   atRisk     riskLevel === HIGH
+ *   improving  trend === IMPROVING (not HIGH)
+ *   declining  trend === DECLINING (not HIGH)
+ *   (stable / insufficient on one dimension → not classified into any cohort)
  */
 
 export type RiskLevel = "LOW" | "MEDIUM" | "HIGH" | "INSUFFICIENT_DATA";
@@ -189,4 +196,74 @@ export function buildTimeline(
     courseId: e.courseId,
     courseName: e.courseName,
   }));
+}
+
+// ── Cohort Classification ─────────────────────────────────────────────────────
+
+export interface StudentCohortEntry {
+  id: number;
+  name: string;
+  /** Chronological percentage scores (0–100), oldest → newest. */
+  chronologicalScores: number[];
+}
+
+export interface StudentCohortSummary {
+  id: number;
+  name: string;
+  averageScore: number;
+}
+
+export interface StudentCohorts {
+  atRisk: StudentCohortSummary[];
+  improving: StudentCohortSummary[];
+  declining: StudentCohortSummary[];
+  noData: StudentCohortSummary[];
+}
+
+/**
+ * Classifies a list of students into health cohorts.
+ *
+ * Priority order (mutually exclusive buckets):
+ *   1. noData     — both riskLevel and trend are INSUFFICIENT_DATA
+ *   2. atRisk     — riskLevel === HIGH
+ *   3. improving  — trend === IMPROVING (and not HIGH risk)
+ *   4. declining  — trend === DECLINING (and not HIGH risk)
+ *   5. (students with STABLE trend and LOW/MEDIUM risk are not included — they are healthy)
+ *
+ * Reuses computeRiskLevel and computeTrend — no duplicate logic.
+ *
+ * @param students - Scoped student entries with pre-computed chronological scores.
+ * @returns StudentCohorts with four mutually-exclusive arrays.
+ */
+export function classifyStudentCohorts(students: StudentCohortEntry[]): StudentCohorts {
+  const atRisk: StudentCohortSummary[] = [];
+  const improving: StudentCohortSummary[] = [];
+  const declining: StudentCohortSummary[] = [];
+  const noData: StudentCohortSummary[] = [];
+
+  for (const student of students) {
+    const scores = student.chronologicalScores;
+    const riskLevel = computeRiskLevel(scores);
+    const trend = computeTrend(scores);
+
+    const averageScore =
+      scores.length > 0
+        ? Math.round((scores.reduce((sum, s) => sum + s, 0) / scores.length) * 10) / 10
+        : 0;
+
+    const summary: StudentCohortSummary = { id: student.id, name: student.name, averageScore };
+
+    if (riskLevel === "INSUFFICIENT_DATA" && trend === "INSUFFICIENT_DATA") {
+      noData.push(summary);
+    } else if (riskLevel === "HIGH") {
+      atRisk.push(summary);
+    } else if (trend === "IMPROVING") {
+      improving.push(summary);
+    } else if (trend === "DECLINING") {
+      declining.push(summary);
+    }
+    // STABLE with LOW/MEDIUM risk: healthy, not included in any alert cohort
+  }
+
+  return { atRisk, improving, declining, noData };
 }

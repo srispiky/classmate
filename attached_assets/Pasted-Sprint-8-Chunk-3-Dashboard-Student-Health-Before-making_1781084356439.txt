@@ -1,0 +1,331 @@
+Sprint 8 Chunk 3 — Dashboard Student Health
+
+Before making changes:
+
+1. Review:
+
+   * ProgressAnalyticsService
+   * GET /students/:id/progress
+   * GET /students/:id/progress/timeline
+   * dashboard routes
+   * dashboard services
+   * dashboard teacher scoping implementation (Sprint 7 Chunk 6)
+   * StudentScopePolicy
+   * scope-filter architecture
+
+2. Follow all authorization architecture:
+
+   Layer 1:
+   requireRole()
+
+   Layer 2:
+   scope filtering
+
+   Layer 3:
+   ownership validation where applicable
+
+3. Do not move authorization logic into controllers.
+
+4. Keep changes strictly scoped to dashboard student health functionality.
+
+---
+
+## OBJECTIVE
+
+Provide teacher-scoped student health analytics on the dashboard.
+
+Teachers should be able to quickly identify:
+
+* At-risk students
+* Improving students
+* Declining students
+* Students with insufficient data
+
+Admins continue to see global results.
+
+Reuse ProgressAnalyticsService.
+
+Do not duplicate analytics logic.
+
+---
+
+## PART 1 — OPENAPI
+
+Add endpoint:
+
+GET /dashboard/student-health
+
+Create schema:
+
+StudentHealthSummary
+
+Response:
+
+{
+atRisk: StudentSummary[],
+improving: StudentSummary[],
+declining: StudentSummary[],
+noData: StudentSummary[]
+}
+
+Reuse existing StudentSummary schema.
+
+Do not modify DashboardSummary.
+
+Do not break existing dashboard endpoints.
+
+Run code generation.
+
+Verify generated hook:
+
+useGetDashboardStudentHealth()
+
+---
+
+## PART 2 — ANALYTICS SERVICE
+
+Extend:
+
+ProgressAnalyticsService
+
+Add:
+
+classifyStudentCohorts()
+
+Inputs:
+
+* scoped students
+* assignments
+* assessments
+
+Output:
+
+{
+atRisk,
+improving,
+declining,
+noData
+}
+
+Reuse:
+
+computeRiskLevel()
+
+computeTrend()
+
+No duplicate logic.
+
+---
+
+## PART 3 — DASHBOARD API
+
+Implement:
+
+GET /dashboard/student-health
+
+Admin:
+
+Global student population.
+
+Teacher:
+
+Only students accessible through teacher-owned courses.
+
+Reuse existing dashboard scoping patterns implemented in:
+
+Sprint 7 Chunk 6
+
+Avoid ad-hoc role checks.
+
+Reuse scope-filter helpers.
+
+---
+
+## PART 4 — SECURITY REVIEW
+
+Verify:
+
+Teacher A:
+
+cannot see Teacher B students.
+
+Teacher B:
+
+cannot see Teacher A students.
+
+Admin:
+
+can see both.
+
+Validate:
+
+* cohort membership
+* cohort counts
+* student identities
+
+---
+
+## PART 5 — FRONTEND
+
+Dashboard Page
+
+Add Student Health section.
+
+Display:
+
+At Risk Students
+
+Improving Students
+
+Declining Students
+
+Insufficient Data
+
+For each section:
+
+* student name
+* overall score
+* risk/trend indicator
+
+Loading state
+
+Empty state
+
+Error state
+
+Generated hooks only.
+
+No mock data.
+
+---
+
+## PART 6 — CACHE STRATEGY
+
+Query Key:
+
+["dashboard-student-health"]
+
+Invalidate after:
+
+* assignment grading
+* assessment grading
+* enrollment changes
+
+Follow existing dashboard cache patterns.
+
+---
+
+## PART 7 — TESTING
+
+Add service tests:
+
+classifyStudentCohorts()
+
+Add route tests:
+
+teacher scoped results
+
+admin global results
+
+empty cohorts
+
+mixed cohorts
+
+Add frontend tests:
+
+dashboard widget rendering
+
+empty state
+
+error state
+
+---
+
+## PART 8 — E2E VERIFICATION
+
+Create:
+
+Teacher A
+Teacher B
+
+Course A
+Course B
+
+Student A
+Student B
+
+Assignment scores
+
+Assessment scores
+
+Configure:
+
+Student A -> HIGH risk
+
+Student B -> IMPROVING
+
+Verify:
+
+Teacher A dashboard:
+
+shows only Student A
+
+Teacher B dashboard:
+
+shows only Student B
+
+Admin dashboard:
+
+shows both
+
+Verify cohort placement is correct.
+
+---
+
+## PART 9 — ARCHITECTURE REVIEW
+
+Verify:
+
+DashboardSummary remains unchanged.
+
+No analytics duplication.
+
+ProgressAnalyticsService remains single source of truth.
+
+Authorization layers preserved.
+
+OpenAPI remains backward compatible.
+
+---
+
+## GIT REQUIREMENT
+
+Run full test suite.
+
+Commit:
+
+git add .
+git commit -m "feat(dashboard): add student health analytics"
+
+Push:
+
+git push origin main
+
+Include commit hash in report.
+
+---
+
+## DELIVERABLES
+
+Provide:
+
+1. Files added
+2. Files modified
+3. OpenAPI changes
+4. Dashboard queries added
+5. Scope strategy
+6. Security verification
+7. Test results
+8. E2E verification
+9. Commit hash
+10. Remaining Sprint 8 blockers

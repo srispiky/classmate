@@ -1243,6 +1243,21 @@ paths:
                 items:
                   $ref: "#/components/schemas/GradeBreakdown"
 
+  /dashboard/student-health:
+    get:
+      operationId: getDashboardStudentHealth
+      tags: [dashboard]
+      summary: >
+        Get student health cohort breakdown. Teacher-scoped (own enrolled
+        students only); admin sees all students globally.
+      responses:
+        "200":
+          description: Student health cohort summary
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StudentHealthSummary"
+
 components:
   securitySchemes:
     sessionCookie:
@@ -1806,6 +1821,31 @@ components:
           type: string
           nullable: true
       required: [area, priority, suggestion]
+
+    StudentHealthSummary:
+      type: object
+      properties:
+        atRisk:
+          type: array
+          items:
+            $ref: "#/components/schemas/StudentSummary"
+          description: Students classified as HIGH risk (avg score < 60%)
+        improving:
+          type: array
+          items:
+            $ref: "#/components/schemas/StudentSummary"
+          description: Students with IMPROVING score trend (not HIGH risk)
+        declining:
+          type: array
+          items:
+            $ref: "#/components/schemas/StudentSummary"
+          description: Students with DECLINING score trend (not HIGH risk)
+        noData:
+          type: array
+          items:
+            $ref: "#/components/schemas/StudentSummary"
+          description: Students with insufficient scored events for classification
+      required: [atRisk, improving, declining, noData]
 
     DashboardSummary:
       type: object

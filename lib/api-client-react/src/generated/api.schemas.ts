@@ -389,6 +389,17 @@ export interface StudentSummary {
   averageScore: number;
 }
 
+export interface StudentHealthSummary {
+  /** Students classified as HIGH risk (avg score < 60%) */
+  atRisk: StudentSummary[];
+  /** Students with IMPROVING score trend (not HIGH risk) */
+  improving: StudentSummary[];
+  /** Students with DECLINING score trend (not HIGH risk) */
+  declining: StudentSummary[];
+  /** Students with insufficient scored events for classification */
+  noData: StudentSummary[];
+}
+
 export interface DashboardSummary {
   totalStudents: number;
   totalCourses: number;

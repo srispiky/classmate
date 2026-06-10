@@ -57,6 +57,7 @@ import type {
   StudentCourseSummary,
   StudentCourseWorkspace,
   StudentDashboard,
+  StudentHealthSummary,
   StudentNoteDetail,
   StudentNoteSummary,
   StudentProgress,
@@ -5124,6 +5125,84 @@ export function useGetGradeBreakdown<
   request?: SecondParameter<typeof customFetch>;
 }): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
   const queryOptions = getGetGradeBreakdownQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Get student health cohort breakdown. Teacher-scoped (own enrolled students only); admin sees all students globally.
+
+ */
+export const getGetDashboardStudentHealthUrl = () => {
+  return `/api/dashboard/student-health`;
+};
+
+export const getDashboardStudentHealth = async (
+  options?: RequestInit,
+): Promise<StudentHealthSummary> => {
+  return customFetch<StudentHealthSummary>(getGetDashboardStudentHealthUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetDashboardStudentHealthQueryKey = () => {
+  return [`/api/dashboard/student-health`] as const;
+};
+
+export const getGetDashboardStudentHealthQueryOptions = <
+  TData = Awaited<ReturnType<typeof getDashboardStudentHealth>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getDashboardStudentHealth>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getGetDashboardStudentHealthQueryKey();
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getDashboardStudentHealth>>
+  > = ({ signal }) => getDashboardStudentHealth({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getDashboardStudentHealth>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetDashboardStudentHealthQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getDashboardStudentHealth>>
+>;
+export type GetDashboardStudentHealthQueryError = ErrorType<unknown>;
+
+/**
+ * @summary Get student health cohort breakdown. Teacher-scoped (own enrolled students only); admin sees all students globally.
+
+ */
+
+export function useGetDashboardStudentHealth<
+  TData = Awaited<ReturnType<typeof getDashboardStudentHealth>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getDashboardStudentHealth>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetDashboardStudentHealthQueryOptions(options);
 
   const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
     queryKey: QueryKey;

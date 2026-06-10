@@ -58,6 +58,7 @@ export * from "./studentCourseSummary";
 export * from "./studentCourseSummaryEnrollmentStatus";
 export * from "./studentCourseWorkspace";
 export * from "./studentDashboard";
+export * from "./studentHealthSummary";
 export * from "./studentNoteDetail";
 export * from "./studentNoteSummary";
 export * from "./studentProgress";
