@@ -126,3 +126,9 @@ id = "-nUHTVAIqGvyUx8zsIPco"
 uri = "file://docs/architecture-review-students-progress.md"
 type = "text"
 title = "Architecture Review — GET /students/:id/progress"
+
+[[outputs]]
+id = "cevTyoQ3wedMU5eOfNHV3"
+uri = "file://docs/sprint8-chunk1-analytics-architecture-review.md"
+type = "text"
+title = "Sprint 8 Chunk 1 — Advanced Progress Analytics: Architecture Review"
