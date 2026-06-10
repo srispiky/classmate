@@ -7,6 +7,7 @@ import assignmentsRouter from "./assignments";
 import notesRouter from "./notes";
 import assessmentsRouter from "./assessments";
 import dashboardRouter from "./dashboard";
+import reportsRouter from "./reports";
 import downloadsRouter from "./downloads";
 import adminRouter from "./admin";
 import usersRouter from "./users";
@@ -44,6 +45,7 @@ router.use(studentCoursesRouter);
 router.use(studentCourseWorkspaceRouter);
 router.use(studentDashboardRouter);
 router.use(dashboardRouter);
+router.use(reportsRouter);
 router.use(usersRouter);
 router.use(adminRouter);
 

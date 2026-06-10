@@ -27,6 +27,7 @@ import type {
   Assignment,
   AuthUser,
   Course,
+  CourseReportSummary,
   CreateAssessmentBody,
   CreateAssignmentBody,
   CreateCourseBody,
@@ -35,6 +36,8 @@ import type {
   DashboardSummary,
   EnrollStudentBody,
   Enrollment,
+  GetCourseReportSummaryParams,
+  GetStudentReportSummaryParams,
   GradeBreakdown,
   HealthStatus,
   ListAnnouncementsParams,
@@ -62,6 +65,7 @@ import type {
   StudentNoteSummary,
   StudentProgress,
   StudentProgressTimeline,
+  StudentReportSummary,
   UpdateAssignmentBody,
   UpdateCourseBody,
   UpdateNoteBody,
@@ -5125,6 +5129,216 @@ export function useGetGradeBreakdown<
   request?: SecondParameter<typeof customFetch>;
 }): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
   const queryOptions = getGetGradeBreakdownQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Get student progress report. Teacher-scoped (own students only); admin sees any student. Returns structured data suitable for future export.
+
+ */
+export const getGetStudentReportSummaryUrl = (
+  params: GetStudentReportSummaryParams,
+) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/reports/student-summary?${stringifiedParams}`
+    : `/api/reports/student-summary`;
+};
+
+export const getStudentReportSummary = async (
+  params: GetStudentReportSummaryParams,
+  options?: RequestInit,
+): Promise<StudentReportSummary> => {
+  return customFetch<StudentReportSummary>(
+    getGetStudentReportSummaryUrl(params),
+    {
+      ...options,
+      method: "GET",
+    },
+  );
+};
+
+export const getGetStudentReportSummaryQueryKey = (
+  params?: GetStudentReportSummaryParams,
+) => {
+  return [`/api/reports/student-summary`, ...(params ? [params] : [])] as const;
+};
+
+export const getGetStudentReportSummaryQueryOptions = <
+  TData = Awaited<ReturnType<typeof getStudentReportSummary>>,
+  TError = ErrorType<unknown>,
+>(
+  params: GetStudentReportSummaryParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getStudentReportSummary>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getGetStudentReportSummaryQueryKey(params);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getStudentReportSummary>>
+  > = ({ signal }) =>
+    getStudentReportSummary(params, { signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getStudentReportSummary>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetStudentReportSummaryQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getStudentReportSummary>>
+>;
+export type GetStudentReportSummaryQueryError = ErrorType<unknown>;
+
+/**
+ * @summary Get student progress report. Teacher-scoped (own students only); admin sees any student. Returns structured data suitable for future export.
+
+ */
+
+export function useGetStudentReportSummary<
+  TData = Awaited<ReturnType<typeof getStudentReportSummary>>,
+  TError = ErrorType<unknown>,
+>(
+  params: GetStudentReportSummaryParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getStudentReportSummary>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetStudentReportSummaryQueryOptions(params, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Get course report. Teacher-scoped (own courses only); admin sees any course. Returns structured data suitable for future export.
+
+ */
+export const getGetCourseReportSummaryUrl = (
+  params: GetCourseReportSummaryParams,
+) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/reports/course-summary?${stringifiedParams}`
+    : `/api/reports/course-summary`;
+};
+
+export const getCourseReportSummary = async (
+  params: GetCourseReportSummaryParams,
+  options?: RequestInit,
+): Promise<CourseReportSummary> => {
+  return customFetch<CourseReportSummary>(
+    getGetCourseReportSummaryUrl(params),
+    {
+      ...options,
+      method: "GET",
+    },
+  );
+};
+
+export const getGetCourseReportSummaryQueryKey = (
+  params?: GetCourseReportSummaryParams,
+) => {
+  return [`/api/reports/course-summary`, ...(params ? [params] : [])] as const;
+};
+
+export const getGetCourseReportSummaryQueryOptions = <
+  TData = Awaited<ReturnType<typeof getCourseReportSummary>>,
+  TError = ErrorType<unknown>,
+>(
+  params: GetCourseReportSummaryParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getCourseReportSummary>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getGetCourseReportSummaryQueryKey(params);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getCourseReportSummary>>
+  > = ({ signal }) =>
+    getCourseReportSummary(params, { signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getCourseReportSummary>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetCourseReportSummaryQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getCourseReportSummary>>
+>;
+export type GetCourseReportSummaryQueryError = ErrorType<unknown>;
+
+/**
+ * @summary Get course report. Teacher-scoped (own courses only); admin sees any course. Returns structured data suitable for future export.
+
+ */
+
+export function useGetCourseReportSummary<
+  TData = Awaited<ReturnType<typeof getCourseReportSummary>>,
+  TError = ErrorType<unknown>,
+>(
+  params: GetCourseReportSummaryParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getCourseReportSummary>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetCourseReportSummaryQueryOptions(params, options);
 
   const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
     queryKey: QueryKey;

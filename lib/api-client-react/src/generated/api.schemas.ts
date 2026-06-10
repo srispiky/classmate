@@ -430,6 +430,107 @@ export interface ActivityItem {
   timestamp: string;
 }
 
+export type ReportStudentRowRiskLevel =
+  (typeof ReportStudentRowRiskLevel)[keyof typeof ReportStudentRowRiskLevel];
+
+export const ReportStudentRowRiskLevel = {
+  LOW: "LOW",
+  MEDIUM: "MEDIUM",
+  HIGH: "HIGH",
+  INSUFFICIENT_DATA: "INSUFFICIENT_DATA",
+} as const;
+
+export type ReportStudentRowTrend =
+  (typeof ReportStudentRowTrend)[keyof typeof ReportStudentRowTrend];
+
+export const ReportStudentRowTrend = {
+  IMPROVING: "IMPROVING",
+  STABLE: "STABLE",
+  DECLINING: "DECLINING",
+  INSUFFICIENT_DATA: "INSUFFICIENT_DATA",
+} as const;
+
+/**
+ * Per-student analytics row inside a course or cohort report
+ */
+export interface ReportStudentRow {
+  id: number;
+  name: string;
+  averageScore: number;
+  completionRate: number;
+  riskLevel: ReportStudentRowRiskLevel;
+  trend: ReportStudentRowTrend;
+}
+
+/**
+ * Count of students in each risk category
+ */
+export interface RiskDistribution {
+  low: number;
+  medium: number;
+  high: number;
+  insufficientData: number;
+}
+
+export type StudentReportSummaryRiskLevel =
+  (typeof StudentReportSummaryRiskLevel)[keyof typeof StudentReportSummaryRiskLevel];
+
+export const StudentReportSummaryRiskLevel = {
+  LOW: "LOW",
+  MEDIUM: "MEDIUM",
+  HIGH: "HIGH",
+  INSUFFICIENT_DATA: "INSUFFICIENT_DATA",
+} as const;
+
+export type StudentReportSummaryTrend =
+  (typeof StudentReportSummaryTrend)[keyof typeof StudentReportSummaryTrend];
+
+export const StudentReportSummaryTrend = {
+  IMPROVING: "IMPROVING",
+  STABLE: "STABLE",
+  DECLINING: "DECLINING",
+  INSUFFICIENT_DATA: "INSUFFICIENT_DATA",
+} as const;
+
+/**
+ * Full student progress report. Structured for future CSV/PDF export. Reuses analytics from ProgressAnalyticsService.
+
+ */
+export interface StudentReportSummary {
+  studentId: number;
+  studentName: string;
+  grade?: string | null;
+  averageScore: number;
+  completionRate: number;
+  totalAssignments: number;
+  completedAssignments: number;
+  totalAssessments: number;
+  riskLevel: StudentReportSummaryRiskLevel;
+  trend: StudentReportSummaryTrend;
+  topicsMastered: string[];
+  topicsNeedingWork: string[];
+  /** ISO 8601 timestamp of report generation */
+  generatedAt: string;
+}
+
+/**
+ * Full course report with per-student analytics rows. Structured for future CSV/PDF export.
+
+ */
+export interface CourseReportSummary {
+  courseId: number;
+  courseName: string;
+  teacherName: string;
+  totalStudents: number;
+  averageScore: number;
+  completionRate: number;
+  riskDistribution: RiskDistribution;
+  topPerformers: StudentSummary[];
+  students: ReportStudentRow[];
+  /** ISO 8601 timestamp of report generation */
+  generatedAt: string;
+}
+
 export interface GradeBreakdown {
   courseName: string;
   courseId: number;
@@ -706,4 +807,12 @@ export type ListAnnouncementsParams = {
 export type ListAssessmentsParams = {
   studentId?: number;
   courseId?: number;
+};
+
+export type GetStudentReportSummaryParams = {
+  studentId: number;
+};
+
+export type GetCourseReportSummaryParams = {
+  courseId: number;
 };

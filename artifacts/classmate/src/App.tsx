@@ -19,6 +19,9 @@ import AssessmentDetail from "@/pages/assessments/detail";
 import Announcements from "@/pages/announcements";
 import AnnouncementDetail from "@/pages/announcements/detail";
 import StudentAi from "@/pages/students/ai";
+import Reports from "@/pages/reports/index";
+import StudentReport from "@/pages/reports/student";
+import CourseReport from "@/pages/reports/course";
 import Settings from "@/pages/settings";
 import Login from "@/pages/login";
 import NotFound from "@/pages/not-found";
@@ -80,6 +83,9 @@ function ProtectedRouter() {
           <>
             <Route path="/announcements" component={Announcements} />
             <Route path="/announcements/:id" component={AnnouncementDetail} />
+            <Route path="/reports" component={Reports} />
+            <Route path="/reports/student/:id" component={StudentReport} />
+            <Route path="/reports/course/:id" component={CourseReport} />
           </>
         )}
         {user.role === "admin" && <Route path="/settings" component={Settings} />}

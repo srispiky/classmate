@@ -1,0 +1,293 @@
+Sprint 8 Chunk 4 — Reporting Foundation
+
+Before making changes:
+
+1. Review:
+
+   * ProgressAnalyticsService
+   * GET /students/:id/progress
+   * GET /students/:id/progress/timeline
+   * GET /dashboard/student-health
+   * dashboard services
+   * reporting-related OpenAPI schemas
+   * student detail page
+   * teacher dashboard
+
+2. Follow all authorization architecture:
+
+   Layer 1:
+   requireRole()
+
+   Layer 2:
+   scope filtering
+
+   Layer 3:
+   ownership validation
+
+3. Do not move authorization logic into controllers.
+
+4. Keep changes strictly scoped to reporting functionality.
+
+---
+
+## OBJECTIVE
+
+Create the first version of teacher/admin reporting.
+
+Teachers should be able to generate reports only for students they are authorized to access.
+
+Admins may generate global reports.
+
+Reports must reuse existing analytics and progress services.
+
+No duplicated calculations.
+
+---
+
+## PART 1 — REPORT SUMMARY API
+
+Add endpoint:
+
+GET /reports/student-summary
+
+Parameters:
+
+* studentId
+
+Response:
+
+StudentReportSummary
+
+Include:
+
+* student info
+* average score
+* completion rate
+* risk level
+* trend
+* topics mastered
+* topics needing work
+
+Reuse:
+
+ProgressAnalyticsService
+
+Do not recompute analytics in route handlers.
+
+---
+
+## PART 2 — COURSE REPORT API
+
+Add endpoint:
+
+GET /reports/course-summary
+
+Parameters:
+
+* courseId
+
+Response:
+
+CourseReportSummary
+
+Include:
+
+* enrolled students
+* average score
+* completion rate
+* risk distribution
+* top performers
+
+Teacher:
+
+only own courses
+
+Admin:
+
+all courses
+
+---
+
+## PART 3 — OPENAPI
+
+Add schemas:
+
+StudentReportSummary
+
+CourseReportSummary
+
+ReportStudentRow
+
+RiskDistribution
+
+Generate client code.
+
+Verify generated hooks.
+
+---
+
+## PART 4 — SECURITY
+
+Verify:
+
+Teacher A:
+
+cannot generate reports for Teacher B students.
+
+cannot generate reports for Teacher B courses.
+
+Teacher B:
+
+cannot access Teacher A reports.
+
+Admin:
+
+can access all.
+
+Reuse:
+
+StudentScopePolicy
+
+CourseScopePolicy
+
+Existing dashboard scoping patterns.
+
+---
+
+## PART 5 — FRONTEND
+
+Create Reporting section.
+
+Routes:
+
+/reports
+/reports/student/:id
+/reports/course/:id
+
+Display:
+
+Student Summary Report
+
+Course Summary Report
+
+Loading state
+
+Error state
+
+Empty state
+
+Generated hooks only.
+
+No mock data.
+
+---
+
+## PART 6 — EXPORT PREPARATION
+
+Design report responses to support future:
+
+* CSV export
+* PDF export
+
+Do not implement export yet.
+
+Return structured data suitable for export.
+
+---
+
+## PART 7 — TESTING
+
+Add tests for:
+
+student report generation
+
+course report generation
+
+teacher scoping
+
+admin access
+
+empty datasets
+
+invalid identifiers
+
+frontend rendering
+
+---
+
+## PART 8 — E2E VERIFICATION
+
+Create:
+
+Teacher A
+Teacher B
+
+Course A
+Course B
+
+Student A
+Student B
+
+Assignments
+
+Assessments
+
+Verify:
+
+Teacher A reports only contain Teacher A data.
+
+Teacher B reports only contain Teacher B data.
+
+Admin reports contain all data.
+
+Verify analytics match dashboard values.
+
+---
+
+## PART 9 — ARCHITECTURE REVIEW
+
+Verify:
+
+No analytics duplication.
+
+ProgressAnalyticsService remains source of truth.
+
+Dashboard remains unchanged.
+
+OpenAPI remains backward compatible.
+
+Authorization layers preserved.
+
+---
+
+## GIT REQUIREMENT
+
+Run full test suite.
+
+Commit:
+
+git add .
+git commit -m "feat(reporting): implement reporting foundation"
+
+Push:
+
+git push origin main
+
+Include commit hash in report.
+
+---
+
+## DELIVERABLES
+
+Provide:
+
+1. Files added
+2. Files modified
+3. OpenAPI changes
+4. Report endpoints added
+5. Scope strategy
+6. Security verification
+7. Test results
+8. E2E verification
+9. Commit hash
+10. Remaining Sprint 8 blockers

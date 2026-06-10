@@ -1,5 +1,5 @@
 import { Link, useLocation } from "wouter";
-import { BookOpen, Users, LayoutDashboard, FileText, CheckSquare, BrainCircuit, Menu, Settings, LogOut, Megaphone } from "lucide-react";
+import { BookOpen, Users, LayoutDashboard, FileText, CheckSquare, BrainCircuit, Menu, Settings, LogOut, Megaphone, BarChart3 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
@@ -17,6 +17,7 @@ const baseNavItems = [
 
 const teacherNavItems = [
   { href: "/announcements", label: "Announcements", icon: Megaphone },
+  { href: "/reports", label: "Reports", icon: BarChart3 },
 ];
 
 const adminNavItems = [

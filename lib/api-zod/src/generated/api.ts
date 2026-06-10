@@ -1186,6 +1186,92 @@ export const GetGradeBreakdownResponse = zod.array(
 );
 
 /**
+ * @summary Get student progress report. Teacher-scoped (own students only); admin sees any student. Returns structured data suitable for future export.
+
+ */
+export const GetStudentReportSummaryQueryParams = zod.object({
+  studentId: zod.coerce.number(),
+});
+
+export const GetStudentReportSummaryResponse = zod
+  .object({
+    studentId: zod.number(),
+    studentName: zod.string(),
+    grade: zod.string().nullish(),
+    averageScore: zod.number(),
+    completionRate: zod.number(),
+    totalAssignments: zod.number(),
+    completedAssignments: zod.number(),
+    totalAssessments: zod.number(),
+    riskLevel: zod.enum(["LOW", "MEDIUM", "HIGH", "INSUFFICIENT_DATA"]),
+    trend: zod.enum(["IMPROVING", "STABLE", "DECLINING", "INSUFFICIENT_DATA"]),
+    topicsMastered: zod.array(zod.string()),
+    topicsNeedingWork: zod.array(zod.string()),
+    generatedAt: zod
+      .string()
+      .describe("ISO 8601 timestamp of report generation"),
+  })
+  .describe(
+    "Full student progress report. Structured for future CSV\/PDF export. Reuses analytics from ProgressAnalyticsService.\n",
+  );
+
+/**
+ * @summary Get course report. Teacher-scoped (own courses only); admin sees any course. Returns structured data suitable for future export.
+
+ */
+export const GetCourseReportSummaryQueryParams = zod.object({
+  courseId: zod.coerce.number(),
+});
+
+export const GetCourseReportSummaryResponse = zod
+  .object({
+    courseId: zod.number(),
+    courseName: zod.string(),
+    teacherName: zod.string(),
+    totalStudents: zod.number(),
+    averageScore: zod.number(),
+    completionRate: zod.number(),
+    riskDistribution: zod
+      .object({
+        low: zod.number(),
+        medium: zod.number(),
+        high: zod.number(),
+        insufficientData: zod.number(),
+      })
+      .describe("Count of students in each risk category"),
+    topPerformers: zod.array(
+      zod.object({
+        id: zod.number(),
+        name: zod.string(),
+        averageScore: zod.number(),
+      }),
+    ),
+    students: zod.array(
+      zod
+        .object({
+          id: zod.number(),
+          name: zod.string(),
+          averageScore: zod.number(),
+          completionRate: zod.number(),
+          riskLevel: zod.enum(["LOW", "MEDIUM", "HIGH", "INSUFFICIENT_DATA"]),
+          trend: zod.enum([
+            "IMPROVING",
+            "STABLE",
+            "DECLINING",
+            "INSUFFICIENT_DATA",
+          ]),
+        })
+        .describe("Per-student analytics row inside a course or cohort report"),
+    ),
+    generatedAt: zod
+      .string()
+      .describe("ISO 8601 timestamp of report generation"),
+  })
+  .describe(
+    "Full course report with per-student analytics rows. Structured for future CSV\/PDF export.\n",
+  );
+
+/**
  * @summary Get student health cohort breakdown. Teacher-scoped (own enrolled students only); admin sees all students globally.
 
  */
