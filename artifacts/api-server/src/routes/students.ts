@@ -1,6 +1,6 @@
 import { Router, type IRouter, type Response } from "express";
 import { eq, isNull, and } from "drizzle-orm";
-import { db, studentsTable, courseEnrollmentsTable, assignmentsTable, assessmentsTable } from "@workspace/db";
+import { db, studentsTable, courseEnrollmentsTable, assignmentsTable, assessmentsTable, coursesTable } from "@workspace/db";
 import {
   CreateStudentBody,
   GetStudentParams,
@@ -11,12 +11,14 @@ import {
   ListStudentsResponse,
   GetStudentProgressParams,
   GetStudentProgressResponse,
+  GetStudentProgressTimelineParams,
+  GetStudentProgressTimelineResponse,
 } from "@workspace/api-zod";
 import { buildScopeContext, type ClassmateSession } from "../lib/scope-context";
 import { requireRole } from "../middleware/require-role";
 import { studentPolicy } from "../lib/policies/student-scope-policy";
 import { PolicyAuthorizationError } from "../lib/policies/resource-scope-policy";
-import { computeRiskLevel, computeTrend } from "../services/progress-analytics.service";
+import { computeRiskLevel, computeTrend, buildTimeline } from "../services/progress-analytics.service";
 
 const router: IRouter = Router();
 
@@ -284,6 +286,76 @@ router.get(
         topicsNeedingWork: [...new Set(topicsNeedingWork)].slice(0, 5),
         riskLevel,
         trend,
+      }),
+    );
+  },
+);
+
+// ── GET /api/students/:id/progress/timeline ───────────────────────────────────
+// Layer 1: admin + teacher only (requireRole).
+// Layer 3: teachers may only view timeline for their own students.
+router.get(
+  "/students/:id/progress/timeline",
+  requireRole("admin", "teacher"),
+  async (req, res): Promise<void> => {
+    const scope = buildScopeContext(req.session as ClassmateSession);
+    const params = GetStudentProgressTimelineParams.safeParse(req.params);
+    if (!params.success) {
+      res.status(400).json({ error: params.error.message });
+      return;
+    }
+
+    const studentId = params.data.id;
+
+    const [student] = await db
+      .select()
+      .from(studentsTable)
+      .where(eq(studentsTable.id, studentId));
+
+    if (!student || student.deletedAt !== null) {
+      res.status(404).json({ error: "Student not found" });
+      return;
+    }
+
+    const denied = await applyLayer3Guard(scope, studentId, res);
+    if (denied) return;
+
+    const [assignmentRows, assessmentRows] = await Promise.all([
+      db
+        .select({
+          updatedAt: assignmentsTable.updatedAt,
+          title: assignmentsTable.title,
+          score: assignmentsTable.score,
+          maxScore: assignmentsTable.maxScore,
+          status: assignmentsTable.status,
+          courseId: assignmentsTable.courseId,
+          courseName: coursesTable.name,
+          deletedAt: assignmentsTable.deletedAt,
+        })
+        .from(assignmentsTable)
+        .leftJoin(coursesTable, eq(assignmentsTable.courseId, coursesTable.id))
+        .where(eq(assignmentsTable.studentId, studentId)),
+      db
+        .select({
+          createdAt: assessmentsTable.createdAt,
+          title: assessmentsTable.title,
+          score: assessmentsTable.score,
+          maxScore: assessmentsTable.maxScore,
+          courseId: assessmentsTable.courseId,
+          courseName: coursesTable.name,
+          deletedAt: assessmentsTable.deletedAt,
+        })
+        .from(assessmentsTable)
+        .leftJoin(coursesTable, eq(assessmentsTable.courseId, coursesTable.id))
+        .where(eq(assessmentsTable.studentId, studentId)),
+    ]);
+
+    const events = buildTimeline(assignmentRows, assessmentRows);
+
+    res.json(
+      GetStudentProgressTimelineResponse.parse({
+        studentId,
+        events,
       }),
     );
   },

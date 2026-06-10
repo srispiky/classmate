@@ -52,6 +52,35 @@ export interface UpdateStudentBody {
 }
 
 /**
+ * Type of scored academic event. Additional values may be added in future sprints without breaking existing clients.
+
+ */
+export type TimelineEventType =
+  (typeof TimelineEventType)[keyof typeof TimelineEventType];
+
+export const TimelineEventType = {
+  ASSIGNMENT_GRADED: "ASSIGNMENT_GRADED",
+  ASSESSMENT_COMPLETED: "ASSESSMENT_COMPLETED",
+} as const;
+
+export interface TimelineEvent {
+  /** ISO 8601 date-time of the event (grading date for assignments, creation date for assessments) */
+  date: string;
+  type: TimelineEventType;
+  title: string;
+  /** Score as a percentage (0–100), rounded to 1 decimal place */
+  scorePercent: number;
+  courseId: number;
+  courseName: string;
+}
+
+export interface StudentProgressTimeline {
+  studentId: number;
+  /** Scored events in chronological order (oldest first) */
+  events: TimelineEvent[];
+}
+
+/**
  * Risk classification based on average score across all scored events. INSUFFICIENT_DATA when fewer than 3 events exist.
 
  */

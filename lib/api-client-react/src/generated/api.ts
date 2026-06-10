@@ -60,6 +60,7 @@ import type {
   StudentNoteDetail,
   StudentNoteSummary,
   StudentProgress,
+  StudentProgressTimeline,
   UpdateAssignmentBody,
   UpdateCourseBody,
   UpdateNoteBody,
@@ -1283,6 +1284,98 @@ export function useGetStudentProgress<
   },
 ): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
   const queryOptions = getGetStudentProgressQueryOptions(id, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Get chronological scored-event timeline for a student
+ */
+export const getGetStudentProgressTimelineUrl = (id: number) => {
+  return `/api/students/${id}/progress/timeline`;
+};
+
+export const getStudentProgressTimeline = async (
+  id: number,
+  options?: RequestInit,
+): Promise<StudentProgressTimeline> => {
+  return customFetch<StudentProgressTimeline>(
+    getGetStudentProgressTimelineUrl(id),
+    {
+      ...options,
+      method: "GET",
+    },
+  );
+};
+
+export const getGetStudentProgressTimelineQueryKey = (id: number) => {
+  return [`/api/students/${id}/progress/timeline`] as const;
+};
+
+export const getGetStudentProgressTimelineQueryOptions = <
+  TData = Awaited<ReturnType<typeof getStudentProgressTimeline>>,
+  TError = ErrorType<void>,
+>(
+  id: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getStudentProgressTimeline>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getGetStudentProgressTimelineQueryKey(id);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getStudentProgressTimeline>>
+  > = ({ signal }) =>
+    getStudentProgressTimeline(id, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!id,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof getStudentProgressTimeline>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetStudentProgressTimelineQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getStudentProgressTimeline>>
+>;
+export type GetStudentProgressTimelineQueryError = ErrorType<void>;
+
+/**
+ * @summary Get chronological scored-event timeline for a student
+ */
+
+export function useGetStudentProgressTimeline<
+  TData = Awaited<ReturnType<typeof getStudentProgressTimeline>>,
+  TError = ErrorType<void>,
+>(
+  id: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getStudentProgressTimeline>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetStudentProgressTimelineQueryOptions(id, options);
 
   const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
     queryKey: QueryKey;

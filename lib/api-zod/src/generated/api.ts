@@ -264,6 +264,41 @@ export const GetStudentProgressResponse = zod.object({
 });
 
 /**
+ * @summary Get chronological scored-event timeline for a student
+ */
+export const GetStudentProgressTimelineParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const GetStudentProgressTimelineResponse = zod.object({
+  studentId: zod.number(),
+  events: zod
+    .array(
+      zod.object({
+        date: zod
+          .string()
+          .describe(
+            "ISO 8601 date-time of the event (grading date for assignments, creation date for assessments)",
+          ),
+        type: zod
+          .enum(["ASSIGNMENT_GRADED", "ASSESSMENT_COMPLETED"])
+          .describe(
+            "Type of scored academic event. Additional values may be added in future sprints without breaking existing clients.\n",
+          ),
+        title: zod.string(),
+        scorePercent: zod
+          .number()
+          .describe(
+            "Score as a percentage (0–100), rounded to 1 decimal place",
+          ),
+        courseId: zod.number(),
+        courseName: zod.string(),
+      }),
+    )
+    .describe("Scored events in chronological order (oldest first)"),
+});
+
+/**
  * @summary List all courses
  */
 export const ListCoursesResponseItem = zod.object({

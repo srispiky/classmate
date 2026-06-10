@@ -337,6 +337,29 @@ paths:
               schema:
                 $ref: "#/components/schemas/StudentProgress"
 
+  /students/{id}/progress/timeline:
+    get:
+      operationId: getStudentProgressTimeline
+      tags: [students]
+      summary: Get chronological scored-event timeline for a student
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Chronological list of scored events (oldest first)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StudentProgressTimeline"
+        "403":
+          description: Forbidden
+        "404":
+          description: Student not found
+
   # ---- COURSES ----
   /courses:
     get:
@@ -1321,6 +1344,44 @@ components:
           type: string
         avatarUrl:
           type: string
+
+    TimelineEventType:
+      type: string
+      enum: [ASSIGNMENT_GRADED, ASSESSMENT_COMPLETED]
+      description: >
+        Type of scored academic event. Additional values may be added in future
+        sprints without breaking existing clients.
+
+    TimelineEvent:
+      type: object
+      properties:
+        date:
+          type: string
+          description: ISO 8601 date-time of the event (grading date for assignments, creation date for assessments)
+        type:
+          $ref: "#/components/schemas/TimelineEventType"
+        title:
+          type: string
+        scorePercent:
+          type: number
+          description: Score as a percentage (0–100), rounded to 1 decimal place
+        courseId:
+          type: integer
+        courseName:
+          type: string
+      required: [date, type, title, scorePercent, courseId, courseName]
+
+    StudentProgressTimeline:
+      type: object
+      properties:
+        studentId:
+          type: integer
+        events:
+          type: array
+          items:
+            $ref: "#/components/schemas/TimelineEvent"
+          description: Scored events in chronological order (oldest first)
+      required: [studentId, events]
 
     StudentProgress:
       type: object

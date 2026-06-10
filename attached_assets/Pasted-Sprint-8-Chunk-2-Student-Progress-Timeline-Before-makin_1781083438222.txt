@@ -1,0 +1,322 @@
+Sprint 8 Chunk 2 — Student Progress Timeline
+
+Before making changes:
+
+1. Review:
+
+   * GET /students/:id/progress
+   * ProgressAnalyticsService
+   * StudentScopePolicy
+   * applyLayer3Guard
+   * student detail page
+   * OpenAPI generation workflow
+
+2. Follow all authorization architecture:
+
+   Layer 1:
+   requireRole()
+
+   Layer 2:
+   scope filtering
+
+   Layer 3:
+   validateAccess()
+
+3. Do not move authorization logic into controllers.
+
+4. Keep changes strictly scoped to timeline functionality.
+
+---
+
+## OBJECTIVE
+
+Implement Student Progress Timeline.
+
+Teachers should be able to view a chronological history of student academic progress.
+
+Admins continue to see all authorized data.
+
+Timeline must reuse existing ownership validation patterns.
+
+---
+
+## PART 1 — OPENAPI
+
+Add endpoint:
+
+GET /students/{id}/progress/timeline
+
+Create schemas:
+
+StudentProgressTimeline
+
+TimelineEvent
+
+TimelineEventType
+
+TimelineEventType values:
+
+* ASSIGNMENT_GRADED
+* ASSESSMENT_COMPLETED
+
+Design schema to allow future expansion.
+
+TimelineEvent:
+
+* date
+* type
+* title
+* scorePercent
+* courseId
+* courseName
+
+Run code generation after schema updates.
+
+Verify generated hook:
+
+useGetStudentProgressTimeline()
+
+---
+
+## PART 2 — PROGRESS ANALYTICS SERVICE
+
+Extend:
+
+ProgressAnalyticsService
+
+Add:
+
+buildTimeline()
+
+Inputs:
+
+* assignments
+* assessments
+
+Output:
+
+TimelineEvent[]
+
+Rules:
+
+Assignments:
+
+Include only graded assignments.
+
+Use:
+
+updatedAt
+
+as event timestamp.
+
+Event type:
+
+ASSIGNMENT_GRADED
+
+Assessments:
+
+Include completed assessments.
+
+Use:
+
+createdAt
+
+as event timestamp.
+
+Event type:
+
+ASSESSMENT_COMPLETED
+
+Return chronological order:
+
+oldest → newest
+
+Sorting must be deterministic.
+
+---
+
+## PART 3 — API ENDPOINT
+
+Implement:
+
+GET /students/:id/progress/timeline
+
+Authorization:
+
+Layer 1:
+
+requireRole("admin", "teacher")
+
+Layer 3:
+
+applyLayer3Guard()
+
+Use same ownership validation as:
+
+GET /students/:id/progress
+
+Do not duplicate authorization logic.
+
+Reuse existing helper.
+
+Response:
+
+StudentProgressTimeline
+
+---
+
+## PART 4 — SECURITY REVIEW
+
+Verify:
+
+Teacher A cannot access Student B timeline.
+
+Teacher B cannot access Student A timeline.
+
+Admin can access both.
+
+Follow same behavior as existing progress endpoint:
+
+404:
+student not found
+
+403:
+student exists but unauthorized
+
+---
+
+## PART 5 — FRONTEND
+
+Student Detail Page:
+
+Add Timeline tab.
+
+Use:
+
+useGetStudentProgressTimeline()
+
+Display:
+
+* event date
+* event type
+* title
+* score percent
+* course
+
+Loading state
+
+Empty state
+
+Error state
+
+No mock data.
+
+Generated hooks only.
+
+---
+
+## PART 6 — CACHE STRATEGY
+
+Query Key:
+
+["student-progress-timeline", studentId]
+
+Invalidate after:
+
+* assignment grading
+* assessment creation/update
+
+Follow existing React Query patterns.
+
+---
+
+## PART 7 — TESTING
+
+Add unit tests for:
+
+buildTimeline()
+
+Cases:
+
+* assignments only
+* assessments only
+* mixed events
+* ordering correctness
+* empty data
+
+Add route tests:
+
+authorized teacher
+
+unauthorized teacher
+
+admin
+
+student not found
+
+Add frontend tests:
+
+timeline render
+
+empty state
+
+error state
+
+---
+
+## PART 8 — E2E VERIFICATION
+
+Create:
+
+Teacher A
+Teacher B
+
+Student A
+Student B
+
+Assignment grades
+
+Assessment grades
+
+Verify:
+
+Teacher A timeline contains only Student A events.
+
+Teacher B timeline contains only Student B events.
+
+Admin can view both.
+
+Verify chronological ordering.
+
+---
+
+## GIT REQUIREMENT
+
+Run full test suite.
+
+Commit:
+
+git add .
+git commit -m "feat(progress): add student progress timeline"
+
+Push:
+
+git push origin main
+
+Include commit hash in report.
+
+---
+
+## DELIVERABLES
+
+Provide:
+
+1. Files added
+2. Files modified
+3. OpenAPI changes
+4. Timeline implementation details
+5. Security verification
+6. Test results
+7. E2E verification
+8. Commit hash
+9. Remaining Sprint 8 blockers

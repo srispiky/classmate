@@ -1,9 +1,9 @@
 import { useParams } from "wouter";
 import { Link } from "wouter";
-import { useGetStudent, getGetStudentQueryKey, useGetStudentProgress, getGetStudentProgressQueryKey, useListAssignments, useListAssessments } from "@workspace/api-client-react";
+import { useGetStudent, getGetStudentQueryKey, useGetStudentProgress, getGetStudentProgressQueryKey, useListAssignments, useListAssessments, useGetStudentProgressTimeline, getGetStudentProgressTimelineQueryKey } from "@workspace/api-client-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { BrainCircuit, BookOpen, CheckSquare, Target, ChevronRight, ArrowLeft } from "lucide-react";
+import { BrainCircuit, BookOpen, CheckSquare, Target, ChevronRight, ArrowLeft, TrendingUp, TrendingDown, Minus, Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
@@ -23,6 +23,14 @@ export default function StudentDetail() {
 
   const { data: assignments, isLoading: isLoadingAssignments } = useListAssignments({ studentId: id });
   const { data: assessments, isLoading: isLoadingAssessments } = useListAssessments({ studentId: id });
+
+  const {
+    data: timeline,
+    isLoading: isLoadingTimeline,
+    isError: isTimelineError,
+  } = useGetStudentProgressTimeline(id, {
+    query: { enabled: !!id, queryKey: getGetStudentProgressTimelineQueryKey(id) },
+  });
 
   if (isLoadingStudent) {
     return (
@@ -83,6 +91,36 @@ export default function StudentDetail() {
                       <span className="text-sm text-muted-foreground">Completion Rate</span>
                       <span className="font-bold text-lg">{progress.completionRate.toFixed(1)}%</span>
                     </div>
+                    {progress.riskLevel && progress.riskLevel !== "INSUFFICIENT_DATA" && (
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-sm text-muted-foreground">Risk</span>
+                        <Badge variant={
+                          progress.riskLevel === "HIGH" ? "destructive" :
+                          progress.riskLevel === "MEDIUM" ? "secondary" : "outline"
+                        } className={
+                          progress.riskLevel === "LOW" ? "text-green-700 border-green-500/30 bg-green-500/10 dark:text-green-400" : ""
+                        }>
+                          {progress.riskLevel}
+                        </Badge>
+                      </div>
+                    )}
+                    {progress.trend && progress.trend !== "INSUFFICIENT_DATA" && (
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm text-muted-foreground">Trend</span>
+                        <span className="flex items-center gap-1 text-sm font-medium">
+                          {progress.trend === "IMPROVING" && <TrendingUp className="h-3.5 w-3.5 text-green-500" />}
+                          {progress.trend === "DECLINING" && <TrendingDown className="h-3.5 w-3.5 text-red-500" />}
+                          {progress.trend === "STABLE" && <Minus className="h-3.5 w-3.5 text-muted-foreground" />}
+                          <span className={
+                            progress.trend === "IMPROVING" ? "text-green-600 dark:text-green-400" :
+                            progress.trend === "DECLINING" ? "text-red-600 dark:text-red-400" :
+                            "text-muted-foreground"
+                          }>
+                            {progress.trend}
+                          </span>
+                        </span>
+                      </div>
+                    )}
                   </div>
                 </>
               )}
@@ -134,6 +172,13 @@ export default function StudentDetail() {
               >
                 <BookOpen className="mr-2 h-4 w-4" />
                 Learning Progress
+              </TabsTrigger>
+              <TabsTrigger
+                value="timeline"
+                className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-4 py-2"
+              >
+                <Clock className="mr-2 h-4 w-4" />
+                Timeline
               </TabsTrigger>
             </TabsList>
             
@@ -294,6 +339,76 @@ export default function StudentDetail() {
                   </Card>
                 </div>
               ) : null}
+            </TabsContent>
+
+            <TabsContent value="timeline" className="pt-6">
+              {isLoadingTimeline ? (
+                <div className="space-y-3">
+                  {[1, 2, 3, 4].map(i => <Skeleton key={i} className="h-16 w-full" />)}
+                </div>
+              ) : isTimelineError ? (
+                <div className="text-center py-12 text-muted-foreground border rounded-lg bg-card/50">
+                  <Clock className="mx-auto h-8 w-8 mb-3 opacity-20" />
+                  <p className="font-medium">Could not load timeline</p>
+                  <p className="text-sm mt-1">Please try again later.</p>
+                </div>
+              ) : timeline && timeline.events.length > 0 ? (
+                <div className="relative">
+                  <div className="absolute left-[19px] top-0 bottom-0 w-px bg-border" />
+                  <ol className="space-y-4">
+                    {[...timeline.events].reverse().map((event, i) => (
+                      <li key={i} className="flex gap-4 relative">
+                        <div className={`mt-1 flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center border-2 bg-background z-10 ${
+                          event.type === "ASSIGNMENT_GRADED"
+                            ? "border-blue-500/40 text-blue-600 dark:text-blue-400"
+                            : "border-purple-500/40 text-purple-600 dark:text-purple-400"
+                        }`}>
+                          {event.type === "ASSIGNMENT_GRADED"
+                            ? <CheckSquare className="h-4 w-4" />
+                            : <Target className="h-4 w-4" />}
+                        </div>
+                        <Card className="flex-1">
+                          <CardContent className="p-4">
+                            <div className="flex items-start justify-between gap-4">
+                              <div className="space-y-1 min-w-0">
+                                <p className="font-semibold truncate">{event.title}</p>
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <Badge variant="outline" className={`text-xs ${
+                                    event.type === "ASSIGNMENT_GRADED"
+                                      ? "border-blue-500/30 text-blue-700 dark:text-blue-400"
+                                      : "border-purple-500/30 text-purple-700 dark:text-purple-400"
+                                  }`}>
+                                    {event.type === "ASSIGNMENT_GRADED" ? "Assignment" : "Assessment"}
+                                  </Badge>
+                                  <span className="text-xs text-muted-foreground">{event.courseName}</span>
+                                  <span className="text-xs text-muted-foreground">
+                                    {formatDate(event.date)}
+                                  </span>
+                                </div>
+                              </div>
+                              <div className="text-right flex-shrink-0">
+                                <span className={`text-xl font-bold ${
+                                  event.scorePercent >= 80 ? "text-green-600 dark:text-green-400" :
+                                  event.scorePercent >= 60 ? "text-amber-600 dark:text-amber-400" :
+                                  "text-red-600 dark:text-red-400"
+                                }`}>
+                                  {event.scorePercent}%
+                                </span>
+                              </div>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      </li>
+                    ))}
+                  </ol>
+                </div>
+              ) : (
+                <div className="text-center py-12 text-muted-foreground border rounded-lg bg-card/50">
+                  <Clock className="mx-auto h-8 w-8 mb-3 opacity-20" />
+                  <p className="font-medium">No scored events yet</p>
+                  <p className="text-sm mt-1">Timeline will populate as assignments are graded and assessments are recorded.</p>
+                </div>
+              )}
             </TabsContent>
           </Tabs>
         </div>
