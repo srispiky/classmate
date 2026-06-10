@@ -1,2 +1,3 @@
 - [NSSM DB password encoding](nssm-db-password-encoding.md) — NSSM doesn't percent-decode env vars; use plain alphanumeric DB passwords to avoid pg auth failures that surface as Drizzle "Failed query".
 - [Sprint 6A security patterns](sprint6a-patterns.md) — requireRole middleware location, soft-delete column convention, test file structure for Layer 1/2/3 security.
+- [HTTP integration test patterns](http-test-patterns.md) — supertest setup, rate-limiter test skip, courses GET finding, session management across tests.

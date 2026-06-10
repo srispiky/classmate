@@ -1,0 +1,316 @@
+Sprint 9 Chunk 4 — HTTP Integration & OpenAPI Contract Validation
+
+Before making changes:
+
+1. Review:
+
+   * api-server test structure
+   * existing authorization tests
+   * OpenAPI specification
+   * generated client code
+   * route registrations
+   * app.ts
+   * routes/index.ts
+
+2. Preserve:
+
+   Layer 1 authorization
+
+   Layer 2 scoping
+
+   Layer 3 ownership validation
+
+3. No feature work.
+
+4. No UI work.
+
+5. Testing and validation only.
+
+---
+
+## OBJECTIVE
+
+Build a production-grade HTTP integration test layer.
+
+Validate:
+
+* route registration
+* authentication
+* authorization
+* request validation
+* response validation
+* OpenAPI compliance
+
+Catch issues that policy/unit tests cannot detect.
+
+---
+
+## PART 1 — TEST INFRASTRUCTURE
+
+Create or improve:
+
+HTTP integration test framework.
+
+Requirements:
+
+* real Express app
+* real middleware stack
+* real route registration
+* test database
+
+Avoid:
+
+mocked authorization
+
+mocked route handlers
+
+Goal:
+
+exercise the platform exactly as production does.
+
+---
+
+## PART 2 — AUTHENTICATION TESTS
+
+Verify:
+
+POST /auth/login
+
+POST /auth/logout
+
+GET /auth/me
+
+Cover:
+
+success
+
+invalid credentials
+
+expired session
+
+missing session
+
+rate limiting behavior
+
+---
+
+## PART 3 — AUTHORIZATION TESTS
+
+Verify:
+
+admin
+
+teacher
+
+student
+
+guardian (if applicable)
+
+Cover:
+
+401
+
+403
+
+200
+
+for representative endpoints.
+
+Focus on:
+
+students
+
+courses
+
+assignments
+
+assessments
+
+dashboard
+
+reports
+
+downloads
+
+---
+
+## PART 4 — OPENAPI CONTRACT TESTS
+
+Audit every route.
+
+Verify:
+
+all public API endpoints exist in OpenAPI.
+
+Identify:
+
+undocumented routes
+
+stale schemas
+
+missing operationIds
+
+missing response schemas
+
+Produce report.
+
+---
+
+## PART 5 — RESPONSE SHAPE VALIDATION
+
+For key endpoints:
+
+students
+
+courses
+
+assignments
+
+assessments
+
+dashboard
+
+reports
+
+Validate:
+
+actual response
+
+against generated Zod schema.
+
+Goal:
+
+detect contract drift.
+
+---
+
+## PART 6 — SECURITY REGRESSION TESTS
+
+Verify:
+
+downloads protection
+
+teacher isolation
+
+student isolation
+
+reporting access
+
+dashboard scoping
+
+recent Sprint 9 security fixes
+
+remain enforced.
+
+---
+
+## PART 7 — NEGATIVE TEST COVERAGE
+
+Add tests for:
+
+invalid IDs
+
+invalid query params
+
+invalid payloads
+
+missing required fields
+
+soft-deleted resources
+
+ownership violations
+
+Verify correct:
+
+400
+
+401
+
+403
+
+404
+
+responses.
+
+---
+
+## PART 8 — CONTRACT COVERAGE REPORT
+
+Produce:
+
+OpenAPI coverage matrix.
+
+For every endpoint:
+
+Path
+
+Method
+
+Documented?
+
+Tested?
+
+Generated hook?
+
+Contract validated?
+
+---
+
+## PART 9 — REGRESSION REVIEW
+
+Run:
+
+full test suite
+
+Verify:
+
+all prior sprint suites remain green.
+
+Document total test counts.
+
+---
+
+## PART 10 — ARCHITECTURE REVIEW
+
+Confirm:
+
+No business logic changes.
+
+No authorization regressions.
+
+No contract drift.
+
+No undocumented production endpoints.
+
+---
+
+## GIT REQUIREMENT
+
+Run full test suite.
+
+Commit:
+
+git add .
+git commit -m "test(api): add HTTP integration and contract validation coverage"
+
+Push:
+
+git push origin main
+
+Include commit hash.
+
+---
+
+## DELIVERABLES
+
+Provide:
+
+1. Test files added
+2. Endpoints covered
+3. OpenAPI coverage matrix
+4. Contract validation results
+5. Security regression results
+6. Total test count
+7. Remaining uncovered areas
+8. Updated readiness assessment
+9. Commit hash

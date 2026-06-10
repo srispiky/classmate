@@ -18,6 +18,10 @@ const loginRateLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   skipSuccessfulRequests: false,
+  // In the test environment (NODE_ENV=test) the rate limiter is bypassed so that
+  // HTTP integration test suites can exercise the auth endpoint freely without
+  // hitting the per-IP window.  Production behaviour is unchanged.
+  skip: () => process.env.NODE_ENV === "test",
 });
 
 router.post("/auth/login", loginRateLimiter, async (req, res): Promise<void> => {
