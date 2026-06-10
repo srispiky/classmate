@@ -132,3 +132,9 @@ id = "cevTyoQ3wedMU5eOfNHV3"
 uri = "file://docs/sprint8-chunk1-analytics-architecture-review.md"
 type = "text"
 title = "Sprint 8 Chunk 1 — Advanced Progress Analytics: Architecture Review"
+
+[[outputs]]
+id = "m0mcsVnaIyW04XbpoMESv"
+uri = "file://sprint8-architecture-audit.md"
+type = "text"
+title = "Sprint 8 Architecture Audit"
