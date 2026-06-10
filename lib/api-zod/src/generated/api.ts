@@ -249,6 +249,18 @@ export const GetStudentProgressResponse = zod.object({
   completionRate: zod.number(),
   topicsMastered: zod.array(zod.string()),
   topicsNeedingWork: zod.array(zod.string()),
+  riskLevel: zod
+    .enum(["LOW", "MEDIUM", "HIGH", "INSUFFICIENT_DATA"])
+    .optional()
+    .describe(
+      "Risk classification based on average score across all scored events. INSUFFICIENT_DATA when fewer than 3 events exist.\n",
+    ),
+  trend: zod
+    .enum(["IMPROVING", "STABLE", "DECLINING", "INSUFFICIENT_DATA"])
+    .optional()
+    .describe(
+      "Score direction based on the most recent 5 chronological scored events. Compares avg(last 3) vs avg(previous 2). INSUFFICIENT_DATA when fewer than 5 events exist.\n",
+    ),
 });
 
 /**

@@ -61,6 +61,8 @@ export * from "./studentDashboard";
 export * from "./studentNoteDetail";
 export * from "./studentNoteSummary";
 export * from "./studentProgress";
+export * from "./studentProgressRiskLevel";
+export * from "./studentProgressTrend";
 export * from "./studentSummary";
 export * from "./suggestion";
 export * from "./suggestionPriority";

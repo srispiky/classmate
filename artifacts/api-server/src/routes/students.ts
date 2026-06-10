@@ -16,6 +16,7 @@ import { buildScopeContext, type ClassmateSession } from "../lib/scope-context";
 import { requireRole } from "../middleware/require-role";
 import { studentPolicy } from "../lib/policies/student-scope-policy";
 import { PolicyAuthorizationError } from "../lib/policies/resource-scope-policy";
+import { computeRiskLevel, computeTrend } from "../services/progress-analytics.service";
 
 const router: IRouter = Router();
 
@@ -248,6 +249,27 @@ router.get(
       topicsNeedingWork.push(...(assessment.weaknesses as string[]));
     }
 
+    // Build chronological scored-event list for risk + trend computation.
+    // Assignments: use updatedAt (grading date) as the timeline anchor.
+    // Assessments: use createdAt.
+    type ScoredEvent = { timestamp: Date; scorePercent: number };
+    const scoredEvents: ScoredEvent[] = [
+      ...gradedAssignments.map((a) => ({
+        timestamp: a.updatedAt,
+        scorePercent: ((a.score ?? 0) / a.maxScore) * 100,
+      })),
+      ...assessments
+        .filter((a) => a.deletedAt === null)
+        .map((a) => ({
+          timestamp: a.createdAt,
+          scorePercent: (a.score / a.maxScore) * 100,
+        })),
+    ].sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
+
+    const chronologicalScores = scoredEvents.map((e) => e.scorePercent);
+    const riskLevel = computeRiskLevel(chronologicalScores);
+    const trend = computeTrend(chronologicalScores);
+
     res.json(
       GetStudentProgressResponse.parse({
         studentId,
@@ -260,6 +282,8 @@ router.get(
             : 0,
         topicsMastered: [...new Set(topicsMastered)].slice(0, 5),
         topicsNeedingWork: [...new Set(topicsNeedingWork)].slice(0, 5),
+        riskLevel,
+        trend,
       }),
     );
   },

@@ -5,6 +5,8 @@
  * Classmate API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { StudentProgressRiskLevel } from "./studentProgressRiskLevel";
+import type { StudentProgressTrend } from "./studentProgressTrend";
 
 export interface StudentProgress {
   studentId: number;
@@ -14,4 +16,10 @@ export interface StudentProgress {
   completionRate: number;
   topicsMastered: string[];
   topicsNeedingWork: string[];
+  /** Risk classification based on average score across all scored events. INSUFFICIENT_DATA when fewer than 3 events exist.
+   */
+  riskLevel?: StudentProgressRiskLevel;
+  /** Score direction based on the most recent 5 chronological scored events. Compares avg(last 3) vs avg(previous 2). INSUFFICIENT_DATA when fewer than 5 events exist.
+   */
+  trend?: StudentProgressTrend;
 }

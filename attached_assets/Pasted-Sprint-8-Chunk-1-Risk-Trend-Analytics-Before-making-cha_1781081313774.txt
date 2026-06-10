@@ -1,0 +1,203 @@
+Sprint 8 Chunk 1 — Risk & Trend Analytics
+
+Before making changes:
+
+1. Review:
+
+   * GET /students/:id/progress
+   * StudentProgress OpenAPI schema
+   * student detail page
+   * dashboard summary service
+   * security-remediation tests
+
+2. Follow all authorization architecture:
+
+   Layer 1:
+   requireRole()
+
+   Layer 2:
+   scope filtering
+
+   Layer 3:
+   validateAccess()
+
+3. Do not move authorization logic into controllers.
+
+---
+
+## OBJECTIVE
+
+Implement Risk and Trend analytics as additive extensions to the existing Student Progress system.
+
+No database changes.
+
+No breaking OpenAPI changes.
+
+---
+
+## PART 1 — PROGRESS ANALYTICS SERVICE
+
+Create:
+
+artifacts/api-server/src/services/progress-analytics.service.ts
+
+Implement:
+
+computeRiskLevel(scores)
+
+computeTrend(scores)
+
+Unit-test both functions.
+
+---
+
+## PART 2 — RISK LEVEL
+
+Create enum:
+
+LOW
+MEDIUM
+HIGH
+INSUFFICIENT_DATA
+
+Rules:
+
+fewer than 3 scored events
+→ INSUFFICIENT_DATA
+
+average < 60
+→ HIGH
+
+60–79
+→ MEDIUM
+
+80+
+→ LOW
+
+---
+
+## PART 3 — TREND
+
+Create enum:
+
+IMPROVING
+STABLE
+DECLINING
+INSUFFICIENT_DATA
+
+Rules:
+
+fewer than 5 scored events
+→ INSUFFICIENT_DATA
+
+Use most recent scored events only.
+
+Compare:
+
+average(previous 2)
+vs
+average(last 3)
+
+delta > +5
+→ IMPROVING
+
+delta < -5
+→ DECLINING
+
+otherwise
+→ STABLE
+
+---
+
+## PART 4 — OPENAPI
+
+Extend StudentProgress schema.
+
+Add optional fields:
+
+riskLevel
+trend
+
+Do not add them to required.
+
+Maintain backward compatibility.
+
+Run code generation.
+
+---
+
+## PART 5 — PROGRESS ENDPOINT
+
+Extend existing:
+
+GET /students/:id/progress
+
+Use ProgressAnalyticsService.
+
+Append:
+
+riskLevel
+trend
+
+to existing response.
+
+Do not alter existing fields.
+
+---
+
+## PART 6 — TESTING
+
+Add:
+
+Service unit tests
+
+Risk classification tests
+
+Trend calculation tests
+
+Progress endpoint tests
+
+Security regression tests
+
+Verify existing Sprint 6 tests remain green.
+
+---
+
+## PART 7 — FRONTEND
+
+Do not add new pages.
+
+Only verify generated types compile.
+
+No UI changes in this chunk.
+
+---
+
+## GIT REQUIREMENT
+
+Run full test suite.
+
+Commit:
+
+git add .
+git commit -m "feat(progress): add risk and trend analytics"
+
+Push:
+
+git push origin main
+
+Include commit hash in report.
+
+---
+
+## DELIVERABLES
+
+Provide:
+
+1. Files added
+2. Files modified
+3. OpenAPI changes
+4. Service design
+5. Test results
+6. Commit hash
+7. Risks / follow-ups

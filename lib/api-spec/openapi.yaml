@@ -1343,6 +1343,19 @@ components:
           type: array
           items:
             type: string
+        riskLevel:
+          type: string
+          enum: [LOW, MEDIUM, HIGH, INSUFFICIENT_DATA]
+          description: >
+            Risk classification based on average score across all scored events.
+            INSUFFICIENT_DATA when fewer than 3 events exist.
+        trend:
+          type: string
+          enum: [IMPROVING, STABLE, DECLINING, INSUFFICIENT_DATA]
+          description: >
+            Score direction based on the most recent 5 chronological scored events.
+            Compares avg(last 3) vs avg(previous 2). INSUFFICIENT_DATA when fewer
+            than 5 events exist.
       required: [studentId, totalAssignments, completedAssignments, averageScore, completionRate, topicsMastered, topicsNeedingWork]
 
     Course:

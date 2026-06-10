@@ -51,6 +51,34 @@ export interface UpdateStudentBody {
   avatarUrl?: string;
 }
 
+/**
+ * Risk classification based on average score across all scored events. INSUFFICIENT_DATA when fewer than 3 events exist.
+
+ */
+export type StudentProgressRiskLevel =
+  (typeof StudentProgressRiskLevel)[keyof typeof StudentProgressRiskLevel];
+
+export const StudentProgressRiskLevel = {
+  LOW: "LOW",
+  MEDIUM: "MEDIUM",
+  HIGH: "HIGH",
+  INSUFFICIENT_DATA: "INSUFFICIENT_DATA",
+} as const;
+
+/**
+ * Score direction based on the most recent 5 chronological scored events. Compares avg(last 3) vs avg(previous 2). INSUFFICIENT_DATA when fewer than 5 events exist.
+
+ */
+export type StudentProgressTrend =
+  (typeof StudentProgressTrend)[keyof typeof StudentProgressTrend];
+
+export const StudentProgressTrend = {
+  IMPROVING: "IMPROVING",
+  STABLE: "STABLE",
+  DECLINING: "DECLINING",
+  INSUFFICIENT_DATA: "INSUFFICIENT_DATA",
+} as const;
+
 export interface StudentProgress {
   studentId: number;
   totalAssignments: number;
@@ -59,6 +87,12 @@ export interface StudentProgress {
   completionRate: number;
   topicsMastered: string[];
   topicsNeedingWork: string[];
+  /** Risk classification based on average score across all scored events. INSUFFICIENT_DATA when fewer than 3 events exist.
+   */
+  riskLevel?: StudentProgressRiskLevel;
+  /** Score direction based on the most recent 5 chronological scored events. Compares avg(last 3) vs avg(previous 2). INSUFFICIENT_DATA when fewer than 5 events exist.
+   */
+  trend?: StudentProgressTrend;
 }
 
 export type CourseStatus = (typeof CourseStatus)[keyof typeof CourseStatus];
