@@ -1,0 +1,289 @@
+Sprint 9 Chunk 3 — Database Integrity & Migration Framework
+
+Before making changes:
+
+1. Review:
+
+   * lib/db schema definitions
+   * drizzle configuration
+   * existing database tables
+   * deployment pipeline
+   * reporting queries
+   * dashboard queries
+
+2. Review Sprint 9 audit findings:
+
+   H4:
+   No migration history
+
+   H5:
+   Missing foreign key constraints
+
+   H6:
+   Missing indexes
+
+3. Do not modify business functionality.
+
+4. Do not change API contracts.
+
+5. Preserve backward compatibility.
+
+---
+
+## OBJECTIVE
+
+Establish production-safe database evolution.
+
+Improve:
+
+* referential integrity
+* query performance
+* deployment reliability
+
+without changing application behavior.
+
+---
+
+## PART 1 — MIGRATION FRAMEWORK
+
+Current issue:
+
+Platform uses:
+
+drizzle-kit push
+
+with no migration history.
+
+Implement:
+
+migration-based workflow.
+
+Review current Drizzle version.
+
+Create:
+
+migrations directory
+
+baseline migration
+
+migration execution strategy
+
+Document:
+
+development workflow
+
+production workflow
+
+rollback strategy
+
+Goal:
+
+Future schema changes become versioned.
+
+---
+
+## PART 2 — FOREIGN KEY AUDIT
+
+Review all schema files.
+
+Verify every relationship.
+
+Focus on:
+
+assignments
+
+assessments
+
+announcements
+
+notes
+
+Current finding:
+
+courseId and studentId columns may not have FK constraints.
+
+Implement missing FK definitions.
+
+Verify:
+
+no orphaned records possible.
+
+Document relationships.
+
+---
+
+## PART 3 — INDEX AUDIT
+
+Review:
+
+dashboard queries
+
+reporting queries
+
+student progress
+
+teacher portal
+
+announcement queries
+
+notes queries
+
+Add indexes for:
+
+teacher ownership filters
+
+student ownership filters
+
+course ownership filters
+
+soft-delete filters
+
+Prioritize findings from audit.
+
+Document:
+
+which query benefits from each index.
+
+---
+
+## PART 4 — QUERY PLAN REVIEW
+
+Review major queries:
+
+dashboard summary
+
+student health
+
+progress timeline
+
+course reports
+
+student reports
+
+Verify:
+
+index usage
+
+join patterns
+
+potential full scans
+
+Document findings.
+
+Do not rewrite large queries yet.
+
+---
+
+## PART 5 — DATA INTEGRITY TESTS
+
+Add tests proving:
+
+FK constraints enforce integrity.
+
+Invalid references fail.
+
+Valid inserts succeed.
+
+Soft-delete behavior unchanged.
+
+---
+
+## PART 6 — DEPLOYMENT VALIDATION
+
+Verify:
+
+fresh database setup
+
+migration execution
+
+application startup
+
+schema compatibility
+
+Document:
+
+new deployment steps.
+
+---
+
+## PART 7 — ARCHITECTURE REVIEW
+
+Confirm:
+
+No API changes.
+
+No authorization changes.
+
+No OpenAPI changes.
+
+No frontend changes.
+
+Database-only hardening.
+
+---
+
+## PART 8 — REGRESSION TESTING
+
+Run:
+
+full test suite
+
+Verify:
+
+Sprint 6 security
+
+Sprint 7 teacher portal
+
+Sprint 8 analytics
+
+Sprint 9 security
+
+remain green.
+
+---
+
+## PART 9 — READINESS ASSESSMENT
+
+Recalculate:
+
+Database Integrity score
+
+Deployment score
+
+Overall readiness score
+
+Estimate readiness improvement.
+
+---
+
+## GIT REQUIREMENT
+
+Run full test suite.
+
+Commit:
+
+git add .
+git commit -m "chore(database): add migration framework and integrity constraints"
+
+Push:
+
+git push origin main
+
+Include commit hash.
+
+---
+
+## DELIVERABLES
+
+Provide:
+
+1. Schema files modified
+2. Foreign keys added
+3. Indexes added
+4. Migration framework details
+5. Integrity test results
+6. Regression test results
+7. Deployment workflow updates
+8. Updated readiness score
+9. Remaining launch blockers
+10. Commit hash

@@ -1,4 +1,4 @@
-import { pgTable, text, serial, timestamp, integer } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, timestamp, integer, index } from "drizzle-orm/pg-core";
 import { createInsertSchema, createSelectSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 import { usersTable } from "./users";
@@ -10,24 +10,33 @@ export type CourseStatus = (typeof COURSE_STATUS)[number];
 
 // ── Table definition ──────────────────────────────────────────────────────────
 
-export const coursesTable = pgTable("courses", {
-  id: serial("id").primaryKey(),
-  name: text("name").notNull(),
-  description: text("description").notNull().default(""),
-  subject: text("subject").notNull(),
-  grade: text("grade"),
-  academicYear: text("academic_year"),
-  teacherName: text("teacher_name").notNull().default(""),
-  teacherId: integer("teacher_id").references(() => usersTable.id, { onDelete: "restrict" }),
-  studentCount: integer("student_count").notNull().default(0),
-  status: text("status").$type<CourseStatus>().notNull().default("active"),
-  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
-  deletedAt: timestamp("deleted_at", { withTimezone: true }),
-  createdBy: integer("created_by").references(() => usersTable.id, { onDelete: "set null" }),
-  updatedBy: integer("updated_by").references(() => usersTable.id, { onDelete: "set null" }),
-  deletedBy: integer("deleted_by").references(() => usersTable.id, { onDelete: "set null" }),
-});
+export const coursesTable = pgTable(
+  "courses",
+  {
+    id: serial("id").primaryKey(),
+    name: text("name").notNull(),
+    description: text("description").notNull().default(""),
+    subject: text("subject").notNull(),
+    grade: text("grade"),
+    academicYear: text("academic_year"),
+    teacherName: text("teacher_name").notNull().default(""),
+    teacherId: integer("teacher_id").references(() => usersTable.id, { onDelete: "restrict" }),
+    studentCount: integer("student_count").notNull().default(0),
+    status: text("status").$type<CourseStatus>().notNull().default("active"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+    deletedAt: timestamp("deleted_at", { withTimezone: true }),
+    createdBy: integer("created_by").references(() => usersTable.id, { onDelete: "set null" }),
+    updatedBy: integer("updated_by").references(() => usersTable.id, { onDelete: "set null" }),
+    deletedBy: integer("deleted_by").references(() => usersTable.id, { onDelete: "set null" }),
+  },
+  (table) => ({
+    // Supports teacher-scoped course list queries (WHERE teacher_id = ?)
+    teacherIdIdx: index("ix_courses_teacher_id").on(table.teacherId),
+    // Supports soft-delete exclusion filters (WHERE deleted_at IS NULL)
+    deletedAtIdx: index("ix_courses_deleted_at").on(table.deletedAt),
+  }),
+);
 
 // ── Domain validation constants ───────────────────────────────────────────────
 

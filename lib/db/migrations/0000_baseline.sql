@@ -1,0 +1,19 @@
+-- Migration: 0000_baseline
+-- Created: Sprint 9 Chunk 3
+--
+-- This migration is a no-op baseline marker.
+--
+-- The Classmate Connect database was originally provisioned using
+-- "drizzle-kit push" which applies schema changes directly without
+-- maintaining a migration history. This file marks the transition
+-- point from push-only to migration-based schema evolution.
+--
+-- EXISTING INSTALLATIONS:
+--   Running "drizzle-kit migrate" will apply this file (no-op) and
+--   then apply 0001_integrity_constraints.sql (FK + indexes).
+--
+-- FRESH INSTALLATIONS:
+--   Run "drizzle-kit push" once to create the base tables, then run
+--   "drizzle-kit migrate" to apply FK constraints and indexes.
+--
+-- This file intentionally contains no SQL statements.

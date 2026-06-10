@@ -238,16 +238,6 @@ describe("Login rate limiter", () => {
 // ── 4. Session cookie security configuration ───────────────────────────────
 
 describe("Session cookie security", () => {
-  it("secure=true when NODE_ENV is production", () => {
-    const secure = "production" === "production";
-    expect(secure).toBe(true);
-  });
-
-  it("secure=false when NODE_ENV is development", () => {
-    const secure = "development" === "production";
-    expect(secure).toBe(false);
-  });
-
   it("secure flag expression evaluates correctly for arbitrary NODE_ENV values", () => {
     const evaluate = (nodeEnv: string) => nodeEnv === "production";
     expect(evaluate("production")).toBe(true);
