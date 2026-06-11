@@ -78,6 +78,19 @@ if (!sessionSecret) {
   throw new Error("SESSION_SECRET environment variable is required");
 }
 
+// ── Password encryption key ───────────────────────────────────────────────────
+// Validated here (module load time) so the server refuses to start rather than
+// failing silently on the first authentication request.
+const encryptionKey = process.env["PASSWORD_ENCRYPTION_KEY"];
+if (!encryptionKey) {
+  throw new Error("PASSWORD_ENCRYPTION_KEY environment variable is required");
+}
+if (Buffer.from(encryptionKey, "hex").length !== 32) {
+  throw new Error(
+    "PASSWORD_ENCRYPTION_KEY must be a 64-character hex string (32 bytes for AES-256)",
+  );
+}
+
 app.use(
   session({
     store: new PgSession({
