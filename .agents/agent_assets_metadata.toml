@@ -150,3 +150,9 @@ id = "MFKfHGQMbtk-S8I79Xp_l"
 uri = "file://docs/reviews/rc1-audit.md"
 type = "text"
 title = "RC1 Audit — Classmate Connect"
+
+[[outputs]]
+id = "ePvdvMRMi6Nw8-8zhpQv0"
+uri = "file://docs/reviews/production-go-live-approval.md"
+type = "text"
+title = "Production Go-Live Approval — Classmate Connect"
