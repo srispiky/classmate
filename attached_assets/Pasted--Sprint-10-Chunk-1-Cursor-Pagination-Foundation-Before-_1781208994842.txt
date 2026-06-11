@@ -1,0 +1,220 @@
+# Sprint 10 Chunk 1 — Cursor Pagination Foundation
+
+Before making changes:
+
+1. Review:
+   - students routes
+   - assignments routes
+   - assessments routes
+   - OpenAPI specification
+   - generated hooks
+   - React Query usage
+   - dashboard usage
+   - reporting usage
+
+2. Review Sprint 9 audits.
+
+3. Follow existing architecture principles:
+
+   - OpenAPI-first
+   - generated clients
+   - Zod validation
+   - Layer 1 authorization
+   - Layer 2 scoping
+   - Layer 3 ownership validation
+
+4. Do not modify unrelated functionality.
+
+--------------------------------------------------
+OBJECTIVE
+--------------------------------------------------
+
+Implement platform-wide pagination foundation.
+
+This is the highest-priority remaining
+scale-readiness item identified during
+Production Go-Live Approval.
+
+Current state:
+
+GET /students
+GET /assignments
+GET /assessments
+
+return unbounded datasets.
+
+This must be corrected.
+
+--------------------------------------------------
+PART 1 — ARCHITECTURE REVIEW
+--------------------------------------------------
+
+Review:
+
+- current list endpoint contracts
+- frontend consumers
+- query patterns
+- teacher scoping filters
+
+Recommend:
+
+offset pagination
+OR
+cursor pagination
+
+Choose the architecture best aligned with:
+
+- PostgreSQL
+- React Query
+- future scale
+
+Explain decision.
+
+--------------------------------------------------
+PART 2 — OPENAPI DESIGN
+--------------------------------------------------
+
+Design new pagination contract.
+
+Requirements:
+
+Backward-compatible migration path.
+
+Define:
+
+PaginationMetadata
+
+PaginatedStudentList
+PaginatedAssignmentList
+PaginatedAssessmentList
+
+Document:
+
+page size
+cursor
+next cursor
+has more
+
+Update OpenAPI spec.
+
+--------------------------------------------------
+PART 3 — BACKEND IMPLEMENTATION PLAN
+--------------------------------------------------
+
+Create implementation plan.
+
+Cover:
+
+GET /students
+GET /assignments
+GET /assessments
+
+Requirements:
+
+- preserve Layer 2 scoping
+- preserve Layer 3 behavior
+- preserve soft-delete filtering
+
+Avoid:
+
+full table scans.
+
+--------------------------------------------------
+PART 4 — FRONTEND IMPACT REVIEW
+--------------------------------------------------
+
+Review:
+
+generated hooks
+
+Determine:
+
+which pages require updates.
+
+Review:
+
+- student list
+- assignment list
+- assessment list
+
+Provide migration strategy.
+
+--------------------------------------------------
+PART 5 — PERFORMANCE ANALYSIS
+--------------------------------------------------
+
+Estimate impact for:
+
+100 users
+1,000 users
+10,000 users
+
+Compare:
+
+current implementation
+vs paginated implementation.
+
+--------------------------------------------------
+PART 6 — TEST STRATEGY
+--------------------------------------------------
+
+Define:
+
+unit tests
+integration tests
+HTTP tests
+authorization tests
+
+Verify:
+
+pagination never bypasses
+scope filtering.
+
+--------------------------------------------------
+PART 7 — IMPLEMENTATION CHUNKS
+--------------------------------------------------
+
+Break implementation into:
+
+Chunk 1
+Chunk 2
+Chunk 3
+Chunk 4
+
+Small safe increments.
+
+--------------------------------------------------
+PART 8 — RISKS
+--------------------------------------------------
+
+Identify:
+
+contract risks
+frontend risks
+authorization risks
+performance risks
+
+--------------------------------------------------
+PART 9 — ACCEPTANCE CRITERIA
+--------------------------------------------------
+
+Define measurable completion criteria.
+
+--------------------------------------------------
+DELIVERABLE
+--------------------------------------------------
+
+Provide:
+
+1. Architecture decision
+2. OpenAPI design
+3. Backend plan
+4. Frontend plan
+5. Test plan
+6. Risk assessment
+7. Chunk breakdown
+8. Acceptance criteria
+
+No code changes.
+
+Architecture review only.
