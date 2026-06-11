@@ -1,0 +1,191 @@
+# Sprint 9 Chunk 8 — RC1 Sign-Off Remediation
+
+Before making changes:
+
+1. Review Sprint 9 Chunk 7 RC1 Audit.
+2. Review Finding F1.
+3. Review course routes.
+4. Review authorization architecture.
+5. Review student portal course routes.
+
+Follow all existing security patterns:
+
+- Layer 1: requireRole()
+- Layer 2: scope filtering
+- Layer 3: ownership validation
+
+Do not change any unrelated functionality.
+
+--------------------------------------------------
+OBJECTIVE
+--------------------------------------------------
+
+Resolve the final RC1 blocker.
+
+Finding F1:
+
+GET /courses
+GET /courses/:id
+
+are accessible to any authenticated user because
+explicit Layer 1 role enforcement is missing.
+
+Layer 2 and Layer 3 already protect data correctly,
+but RC1 requires explicit role gating.
+
+--------------------------------------------------
+PART 1 — ARCHITECTURE REVIEW
+--------------------------------------------------
+
+Review:
+
+- routes/courses.ts
+- student course endpoints
+- authorization middleware
+
+Determine whether:
+
+Option A:
+Add
+
+requireRole("admin", "teacher")
+
+to:
+
+GET /courses
+GET /courses/:id
+
+OR
+
+Option B:
+
+Document that these endpoints are intentionally
+shared across authenticated roles and rely on
+Layer 2/3 scoping.
+
+Choose the architecture that best aligns with the
+existing platform design.
+
+--------------------------------------------------
+PART 2 — IMPLEMENTATION
+--------------------------------------------------
+
+If Option A is selected:
+
+Add:
+
+requireRole("admin", "teacher")
+
+to:
+
+GET /courses
+GET /courses/:id
+
+Verify:
+
+Students continue using:
+
+/student/courses
+/student/courses/:id
+
+No regressions.
+
+--------------------------------------------------
+PART 3 — SECURITY TESTS
+--------------------------------------------------
+
+Add tests proving:
+
+Admin:
+- can access both routes
+
+Teacher:
+- can access both routes
+
+Student:
+- denied
+
+Parent:
+- denied
+
+Guest:
+- denied
+
+Verify:
+
+401 vs 403 behavior matches platform standards.
+
+--------------------------------------------------
+PART 4 — ACCESS MATRIX VALIDATION
+--------------------------------------------------
+
+Update any authorization matrix tests.
+
+Verify:
+
+All route-role expectations remain correct.
+
+--------------------------------------------------
+PART 5 — OPENAPI REVIEW
+--------------------------------------------------
+
+Verify:
+
+No OpenAPI changes required.
+
+No generated client changes required.
+
+--------------------------------------------------
+PART 6 — REGRESSION TESTING
+--------------------------------------------------
+
+Run:
+
+- authorization suite
+- HTTP integration suite
+- access matrix suite
+
+Verify:
+
+No regressions.
+
+--------------------------------------------------
+PART 7 — RC1 RE-EVALUATION
+--------------------------------------------------
+
+After implementation:
+
+Re-evaluate RC1 status.
+
+Confirm whether:
+
+APPROVED WITH CONDITIONS
+
+becomes
+
+APPROVED FOR RC1
+
+--------------------------------------------------
+PART 8 — DELIVERABLE
+--------------------------------------------------
+
+Provide:
+
+1. Files modified
+2. Authorization changes
+3. Security tests added
+4. Access matrix updates
+5. Regression test results
+6. RC1 status
+7. Remaining non-blocking technical debt
+8. Git commit hash
+
+--------------------------------------------------
+GIT REQUIREMENT
+--------------------------------------------------
+
+git add .
+git commit -m "fix(rc1): enforce role-based access on course routes"
+git push origin main
+
+Include commit hash in report.

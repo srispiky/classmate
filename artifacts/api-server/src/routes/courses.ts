@@ -32,19 +32,22 @@ function serializeCourse(c: CourseRow) {
 
 // ── GET /api/courses ──────────────────────────────────────────────────────────
 
-router.get("/courses", async (req, res): Promise<void> => {
+// Layer 1: only admin and teacher may access the teacher-facing course list.
+// Student/parent course access is served by /student/courses instead.
+router.get("/courses", requireRole("admin", "teacher"), async (req, res): Promise<void> => {
   const scope = buildScopeContext(req.session as ClassmateSession);
 
   // Layer 2 applied inside listCourses() via CourseScopePolicy.getScopeCondition().
-  // Admin sees all; teacher filtered to ownedCourseIds; student to enrolledCourseIds;
-  // parent to childCourseIds. No in-memory filtering.
+  // Admin sees all; teacher filtered to ownedCourseIds. No in-memory filtering.
   const courses = await listCourses(scope);
   res.json(courses.map(serializeCourse));
 });
 
 // ── GET /api/courses/:id ──────────────────────────────────────────────────────
 
-router.get("/courses/:id", async (req, res): Promise<void> => {
+// Layer 1: only admin and teacher may access teacher-facing course detail.
+// Student/parent course detail is served by /student/courses/:id instead.
+router.get("/courses/:id", requireRole("admin", "teacher"), async (req, res): Promise<void> => {
   const scope = buildScopeContext(req.session as ClassmateSession);
 
   const params = GetCourseParams.safeParse(req.params);

@@ -6,7 +6,7 @@
  *   Endpoint group           | unauthenticated | student | teacher | admin
  *   ─────────────────────────|─────────────────|─────────|─────────|──────
  *   /api/students            | 401             | 403     | 200     | 200
- *   /api/courses             | 401             | 403     | 200     | 200
+ *   /api/courses             | 401             | 403     | 200     | 200  ← F1 fixed
  *   /api/assignments         | 401             | 403     | 200     | 200
  *   /api/assessments         | 401             | 403     | 200     | 200
  *   /api/notes               | 401             | 403     | 200     | 200
@@ -129,16 +129,14 @@ describe("Unauthenticated requests → 401", () => {
 
 // ── Student role → 403 for teacher-portal routes ─────────────────────────────
 //
-// NOTE — FINDING F1: GET /api/courses and GET /api/courses/:id have no
-// requireRole guard. Any authenticated user (including students) can read the
-// course catalog. All other GET endpoints in this list correctly enforce
-// requireRole("admin", "teacher"). F1 is documented here and in the deliverable
-// but is not fixed in this sprint (testing & validation only).
+// Sprint 9 Chunk 8 — F1 fix: requireRole("admin","teacher") added to
+// GET /api/courses and GET /api/courses/:id. Both routes now appear in this
+// list and expect 403 for the student role.
 
-describe("Student role → 403 on teacher-portal routes (with F1 documented)", () => {
+describe("Student role → 403 on teacher-portal routes", () => {
   const teacherOnlyRoutes: Array<["get" | "post", string]> = [
     ["get", "/api/students"],
-    // /api/courses intentionally excluded — F1: no requireRole on GET (see below)
+    ["get", "/api/courses"],
     ["get", "/api/assignments"],
     ["get", "/api/assessments"],
     ["get", "/api/notes"],
@@ -158,25 +156,6 @@ describe("Student role → 403 on teacher-portal routes (with F1 documented)", (
       expect(r.status).toBe(403);
     });
   }
-});
-
-// ── F1: GET /api/courses — missing requireRole (documented finding) ────────────
-
-describe("FINDING F1 — GET /api/courses has no requireRole (any authenticated user can read)", () => {
-  it("student can GET /api/courses → 200 (F1: missing requireRole guard on read endpoint)", async () => {
-    const r = await studentAgent.get("/api/courses");
-    // Actual behavior: 200. Expected by security model: 403.
-    // This is a gap: students can read the full course catalog including courses
-    // they are not enrolled in. Documented as Finding F1.
-    expect(r.status).toBe(200);
-  });
-
-  it("student can GET /api/courses/:id → 200 or 404 (F1: same gap for single-course read)", async () => {
-    const r = await studentAgent.get("/api/courses/999999999");
-    // Non-existent ID returns 404, but the route itself is accessible (not 403).
-    expect([200, 404]).toContain(r.status);
-    expect(r.status).not.toBe(403);
-  });
 });
 
 // ── Teacher role → 403 on student-portal routes ──────────────────────────────
