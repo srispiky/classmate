@@ -144,3 +144,9 @@ id = "JO2NeuXjwanig1ukvYJwx"
 uri = "file://sprint9-production-readiness-audit.md"
 type = "text"
 title = "Sprint 9 — Production Readiness Audit"
+
+[[outputs]]
+id = "MFKfHGQMbtk-S8I79Xp_l"
+uri = "file://docs/reviews/rc1-audit.md"
+type = "text"
+title = "RC1 Audit — Classmate Connect"
