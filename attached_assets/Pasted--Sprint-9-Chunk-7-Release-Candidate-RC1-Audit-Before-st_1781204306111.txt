@@ -1,0 +1,310 @@
+# Sprint 9 Chunk 7 — Release Candidate (RC1) Audit
+
+Before starting:
+
+1. Review all completed work from:
+   - Sprint 6 Security Remediation
+   - Sprint 7 Teacher Portal
+   - Sprint 8 Progress Analytics
+   - Sprint 8 Reporting Foundation
+   - Sprint 8.5 Architecture Hardening
+   - Sprint 9 Production Readiness
+   - Sprint 9 Performance & Scalability
+   - Sprint 9 Operations & Recovery
+
+2. Review:
+   - OpenAPI specification
+   - Database schema
+   - Migration history
+   - Security middleware
+   - Dashboard architecture
+   - Reporting architecture
+   - Integration tests
+   - Authorization tests
+   - Deployment documentation
+
+3. Do not implement features.
+
+4. This is an audit-only sprint.
+
+--------------------------------------------------
+OBJECTIVE
+--------------------------------------------------
+
+Determine whether Classmate Connect is ready
+for Release Candidate 1 (RC1).
+
+Act as:
+
+- Chief Architect
+- Security Auditor
+- QA Lead
+- Platform Engineer
+- Release Manager
+
+--------------------------------------------------
+PART 1 — SECURITY RE-AUDIT
+--------------------------------------------------
+
+Review all previously identified findings.
+
+Verify status:
+
+- RESOLVED
+- PARTIALLY RESOLVED
+- OPEN
+
+Review:
+
+- downloads endpoint security
+- session cookie configuration
+- rate limiting
+- security headers
+- CORS restrictions
+- secret management
+- authorization middleware
+- policy enforcement
+
+Provide evidence for each finding.
+
+--------------------------------------------------
+PART 2 — AUTHORIZATION AUDIT
+--------------------------------------------------
+
+Verify every protected route follows:
+
+Layer 1:
+requireRole()
+
+Layer 2:
+scope filtering
+
+Layer 3:
+ownership validation
+
+Review:
+
+- students
+- courses
+- assignments
+- assessments
+- notes
+- announcements
+- dashboard
+- reporting
+- enrollments
+- student portal
+
+Identify any deviations.
+
+--------------------------------------------------
+PART 3 — OPENAPI COMPLIANCE AUDIT
+--------------------------------------------------
+
+Verify:
+
+- all routes represented in OpenAPI
+- generated hooks aligned
+- Zod schemas aligned
+- operationIds present
+- response contracts match implementation
+
+Identify:
+
+- undocumented endpoints
+- manual fetch usage
+- contract drift
+
+--------------------------------------------------
+PART 4 — DATABASE AUDIT
+--------------------------------------------------
+
+Review:
+
+- foreign keys
+- indexes
+- migrations
+- audit fields
+- soft-delete consistency
+
+Verify:
+
+- referential integrity
+- migration reproducibility
+- schema consistency
+
+--------------------------------------------------
+PART 5 — TEST COVERAGE AUDIT
+--------------------------------------------------
+
+Review:
+
+- authorization tests
+- integration tests
+- analytics tests
+- security tests
+- reporting tests
+
+Evaluate:
+
+- coverage quality
+- remaining gaps
+- risk areas
+
+--------------------------------------------------
+PART 6 — PERFORMANCE AUDIT
+--------------------------------------------------
+
+Review:
+
+- dashboard queries
+- reporting queries
+- analytics queries
+- load-test results
+
+Verify:
+
+- index utilization
+- query efficiency
+- memory usage
+- scalability projections
+
+Estimate readiness for:
+
+- 100 users
+- 1,000 users
+- 10,000 users
+
+--------------------------------------------------
+PART 7 — OPERATIONS AUDIT
+--------------------------------------------------
+
+Review:
+
+- deployment runbook
+- backup strategy
+- restore process
+- rollback process
+- environment variables
+- health checks
+
+Verify:
+
+operational readiness.
+
+--------------------------------------------------
+PART 8 — LAUNCH CHECKLIST
+--------------------------------------------------
+
+Evaluate:
+
+- Authentication
+- Authorization
+- Data Protection
+- Backups
+- Recovery
+- Monitoring
+- Deployment
+- Documentation
+- Testing
+- Performance
+
+For each category:
+
+PASS
+WARNING
+FAIL
+
+Provide justification.
+
+--------------------------------------------------
+PART 9 — KNOWN RISKS REGISTER
+--------------------------------------------------
+
+Create:
+
+- Open Risks
+- Technical Debt
+- Deferred Enhancements
+- Scalability Concerns
+
+Classify:
+
+- Critical
+- High
+- Medium
+- Low
+
+--------------------------------------------------
+PART 10 — RELEASE RECOMMENDATION
+--------------------------------------------------
+
+Choose one:
+
+- APPROVED FOR RC1
+- APPROVED WITH CONDITIONS
+- NOT APPROVED
+
+Provide detailed rationale.
+
+--------------------------------------------------
+PART 11 — PRODUCTION READINESS SCORE
+--------------------------------------------------
+
+Score:
+
+- Security
+- Architecture
+- Authorization
+- Database
+- Performance
+- Testing
+- Operations
+- Documentation
+
+Produce:
+
+Overall Readiness Score (0–100)
+
+Compare with previous audit scores.
+
+--------------------------------------------------
+PART 12 — GO-LIVE BLOCKERS
+--------------------------------------------------
+
+List only true blockers.
+
+For each blocker provide:
+
+- severity
+- impact
+- remediation effort
+
+--------------------------------------------------
+DELIVERABLE FORMAT
+--------------------------------------------------
+
+Provide:
+
+1. Executive Summary
+2. Security Re-Audit
+3. Authorization Audit
+4. OpenAPI Audit
+5. Database Audit
+6. Test Coverage Audit
+7. Performance Audit
+8. Operations Audit
+9. Launch Checklist
+10. Known Risks Register
+11. Release Recommendation
+12. Production Readiness Score
+13. Go-Live Blockers
+14. Final Verdict
+
+No code changes.
+
+No implementation.
+
+Audit only.
+
+Determine whether Classmate Connect qualifies as Release Candidate 1 (RC1).
