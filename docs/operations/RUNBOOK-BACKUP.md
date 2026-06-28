@@ -1,7 +1,7 @@
 # Backup, Recovery & Restore Runbook — Classmate Connect
 
 **Applies to:** All environments
-**Last updated:** Sprint 10 Chunk 6
+**Last updated:** Sprint 10 Chunk 7
 
 ---
 
@@ -25,14 +25,15 @@ The only stateful component requiring backup is **PostgreSQL**. The application 
 - **Primary:** Object storage bucket (S3-compatible or equivalent), separate region from the database server
 - **Secondary:** Encrypted local copy on a separate host (for offline recovery)
 
-No cloud provider is assumed. The commands below use `pg_dump` (available in all PostgreSQL distributions) and produce plain-SQL or custom-format dumps that can be restored to any compatible PostgreSQL instance.
+No cloud provider is assumed. The commands below use `pg_dump` (available in all PostgreSQL distributions) and produce custom-format dumps that can be restored to any compatible PostgreSQL instance.
 
 ---
 
 ## 2 — Backup Procedure
 
 The backup script is implemented in `scripts/src/backup.ts` and invoked via npm scripts.
-It uses `pg_dump --format=custom --compress=9`, writes a timestamped file, and runs retention cleanup automatically.
+It uses `pg_dump --format=custom --compress=9`, writes a timestamped `.dump` file and a matching
+`.json` sidecar (row-count snapshot), then runs retention cleanup automatically.
 
 ### Standard daily backup
 
@@ -42,7 +43,10 @@ BACKUP_DIR=/var/backups/classmate \
   pnpm --filter @workspace/scripts run backup
 ```
 
-Output filename format: `classmate_YYYYMMDD_HHMMSS_{env}.dump`
+Output files:
+- `classmate_YYYYMMDD_HHMMSS_{env}.dump` — compressed PostgreSQL backup
+- `classmate_YYYYMMDD_HHMMSS_{env}.json` — row-count sidecar (used by restore-verify)
+
 Example: `classmate_20260628_020000_production.dump`
 
 ### Weekly backup (28-day retention)
@@ -102,7 +106,7 @@ jobs:
 
 ```bash
 pg_restore --list classmate_20260628_020000_production.dump | head -20
-# Should list tables: students, courses, assignments, assessments, notes, activity, users, session, announcements
+# Should list TABLE DATA sections for each of the 11 expected tables
 ```
 
 ---
@@ -143,66 +147,92 @@ pnpm --filter @workspace/db run migrate
 
 ---
 
-## 4 — Fresh Install Recovery
+## 4 — Restore Procedure
 
-Use when recovering from complete data loss (disk failure, accidental drop, etc.).
+### Automated restore + verification (recommended)
 
-### Prerequisites
+The `restore-verify` script handles restore and integrity checking in one step.
 
-- A valid backup file (`*.dump` or `*.sql`)
-- A new empty PostgreSQL database with `DATABASE_URL` pointing to it
-- All environment secrets available (especially `PASSWORD_ENCRYPTION_KEY` — without it, all password hashes are unreadable)
+#### Verify-only (check a running database — no restore)
 
-### Step 1 — Create empty database
+```bash
+pnpm --filter @workspace/scripts run restore-verify
+```
+
+Runs all integrity checks against `DATABASE_URL`. Exits 0 on PASS, 1 on FAIL.
+
+#### Full DR restore to an auto-created temporary database
+
+```bash
+BACKUP_FILE=/var/backups/classmate/classmate_20260628_020000_production.dump \
+  pnpm --filter @workspace/scripts run restore-verify:dr
+```
+
+Creates a temp database, restores the backup into it, runs integrity checks, then drops it.
+Requires `rolcreatedb` privilege (the application database user has this in the current environment).
+
+#### Full DR restore to a pre-provisioned target database
+
+```bash
+BACKUP_FILE=/path/to/classmate_20260628_020000_production.dump \
+RESTORE_TARGET_URL=postgresql://user:pass@host/classmate_dr \
+  pnpm --filter @workspace/scripts run restore-verify
+```
+
+#### Restore configuration variables
+
+| Variable | Required | Default | Description |
+|---|---|---|---|
+| `DATABASE_URL` | **Yes** | — | Source DB (used for verify-only and admin operations) |
+| `BACKUP_FILE` | Restore mode | — | Path to `.dump` file |
+| `RESTORE_TARGET_URL` | No | — | Explicit target DB URL (skips auto-create) |
+| `RESTORE_CREATE_DB` | No | `false` | Set to `true` to auto-create and drop a temp DB |
+| `RESTORE_KEEP_DB` | No | `false` | Set to `true` to keep the temp DB after the test |
+
+### Manual restore steps (no script)
+
+#### Step 1 — Create empty target database
 
 ```sql
--- As postgres superuser:
+-- As a user with CREATE DATABASE privilege:
 CREATE DATABASE classmate_production;
 ```
 
-### Step 2 — Restore backup
-
-**From custom format dump:**
+#### Step 2 — Restore backup
 
 ```bash
 pg_restore \
   --no-password \
-  --dbname="$DATABASE_URL" \
-  --verbose \
-  classmate_20250611_020000.dump
+  --no-owner \
+  --no-privileges \
+  --dbname="postgresql://user:pass@host/classmate_production" \
+  classmate_20260628_020000_production.dump
 ```
 
-**From plain SQL dump:**
+#### Step 3 — Verify data integrity
 
 ```bash
-psql "$DATABASE_URL" < classmate_20250611_020000.sql
+# Automated (recommended):
+BACKUP_FILE=classmate_20260628_020000_production.dump \
+RESTORE_TARGET_URL=postgresql://user:pass@host/classmate_production \
+  pnpm --filter @workspace/scripts run restore-verify
+
+# Manual SQL checks:
+psql "$TARGET_URL" -c "SELECT tablename FROM pg_tables WHERE schemaname='public' ORDER BY tablename;"
+# Expected: 11 tables (activity, announcements, assessments, assignments,
+#           course_enrollments, courses, notes, session, student_guardians, students, users)
+
+psql "$TARGET_URL" -c "SELECT COUNT(*) FROM pg_constraint WHERE contype='f';"
+# Expected: >= 36
+
+psql "$TARGET_URL" -c "SELECT COUNT(*) FROM pg_indexes WHERE schemaname='public' AND indexname LIKE 'ix_%';"
+# Expected: >= 18
+
+psql "$TARGET_URL" -c "SELECT relname, n_live_tup FROM pg_stat_user_tables WHERE schemaname='public' ORDER BY relname;"
+# Compare counts against the .json sidecar file
 ```
 
-### Step 3 — Verify data integrity
-
-```sql
--- Check row counts match expected
-SELECT
-  (SELECT COUNT(*) FROM students  WHERE deleted_at IS NULL) AS students,
-  (SELECT COUNT(*) FROM courses   WHERE deleted_at IS NULL) AS courses,
-  (SELECT COUNT(*) FROM users     WHERE is_active = true)   AS users;
-
--- Check FK constraints are present
-SELECT conname, conrelid::regclass AS table
-FROM pg_constraint
-WHERE contype = 'f'
-ORDER BY conrelid::regclass::text;
--- Expected: 6 FK constraints on assignments, assessments, announcements, notes
-
--- Check indexes are present
-SELECT indexname FROM pg_indexes
-WHERE tablename IN ('assignments','assessments','announcements','notes','courses','activity')
-  AND indexname LIKE 'ix_%'
-ORDER BY indexname;
--- Expected: 13 ix_* indexes
-```
-
-### Step 4 — Apply any missed migrations
+#### Step 4 — Apply any missed migrations
 
 If the backup predates a migration, apply it now:
 
@@ -210,7 +240,7 @@ If the backup predates a migration, apply it now:
 pnpm --filter @workspace/db run migrate
 ```
 
-### Step 5 — Start the application
+#### Step 5 — Start the application
 
 ```bash
 pnpm --filter @workspace/api-server run build
@@ -250,31 +280,97 @@ Complete end-to-end recovery after catastrophic failure:
 |------|--------|----------------|
 | 1 | Provision new PostgreSQL database | 2–5 min |
 | 2 | Set `DATABASE_URL` to new database | 1 min |
-| 3 | Restore latest backup via `pg_restore` | 5–30 min (data-size dependent) |
-| 4 | Verify row counts and FK constraints | 5 min |
+| 3 | Restore latest backup via `restore-verify:dr` | 5–30 min (data-size dependent) |
+| 4 | Verify integrity check output shows PASS | 1 min |
 | 5 | Apply any pending migrations | 1–2 min |
 | 6 | Deploy application code | 2–3 min |
 | 7 | Verify health check and login | 2 min |
-| **Total** | | **~20–45 min** |
+| **Total** | | **~15–45 min** |
 
 ### RTO / RPO estimates
 
-| Metric | Value | Notes |
+| Metric | Value | Basis |
 |--------|-------|-------|
-| RTO (Recovery Time Objective) | < 1 hour | With runbook + available backup |
-| RPO (Recovery Point Objective) | < 24 hours | With daily backups; < 1 hour with pre-migration backups |
+| RTO (Recovery Time Objective) | **< 45 minutes** | Automated restore + verify via `restore-verify:dr` |
+| RPO (Recovery Point Objective) | **< 24 hours** | Daily backup cadence |
+| RPO with pre-migration backups | **< 1 hour** | Triggered immediately before each schema change |
+
+These estimates assume:
+- Backup file is accessible (object storage or local copy)
+- Target PostgreSQL instance is already provisioned
+- Operator has repo access and credentials
 
 ---
 
-## 7 — Backup Verification (Monthly)
+## 7 — Monthly Backup Drill
 
-Run this monthly to confirm backups are valid and restores work:
+Run this procedure once per month to confirm backups are valid and the restore path works end-to-end. Record results in `docs/operations/backup-drill-log.md`.
 
-1. Take a fresh backup
-2. Restore it to a **test database** (never the production database)
-3. Run the integrity queries from Step 3 of §4
-4. Attempt a login against the test database instance
-5. Record the result and timestamp in an operations log
-6. Drop the test database
+### Drill steps
+
+```bash
+# Step 1: Take a fresh backup
+BACKUP_DIR=/var/backups/classmate pnpm --filter @workspace/scripts run backup
+
+# Step 2: Run DR simulation (creates temp DB, restores, verifies, drops)
+BACKUP_FILE=/var/backups/classmate/<latest>.dump \
+  pnpm --filter @workspace/scripts run restore-verify:dr
+
+# Step 3: Record result in backup-drill-log.md
+```
+
+**Expected output:**
+```
+[restore-verify] Mode: full-dr (auto temp DB)
+[restore-verify] Creating temp database: classmate_dr_<timestamp>
+[restore-verify] Backup verified: classmate_...dump — N TABLE DATA sections
+[restore-verify] Restoring ... → target database…
+[restore-verify] pg_restore completed
+[restore-verify] Running integrity checks…
+[restore-verify] Tables present: 11 / 11 expected
+[restore-verify] Foreign keys: 36 (min 36)
+[restore-verify] ix_* indexes: 18 (min 18)
+[restore-verify] Result: PASS ✓
+[restore-verify] Dropping temp database: classmate_dr_<timestamp>
+```
 
 A backup that has never been tested is not a backup — it is an untested assumption.
+
+---
+
+## 8 — Troubleshooting
+
+### pg_restore exits with warnings but restore looks complete
+
+pg_restore uses exit code 1 for both fatal errors and non-fatal warnings. Check the warning text:
+- `already exists` — target database was not empty; the restore may still be complete
+- `permission denied` — the restore user lacks ownership; use `--no-owner --no-privileges`
+- `invalid data` / `file format` — the backup file is corrupt; use a different backup
+
+### Integrity check fails after restore
+
+Run `restore-verify` manually against the restored database to see which specific checks fail:
+
+```bash
+RESTORE_TARGET_URL=postgresql://user:pass@host/classmate_dr \
+  pnpm --filter @workspace/scripts run restore-verify
+```
+
+Common causes:
+- Missing tables: pg_restore was run against a non-empty database with conflicting objects
+- Low FK count: backup was taken mid-migration (schema partially applied)
+- Row count mismatch: backup is from a different point in time than the sidecar
+
+### Cannot create temp database (RESTORE_CREATE_DB=true fails)
+
+The database user must have `rolcreatedb = true`. Check with:
+
+```sql
+SELECT rolcreatedb FROM pg_roles WHERE rolname = current_user;
+```
+
+If `false`, either grant the privilege or use a pre-provisioned target database via `RESTORE_TARGET_URL`.
+
+### Retention not pruning files
+
+Filenames must match the format `classmate_YYYYMMDD_HHMMSS_env.dump`. Files with non-standard names are ignored by the retention logic (this is intentional — it protects pre-migration backups renamed manually).

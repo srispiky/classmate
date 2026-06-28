@@ -10,7 +10,9 @@
     "check-barrel": "tsx ./src/check-api-barrel.ts",
     "backup": "tsx ./src/backup.ts",
     "backup:weekly": "cross-env BACKUP_RETENTION_DAYS=28 BACKUP_ENV=weekly tsx ./src/backup.ts",
-    "test": "vitest run src/backup-lib.test.ts",
+    "restore-verify": "tsx ./src/restore-verify.ts",
+    "restore-verify:dr": "cross-env RESTORE_CREATE_DB=true tsx ./src/restore-verify.ts",
+    "test": "vitest run src/backup-lib.test.ts src/restore-lib.test.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {

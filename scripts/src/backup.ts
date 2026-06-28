@@ -17,7 +17,7 @@
  */
 
 import { execFileSync } from "child_process";
-import { mkdirSync, readdirSync, rmSync, statSync } from "fs";
+import { mkdirSync, readdirSync, rmSync, statSync, writeFileSync } from "fs";
 import { join, resolve } from "path";
 import {
   buildBackupFilename,
@@ -25,6 +25,7 @@ import {
   parseBackupDate,
   sanitizeErrorMessage,
 } from "./backup-lib.js";
+import { parseRowCounts, buildSidecar, SQL_ROW_COUNTS } from "./restore-lib.js";
 
 // ── Configuration ──────────────────────────────────────────────────────────────
 
@@ -111,6 +112,39 @@ function verifyOutput(outputPath: string, filename: string): void {
   console.log(`[backup] SUCCESS: ${filename} (${kb} KB)`);
 }
 
+// ── Sidecar (row-count snapshot) ───────────────────────────────────────────────
+
+/**
+ * Write a JSON sidecar alongside the .dump file capturing current row counts.
+ * The sidecar is used by restore-verify to confirm data integrity after restore.
+ * Non-fatal on failure — a missing sidecar only disables row-count comparison.
+ */
+function writeSidecar(dumpPath: string, now: Date): void {
+  const sidecarPath = dumpPath.replace(/\.dump$/, ".json");
+  try {
+    const rowOutput = execFileSync(
+      "psql",
+      [
+        "--no-password",
+        "--tuples-only",
+        "--no-align",
+        "--field-separator=,",
+        DATABASE_URL!,
+        "--command",
+        SQL_ROW_COUNTS,
+      ],
+      { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"], timeout: 15_000 },
+    );
+    const rowCounts = parseRowCounts(rowOutput);
+    const sidecar = buildSidecar(rowCounts, ENV_LABEL, now);
+    writeFileSync(sidecarPath, JSON.stringify(sidecar, null, 2), "utf8");
+    console.log(`[backup] Sidecar written: ${sidecarPath.split("/").pop()}`);
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? sanitizeErrorMessage(err.message) : "unknown error";
+    console.warn(`[backup] WARNING: could not write sidecar: ${msg} — row-count verification will be skipped`);
+  }
+}
+
 // ── Retention cleanup ──────────────────────────────────────────────────────────
 
 function runRetentionCleanup(now: Date): void {
@@ -171,6 +205,7 @@ function main(): void {
 
   runBackup(outputPath);
   verifyOutput(outputPath, filename);
+  writeSidecar(outputPath, now);
   runRetentionCleanup(now);
 
   console.log("[backup] Done");

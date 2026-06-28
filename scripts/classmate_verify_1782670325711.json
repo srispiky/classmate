@@ -1,0 +1,17 @@
+{
+  "timestamp": "2026-06-28T18:12:05.709Z",
+  "env": "snapshot",
+  "rowCounts": {
+    "activity": 13,
+    "announcements": 4,
+    "assessments": 11,
+    "assignments": 14,
+    "course_enrollments": 2,
+    "courses": 10,
+    "notes": 11,
+    "session": 76,
+    "student_guardians": 0,
+    "students": 8,
+    "users": 7
+  }
+}
