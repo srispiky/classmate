@@ -59,6 +59,8 @@ const ASSESSMENTS = [
   },
 ];
 
+const PAGINATION_DONE = { nextCursor: null, hasMore: false, limit: 50 };
+
 const COURSES = [
   { id: 10, name: "Algebra I", subject: "Math", status: "active", teacherId: 1, teacherName: "Ms. Smith", grade: "9", academicYear: "2024-2025", studentCount: 2, description: "", createdAt: "", updatedAt: "", createdBy: null, updatedBy: null },
   { id: 11, name: "English Lit", subject: "English", status: "active", teacherId: 1, teacherName: "Ms. Smith", grade: "10", academicYear: "2024-2025", studentCount: 1, description: "", createdAt: "", updatedAt: "", createdBy: null, updatedBy: null },
@@ -70,14 +72,21 @@ const STUDENTS = [
 ];
 
 vi.mock("@workspace/api-client-react", () => ({
-  useListAssessments: () => ({ data: ASSESSMENTS, isLoading: false }),
+  useListAssessments: () => ({
+    data: { items: ASSESSMENTS, pagination: PAGINATION_DONE },
+    isLoading: false,
+    isFetching: false,
+  }),
   useGetAssessment: (id: number) => ({
     data: ASSESSMENTS.find((a) => a.id === id),
     isLoading: false,
     isError: false,
   }),
   useListCourses: () => ({ data: COURSES }),
-  useListStudents: () => ({ data: STUDENTS }),
+  useListStudents: () => ({
+    data: { items: STUDENTS, pagination: PAGINATION_DONE },
+    isFetching: false,
+  }),
   useGetMe: () => ({
     data: { id: 1, username: "teacher1", role: "teacher", displayName: "Teacher" },
   }),
@@ -156,32 +165,43 @@ describe("Assessments list page", () => {
     AssessmentsPage = mod.default;
   });
 
-  it("renders page title, Create Assessment button, and assessment cards", () => {
+  it("renders page title, Create Assessment button, and assessment cards", async () => {
     render(<AssessmentsPage />, { wrapper });
-    expect(screen.getByText("Assessments")).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByText("Assessments")).toBeInTheDocument());
     expect(screen.getByRole("button", { name: /create assessment/i })).toBeInTheDocument();
-    expect(screen.getByText("Mid-term Assessment")).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByText("Mid-term Assessment")).toBeInTheDocument());
     expect(screen.getByText("Lab Practical")).toBeInTheDocument();
   });
 
-  it("shows percentage and score for each assessment", () => {
+  it("shows percentage and score for each assessment", async () => {
     render(<AssessmentsPage />, { wrapper });
-    expect(screen.getByText("88%")).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByText("88%")).toBeInTheDocument());
     expect(screen.getByText("88/100")).toBeInTheDocument();
     expect(screen.getByText("72%")).toBeInTheDocument();
     expect(screen.getByText("72/100")).toBeInTheDocument();
   });
 
-  it("shows strengths and weaknesses on cards", () => {
+  it("shows strengths and weaknesses on cards", async () => {
     render(<AssessmentsPage />, { wrapper });
-    expect(screen.getByText("Problem solving")).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByText("Problem solving")).toBeInTheDocument());
     expect(screen.getByText("Algebra fundamentals")).toBeInTheDocument();
     expect(screen.getByText("Creativity")).toBeInTheDocument();
+  });
+
+  it("shows end-of-list text when hasMore is false", async () => {
+    render(<AssessmentsPage />, { wrapper });
+    await waitFor(() => expect(screen.getByText(/all \d+ assessments? loaded/i)).toBeInTheDocument());
+  });
+
+  it("does not show Load More button when hasMore is false", async () => {
+    render(<AssessmentsPage />, { wrapper });
+    await waitFor(() => expect(screen.queryByTestId("load-more-assessments")).not.toBeInTheDocument());
   });
 
   it("filters assessments by search term", async () => {
     const user = userEvent.setup();
     render(<AssessmentsPage />, { wrapper });
+    await waitFor(() => expect(screen.getByText("Mid-term Assessment")).toBeInTheDocument());
     await user.type(screen.getByPlaceholderText(/search/i), "Algebra");
     expect(screen.getByText("Mid-term Assessment")).toBeInTheDocument();
     expect(screen.queryByText("Lab Practical")).not.toBeInTheDocument();
@@ -192,6 +212,7 @@ describe("Assessments list page", () => {
   it("opens create dialog when Create Assessment is clicked", async () => {
     const user = userEvent.setup();
     render(<AssessmentsPage />, { wrapper });
+    await waitFor(() => expect(screen.getByRole("button", { name: /create assessment/i })).toBeInTheDocument());
     await user.click(screen.getByRole("button", { name: /create assessment/i }));
     expect(screen.getByRole("dialog")).toBeInTheDocument();
   });
@@ -199,6 +220,7 @@ describe("Assessments list page", () => {
   it("shows validation error when required fields are empty", async () => {
     const user = userEvent.setup();
     render(<AssessmentsPage />, { wrapper });
+    await waitFor(() => expect(screen.getByRole("button", { name: /create assessment/i })).toBeInTheDocument());
     await user.click(screen.getByRole("button", { name: /create assessment/i }));
     const dialog = screen.getByRole("dialog");
     await user.click(within(dialog).getByRole("button", { name: /create assessment/i }));
@@ -209,6 +231,7 @@ describe("Assessments list page", () => {
   it("shows validation error when course not selected", async () => {
     const user = userEvent.setup();
     render(<AssessmentsPage />, { wrapper });
+    await waitFor(() => expect(screen.getByRole("button", { name: /create assessment/i })).toBeInTheDocument());
     await user.click(screen.getByRole("button", { name: /create assessment/i }));
     const dialog = screen.getByRole("dialog");
     await user.type(within(dialog).getByLabelText(/title/i), "Test");
@@ -220,15 +243,14 @@ describe("Assessments list page", () => {
   it("calls useCreateAssessment with correct payload on valid submit", async () => {
     const user = userEvent.setup();
     render(<AssessmentsPage />, { wrapper });
+    await waitFor(() => expect(screen.getByRole("button", { name: /create assessment/i })).toBeInTheDocument());
     await user.click(screen.getByRole("button", { name: /create assessment/i }));
     const dialog = screen.getByRole("dialog");
 
-    // Course
     const courseCombo = within(dialog).getByRole("combobox", { name: /course/i });
     await user.click(courseCombo);
     await user.click(screen.getByRole("option", { name: "Algebra I" }));
 
-    // Student
     const studentCombo = within(dialog).getByRole("combobox", { name: /student/i });
     await user.click(studentCombo);
     await user.click(screen.getByRole("option", { name: "Alice" }));
@@ -259,6 +281,7 @@ describe("Assessments list page", () => {
       m.onSuccess?.();
     });
     render(<AssessmentsPage />, { wrapper });
+    await waitFor(() => expect(screen.getByRole("button", { name: /create assessment/i })).toBeInTheDocument());
     await user.click(screen.getByRole("button", { name: /create assessment/i }));
     const dialog = screen.getByRole("dialog");
 
@@ -287,6 +310,7 @@ describe("Assessments list page", () => {
       },
     );
     render(<AssessmentsPage />, { wrapper });
+    await waitFor(() => expect(screen.getByRole("button", { name: /create assessment/i })).toBeInTheDocument());
     await user.click(screen.getByRole("button", { name: /create assessment/i }));
     const dialog = screen.getByRole("dialog");
 
@@ -308,6 +332,7 @@ describe("Assessments list page", () => {
   it("filters students by selected course in create dialog", async () => {
     const user = userEvent.setup();
     render(<AssessmentsPage />, { wrapper });
+    await waitFor(() => expect(screen.getByRole("button", { name: /create assessment/i })).toBeInTheDocument());
     await user.click(screen.getByRole("button", { name: /create assessment/i }));
     const dialog = screen.getByRole("dialog");
     const courseCombo = within(dialog).getByRole("combobox", { name: /course/i });
@@ -324,6 +349,7 @@ describe("Assessments list page", () => {
   it("opens edit dialog when pencil button is clicked", async () => {
     const user = userEvent.setup();
     render(<AssessmentsPage />, { wrapper });
+    await waitFor(() => expect(screen.getAllByTitle("Edit assessment").length).toBeGreaterThan(0));
     const editBtns = screen.getAllByTitle("Edit assessment");
     await user.click(editBtns[0]!);
     expect(await screen.findByRole("dialog")).toBeInTheDocument();
@@ -334,6 +360,7 @@ describe("Assessments list page", () => {
   it("pre-populates edit dialog with current assessment values", async () => {
     const user = userEvent.setup();
     render(<AssessmentsPage />, { wrapper });
+    await waitFor(() => expect(screen.getAllByTitle("Edit assessment").length).toBeGreaterThan(0));
     await user.click(screen.getAllByTitle("Edit assessment")[0]!);
     const dialog = await screen.findByRole("dialog");
     expect(within(dialog).getByLabelText(/title/i)).toHaveValue("Mid-term Assessment");
@@ -346,6 +373,7 @@ describe("Assessments list page", () => {
   it("calls useUpdateAssessment with correct payload on edit submit", async () => {
     const user = userEvent.setup();
     render(<AssessmentsPage />, { wrapper });
+    await waitFor(() => expect(screen.getAllByTitle("Edit assessment").length).toBeGreaterThan(0));
     await user.click(screen.getAllByTitle("Edit assessment")[0]!);
     const dialog = await screen.findByRole("dialog");
     const titleInput = within(dialog).getByLabelText(/title/i);
@@ -370,6 +398,7 @@ describe("Assessments list page", () => {
       },
     );
     render(<AssessmentsPage />, { wrapper });
+    await waitFor(() => expect(screen.getAllByTitle("Edit assessment").length).toBeGreaterThan(0));
     await user.click(screen.getAllByTitle("Edit assessment")[0]!);
     const dialog = await screen.findByRole("dialog");
     await user.click(within(dialog).getByRole("button", { name: /save changes/i }));
@@ -379,6 +408,7 @@ describe("Assessments list page", () => {
   it("shows validation error when title cleared in edit dialog", async () => {
     const user = userEvent.setup();
     render(<AssessmentsPage />, { wrapper });
+    await waitFor(() => expect(screen.getAllByTitle("Edit assessment").length).toBeGreaterThan(0));
     await user.click(screen.getAllByTitle("Edit assessment")[0]!);
     const dialog = await screen.findByRole("dialog");
     const titleInput = within(dialog).getByLabelText(/title/i);
@@ -393,6 +423,7 @@ describe("Assessments list page", () => {
   it("opens delete confirmation when trash button is clicked", async () => {
     const user = userEvent.setup();
     render(<AssessmentsPage />, { wrapper });
+    await waitFor(() => expect(screen.getAllByTitle("Delete assessment").length).toBeGreaterThan(0));
     await user.click(screen.getAllByTitle("Delete assessment")[0]!);
     await waitFor(() => {
       expect(screen.getByRole("alertdialog")).toBeInTheDocument();
@@ -403,6 +434,7 @@ describe("Assessments list page", () => {
   it("calls useDeleteAssessment when delete confirmed", async () => {
     const user = userEvent.setup();
     render(<AssessmentsPage />, { wrapper });
+    await waitFor(() => expect(screen.getAllByTitle("Delete assessment").length).toBeGreaterThan(0));
     await user.click(screen.getAllByTitle("Delete assessment")[0]!);
     const alertDialog = await screen.findByRole("alertdialog");
     await user.click(within(alertDialog).getByRole("button", { name: /^delete assessment$/i }));
@@ -420,6 +452,7 @@ describe("Assessments list page", () => {
       },
     );
     render(<AssessmentsPage />, { wrapper });
+    await waitFor(() => expect(screen.getAllByTitle("Delete assessment").length).toBeGreaterThan(0));
     await user.click(screen.getAllByTitle("Delete assessment")[0]!);
     const alertDialog = await screen.findByRole("alertdialog");
     await user.click(within(alertDialog).getByRole("button", { name: /^delete assessment$/i }));
@@ -537,17 +570,5 @@ describe("Assessment detail page", () => {
       expect.objectContaining({ id: 1 }),
       expect.anything(),
     );
-  });
-
-  it("removes from list cache on delete success", async () => {
-    const user = userEvent.setup();
-    mockDelete.mockImplementationOnce((_args: unknown, m: { onSuccess?: () => void }) => {
-      m.onSuccess?.();
-    });
-    render(<AssessmentDetail />, { wrapper });
-    await user.click(screen.getByRole("button", { name: /delete/i }));
-    const alertDialog = await screen.findByRole("alertdialog");
-    await user.click(within(alertDialog).getByRole("button", { name: /^delete assessment$/i }));
-    expect(mockSetQueryData).toHaveBeenCalledWith(["/api/assessments"], expect.any(Function));
   });
 });

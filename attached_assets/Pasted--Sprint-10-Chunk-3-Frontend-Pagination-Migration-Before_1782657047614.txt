@@ -1,0 +1,217 @@
+# Sprint 10 Chunk 3 — Frontend Pagination Migration
+
+Before making changes:
+
+1. Review:
+   - Sprint 10 Chunk 1 Architecture Review
+   - Sprint 10 Chunk 2 implementation report
+   - generated React hooks
+   - student list page
+   - assignment list page
+   - assessment list page
+   - React Query usage patterns
+
+2. Verify:
+
+   - OpenAPI generation completed successfully
+   - new paginated response contracts exist
+   - backend tests passed
+
+3. Follow existing architecture:
+
+   - OpenAPI-first
+   - generated hooks only
+   - React Query
+   - TypeScript strict mode
+   - no manual fetch calls
+
+4. Keep changes limited to frontend pagination.
+
+--------------------------------------------------
+OBJECTIVE
+--------------------------------------------------
+
+Migrate frontend list pages to use the new
+paginated API contracts.
+
+Pages:
+
+- Students
+- Assignments
+- Assessments
+
+Preserve:
+
+- search
+- filtering
+- sorting
+- authorization behavior
+
+--------------------------------------------------
+PART 1 — GENERATED HOOK REVIEW
+--------------------------------------------------
+
+Review generated hooks.
+
+Verify:
+
+- response shape
+- pagination metadata
+- cursor support
+
+Document:
+
+required frontend changes.
+
+--------------------------------------------------
+PART 2 — STUDENT LIST MIGRATION
+--------------------------------------------------
+
+Update student list page.
+
+Requirements:
+
+- consume paginated response
+- preserve existing search
+- preserve existing filters
+- preserve existing cache behavior
+
+Implement:
+
+Load More pattern
+
+OR
+
+Infinite Query pattern
+
+Use architecture selected during
+Sprint 10 Chunk 1.
+
+--------------------------------------------------
+PART 3 — ASSIGNMENT LIST MIGRATION
+--------------------------------------------------
+
+Update assignment list page.
+
+Requirements:
+
+- consume paginated response
+- preserve search
+- preserve filters
+- preserve navigation
+
+Implement pagination UX.
+
+--------------------------------------------------
+PART 4 — ASSESSMENT LIST MIGRATION
+--------------------------------------------------
+
+Update assessment list page.
+
+Requirements:
+
+- consume paginated response
+- preserve filters
+- preserve search
+
+Implement pagination UX.
+
+--------------------------------------------------
+PART 5 — REACT QUERY REVIEW
+--------------------------------------------------
+
+Verify:
+
+query keys remain stable.
+
+Prevent:
+
+duplicate pages
+stale page merging
+cache corruption
+
+Review:
+
+- invalidation strategy
+- optimistic updates
+- refetch behavior
+
+--------------------------------------------------
+PART 6 — UI/UX VALIDATION
+--------------------------------------------------
+
+Verify:
+
+- loading states
+- empty states
+- end-of-list states
+- pagination controls
+
+No regressions.
+
+--------------------------------------------------
+PART 7 — TESTS
+--------------------------------------------------
+
+Add tests covering:
+
+Students:
+
+- first page render
+- load next page
+- end of results
+
+Assignments:
+
+- first page render
+- load next page
+
+Assessments:
+
+- first page render
+- load next page
+
+Verify:
+
+search still functions correctly.
+
+--------------------------------------------------
+PART 8 — E2E VALIDATION
+--------------------------------------------------
+
+Create dataset:
+
+50+ students
+50+ assignments
+50+ assessments
+
+Verify:
+
+- pagination works
+- filters work
+- search works
+- teacher scoping works
+
+--------------------------------------------------
+PART 9 — DELIVERABLE
+--------------------------------------------------
+
+Provide:
+
+1. Files modified
+2. Hooks updated
+3. Pages migrated
+4. Test coverage
+5. E2E verification
+6. Regression results
+7. Remaining pagination work
+
+--------------------------------------------------
+GIT REQUIREMENT
+--------------------------------------------------
+
+git add .
+git commit -m "feat(sprint10): migrate list pages to paginated APIs"
+git push origin main
+
+Include commit hash in report.

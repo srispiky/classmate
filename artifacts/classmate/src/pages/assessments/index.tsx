@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Link, useLocation } from "wouter";
 import {
@@ -11,7 +11,7 @@ import {
   useGetMe,
   getListAssessmentsQueryKey,
 } from "@workspace/api-client-react";
-import type { Assessment } from "@workspace/api-client-react";
+import type { Assessment, PaginatedAssessmentList } from "@workspace/api-client-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -43,9 +43,11 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { Search, Target, BookOpen, Plus, Pencil, Trash2, BrainCircuit, ChevronRight } from "lucide-react";
+import { Search, Target, BookOpen, Plus, Pencil, Trash2, BrainCircuit, ChevronRight, Loader2 } from "lucide-react";
 import { formatDate } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
+
+const PAGE_LIMIT = 50;
 
 function scoreColor(pct: number) {
   if (pct >= 90) return "text-emerald-600";
@@ -106,22 +108,21 @@ function AssessmentDialog({
   error,
 }: AssessmentDialogProps) {
   const { data: courses } = useListCourses();
-  const { data: students } = useListStudents();
+  const { data: studentsData } = useListStudents();
   const [form, setForm] = useState<AssessmentFormState>(initial);
 
-  // Reset when dialog opens
   const handleOpen = (isOpen: boolean) => {
     if (isOpen) setForm(initial);
   };
 
   const enrolled =
-    form.courseId && students
-      ? students.filter((s) =>
+    form.courseId && studentsData?.items
+      ? studentsData.items.filter((s) =>
           (s.enrolledCourseIds ?? []).includes(Number(form.courseId)),
         )
       : [];
-  // Fall back to all students if enrollment data is stale/empty
-  const filteredStudents = enrolled.length > 0 ? enrolled : (students ?? []);
+  const filteredStudents =
+    enrolled.length > 0 ? enrolled : (studentsData?.items ?? []);
 
   function set(key: keyof AssessmentFormState) {
     return (val: string) => setForm((f) => ({ ...f, [key]: val }));
@@ -278,8 +279,46 @@ export default function Assessments() {
   const { data: me } = useGetMe();
   const canWrite = me?.role === "admin" || me?.role === "teacher";
 
-  const { data: assessments, isLoading } = useListAssessments();
+  // ── Pagination state ─────────────────────────────────────────────────────────
+  const [cursor, setCursor] = useState<string | undefined>(undefined);
+  const [allAssessments, setAllAssessments] = useState<Assessment[]>([]);
+  const appendModeRef = useRef(false);
+
+  const { data: pageData, isLoading, isFetching } = useListAssessments({ cursor, limit: PAGE_LIMIT });
+
+  useEffect(() => {
+    if (!pageData?.items) return;
+    if (appendModeRef.current) {
+      setAllAssessments((prev) => [...prev, ...pageData.items]);
+    } else {
+      setAllAssessments(pageData.items);
+    }
+    appendModeRef.current = false;
+  }, [pageData]);
+
+  function handleLoadMore() {
+    const next = pageData?.pagination?.nextCursor;
+    if (!next) return;
+    appendModeRef.current = true;
+    setCursor(next);
+  }
+
+  function resetPagination() {
+    appendModeRef.current = false;
+    setCursor(undefined);
+  }
+
+  const hasMore = pageData?.pagination?.hasMore ?? false;
+
+  // ── Search ───────────────────────────────────────────────────────────────────
   const [search, setSearch] = useState("");
+
+  const filtered = allAssessments.filter(
+    (a) =>
+      a.title.toLowerCase().includes(search.toLowerCase()) ||
+      a.studentName.toLowerCase().includes(search.toLowerCase()) ||
+      a.courseName.toLowerCase().includes(search.toLowerCase()),
+  );
 
   // ── Create state ────────────────────────────────────────────────────────────
   const [createOpen, setCreateOpen] = useState(false);
@@ -288,6 +327,7 @@ export default function Assessments() {
   const { mutate: createAssessment, isPending: isCreating } = useCreateAssessment({
     mutation: {
       onSuccess: () => {
+        resetPagination();
         queryClient.invalidateQueries({ queryKey: getListAssessmentsQueryKey() });
         setCreateOpen(false);
         toast({ title: "Assessment created" });
@@ -311,9 +351,10 @@ export default function Assessments() {
       onSuccess: (data) => {
         queryClient.setQueryData(
           getListAssessmentsQueryKey(),
-          (old: Assessment[] | undefined) =>
-            old ? old.map((a) => (a.id === data.id ? data : a)) : old,
+          (old: PaginatedAssessmentList | undefined) =>
+            old ? { ...old, items: old.items.map((a) => (a.id === data.id ? data : a)) } : old,
         );
+        setAllAssessments((prev) => prev.map((a) => (a.id === data.id ? data : a)));
         setEditTarget(null);
         toast({ title: "Assessment updated" });
       },
@@ -335,21 +376,14 @@ export default function Assessments() {
       onSuccess: (_data, { id }) => {
         queryClient.setQueryData(
           getListAssessmentsQueryKey(),
-          (old: Assessment[] | undefined) =>
-            old ? old.filter((a) => a.id !== id) : old,
+          (old: PaginatedAssessmentList | undefined) =>
+            old ? { ...old, items: old.items.filter((a) => a.id !== id) } : old,
         );
+        setAllAssessments((prev) => prev.filter((a) => a.id !== id));
         toast({ title: "Assessment deleted" });
       },
     },
   });
-
-  // ── Filtering ────────────────────────────────────────────────────────────────
-  const filtered = (assessments ?? []).filter(
-    (a) =>
-      a.title.toLowerCase().includes(search.toLowerCase()) ||
-      a.studentName.toLowerCase().includes(search.toLowerCase()) ||
-      a.courseName.toLowerCase().includes(search.toLowerCase()),
-  );
 
   // ── Handlers ─────────────────────────────────────────────────────────────────
   function handleCreate(f: AssessmentFormState) {
@@ -455,147 +489,176 @@ export default function Assessments() {
       </div>
 
       {/* List */}
-      {isLoading ? (
+      {isLoading && allAssessments.length === 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {[1, 2, 3, 4].map((i) => (
             <Skeleton key={i} className="h-64 rounded-xl" />
           ))}
         </div>
       ) : filtered.length > 0 ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {filtered.map((a) => (
-            <Card
-              key={a.id}
-              className="flex flex-col hover:bg-muted/50 transition-colors cursor-pointer group relative"
-              onClick={() => setLocation(`/assessments/${a.id}`)}
-            >
-              <CardHeader className="pb-2">
-                <div className="flex items-start justify-between gap-2">
-                  <div className="space-y-1 min-w-0">
-                    <CardTitle className="text-lg flex items-center gap-2 leading-tight">
-                      <Target className="w-4 h-4 text-primary shrink-0" />
-                      <span className="truncate">{a.title}</span>
-                    </CardTitle>
-                    <div className="text-sm text-muted-foreground flex flex-wrap items-center gap-x-2 gap-y-1">
+        <>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {filtered.map((a) => (
+              <Card
+                key={a.id}
+                className="flex flex-col hover:bg-muted/50 transition-colors cursor-pointer group relative"
+                onClick={() => setLocation(`/assessments/${a.id}`)}
+              >
+                <CardHeader className="pb-2">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="space-y-1 min-w-0">
+                      <CardTitle className="text-lg flex items-center gap-2 leading-tight">
+                        <Target className="w-4 h-4 text-primary shrink-0" />
+                        <span className="truncate">{a.title}</span>
+                      </CardTitle>
+                      <div className="text-sm text-muted-foreground flex flex-wrap items-center gap-x-2 gap-y-1">
+                        <Link
+                          href={`/students/${a.studentId}`}
+                          className="font-medium text-foreground hover:underline"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          {a.studentName}
+                        </Link>
+                        <span>•</span>
+                        <span className="flex items-center gap-1">
+                          <BookOpen className="w-3.5 h-3.5" />
+                          {a.courseName}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2 shrink-0">
+                      <div className="text-right">
+                        <div className={`text-2xl font-bold ${scoreColor(a.percentage)}`}>
+                          {a.percentage}%
+                        </div>
+                        <div className="text-xs text-muted-foreground">
+                          {a.score}/{a.maxScore}
+                        </div>
+                      </div>
+                      {canWrite && (
+                        <div
+                          className="flex flex-col gap-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            className="h-7 w-7"
+                            title="Edit assessment"
+                            onClick={(e) => openEdit(a, e)}
+                          >
+                            <Pencil className="w-3.5 h-3.5" />
+                          </Button>
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            className="h-7 w-7 text-destructive hover:text-destructive"
+                            title="Delete assessment"
+                            onClick={(e) => openDelete(a, e)}
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </Button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </CardHeader>
+
+                <CardContent className="flex-1 mt-2">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <h4 className="text-xs uppercase tracking-wider font-semibold text-muted-foreground mb-2 flex items-center gap-2">
+                        <div className="w-2 h-2 rounded-full bg-green-500" />
+                        Strengths
+                      </h4>
+                      <ul className="space-y-1.5">
+                        {a.strengths.slice(0, 3).map((s, i) => (
+                          <li
+                            key={i}
+                            className="text-sm border-l-2 border-green-500 pl-2.5 py-0.5 bg-green-500/5 rounded-r"
+                          >
+                            {s}
+                          </li>
+                        ))}
+                        {a.strengths.length === 0 && (
+                          <li className="text-sm text-muted-foreground italic">None recorded</li>
+                        )}
+                      </ul>
+                    </div>
+                    <div>
+                      <h4 className="text-xs uppercase tracking-wider font-semibold text-muted-foreground mb-2 flex items-center gap-2">
+                        <div className="w-2 h-2 rounded-full bg-orange-500" />
+                        Areas to Improve
+                      </h4>
+                      <ul className="space-y-1.5">
+                        {a.weaknesses.slice(0, 3).map((w, i) => (
+                          <li
+                            key={i}
+                            className="text-sm border-l-2 border-orange-500 pl-2.5 py-0.5 bg-orange-500/5 rounded-r"
+                          >
+                            {w}
+                          </li>
+                        ))}
+                        {a.weaknesses.length === 0 && (
+                          <li className="text-sm text-muted-foreground italic">None recorded</li>
+                        )}
+                      </ul>
+                    </div>
+                  </div>
+
+                  <div className="mt-4 pt-3 border-t border-border flex items-center justify-between">
+                    <div className="text-xs text-muted-foreground">
+                      Completed {formatDate(a.createdAt)}
+                    </div>
+                    <div className="flex items-center gap-2">
                       <Link
-                        href={`/students/${a.studentId}`}
-                        className="font-medium text-foreground hover:underline"
+                        href={`/students/${a.studentId}/ai`}
                         onClick={(e) => e.stopPropagation()}
                       >
-                        {a.studentName}
+                        <Badge
+                          variant="outline"
+                          className="cursor-pointer hover:bg-primary hover:text-primary-foreground transition-colors border-primary/30 text-primary"
+                        >
+                          <BrainCircuit className="w-3.5 h-3.5 mr-1" />
+                          AI Insights
+                        </Badge>
                       </Link>
-                      <span>•</span>
-                      <span className="flex items-center gap-1">
-                        <BookOpen className="w-3.5 h-3.5" />
-                        {a.courseName}
-                      </span>
+                      <ChevronRight className="w-4 h-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
                     </div>
                   </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
 
-                  <div className="flex items-center gap-2 shrink-0">
-                    <div className="text-right">
-                      <div className={`text-2xl font-bold ${scoreColor(a.percentage)}`}>
-                        {a.percentage}%
-                      </div>
-                      <div className="text-xs text-muted-foreground">
-                        {a.score}/{a.maxScore}
-                      </div>
-                    </div>
-                    {canWrite && (
-                      <div
-                        className="flex flex-col gap-1 opacity-0 group-hover:opacity-100 transition-opacity"
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        <Button
-                          size="icon"
-                          variant="ghost"
-                          className="h-7 w-7"
-                          title="Edit assessment"
-                          onClick={(e) => openEdit(a, e)}
-                        >
-                          <Pencil className="w-3.5 h-3.5" />
-                        </Button>
-                        <Button
-                          size="icon"
-                          variant="ghost"
-                          className="h-7 w-7 text-destructive hover:text-destructive"
-                          title="Delete assessment"
-                          onClick={(e) => openDelete(a, e)}
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </Button>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </CardHeader>
-
-              <CardContent className="flex-1 mt-2">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div>
-                    <h4 className="text-xs uppercase tracking-wider font-semibold text-muted-foreground mb-2 flex items-center gap-2">
-                      <div className="w-2 h-2 rounded-full bg-green-500" />
-                      Strengths
-                    </h4>
-                    <ul className="space-y-1.5">
-                      {a.strengths.slice(0, 3).map((s, i) => (
-                        <li
-                          key={i}
-                          className="text-sm border-l-2 border-green-500 pl-2.5 py-0.5 bg-green-500/5 rounded-r"
-                        >
-                          {s}
-                        </li>
-                      ))}
-                      {a.strengths.length === 0 && (
-                        <li className="text-sm text-muted-foreground italic">None recorded</li>
-                      )}
-                    </ul>
-                  </div>
-                  <div>
-                    <h4 className="text-xs uppercase tracking-wider font-semibold text-muted-foreground mb-2 flex items-center gap-2">
-                      <div className="w-2 h-2 rounded-full bg-orange-500" />
-                      Areas to Improve
-                    </h4>
-                    <ul className="space-y-1.5">
-                      {a.weaknesses.slice(0, 3).map((w, i) => (
-                        <li
-                          key={i}
-                          className="text-sm border-l-2 border-orange-500 pl-2.5 py-0.5 bg-orange-500/5 rounded-r"
-                        >
-                          {w}
-                        </li>
-                      ))}
-                      {a.weaknesses.length === 0 && (
-                        <li className="text-sm text-muted-foreground italic">None recorded</li>
-                      )}
-                    </ul>
-                  </div>
-                </div>
-
-                <div className="mt-4 pt-3 border-t border-border flex items-center justify-between">
-                  <div className="text-xs text-muted-foreground">
-                    Completed {formatDate(a.createdAt)}
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Link
-                      href={`/students/${a.studentId}/ai`}
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      <Badge
-                        variant="outline"
-                        className="cursor-pointer hover:bg-primary hover:text-primary-foreground transition-colors border-primary/30 text-primary"
-                      >
-                        <BrainCircuit className="w-3.5 h-3.5 mr-1" />
-                        AI Insights
-                      </Badge>
-                    </Link>
-                    <ChevronRight className="w-4 h-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
+          {/* Load More / end-of-list (only shown without active search) */}
+          {!search && (
+            <div className="flex justify-center pt-2">
+              {hasMore ? (
+                <Button
+                  variant="outline"
+                  onClick={handleLoadMore}
+                  disabled={isFetching}
+                  data-testid="load-more-assessments"
+                >
+                  {isFetching ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Loading…
+                    </>
+                  ) : (
+                    "Load More"
+                  )}
+                </Button>
+              ) : (
+                <p className="text-sm text-muted-foreground">
+                  All {allAssessments.length} assessment{allAssessments.length !== 1 ? "s" : ""} loaded
+                </p>
+              )}
+            </div>
+          )}
+        </>
       ) : (
         <Card className="border-dashed">
           <CardContent className="flex flex-col items-center justify-center h-64 space-y-4">
@@ -631,11 +694,10 @@ export default function Assessments() {
       />
 
       {/* Edit dialog */}
-      {editTarget && editInitial && (
+      {editTarget && (
         <AssessmentDialog
-          key={editTarget.id}
           mode="edit"
-          open={!!editTarget}
+          open={editTarget !== null}
           onClose={() => setEditTarget(null)}
           initial={editInitial}
           onSubmit={handleEdit}
@@ -645,28 +707,20 @@ export default function Assessments() {
       )}
 
       {/* Delete confirmation */}
-      <AlertDialog
-        open={!!deleteTarget}
-        onOpenChange={(v) => { if (!v) setDeleteTarget(null); }}
-      >
+      <AlertDialog open={deleteTarget !== null} onOpenChange={(open) => { if (!open) setDeleteTarget(null); }}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Delete Assessment</AlertDialogTitle>
             <AlertDialogDescription>
-              Delete &quot;{deleteTarget?.title}&quot; for {deleteTarget?.studentName}? This
-              action cannot be undone.
+              Are you sure you want to delete{" "}
+              <span className="font-medium">{deleteTarget?.title}</span>? This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-              onClick={() => {
-                if (deleteTarget) {
-                  deleteAssessment({ id: deleteTarget.id });
-                  setDeleteTarget(null);
-                }
-              }}
+              onClick={() => deleteTarget && deleteAssessment({ id: deleteTarget.id })}
             >
               Delete Assessment
             </AlertDialogAction>

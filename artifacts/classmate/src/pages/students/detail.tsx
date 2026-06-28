@@ -187,9 +187,9 @@ export default function StudentDetail() {
                 <div className="space-y-4">
                   {[1, 2, 3].map(i => <Skeleton key={i} className="h-24 w-full" />)}
                 </div>
-              ) : assignments && assignments.length > 0 ? (
+              ) : assignments?.items && assignments.items.length > 0 ? (
                 <div className="space-y-4">
-                  {assignments.map(assignment => (
+                  {assignments.items.map(assignment => (
                     <Card key={assignment.id}>
                       <CardContent className="p-4 sm:p-6">
                         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -240,9 +240,9 @@ export default function StudentDetail() {
                 <div className="space-y-4">
                   {[1, 2].map(i => <Skeleton key={i} className="h-32 w-full" />)}
                 </div>
-              ) : assessments && assessments.length > 0 ? (
+              ) : assessments?.items && assessments.items.length > 0 ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {assessments.map(assessment => (
+                  {assessments.items.map(assessment => (
                     <Card key={assessment.id} className="flex flex-col">
                       <CardHeader className="pb-2">
                         <div className="flex items-start justify-between">

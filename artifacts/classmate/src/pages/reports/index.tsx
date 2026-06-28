@@ -37,9 +37,9 @@ export default function Reports() {
               <div className="space-y-3">
                 {[1, 2, 3, 4].map(i => <Skeleton key={i} className="h-12 w-full" />)}
               </div>
-            ) : students && students.length > 0 ? (
+            ) : students?.items && students.items.length > 0 ? (
               <div className="space-y-2">
-                {students.map((student: Student) => (
+                {students.items.map((student: Student) => (
                   <Link key={student.id} href={`/reports/student/${student.id}`}>
                     <div className="flex items-center justify-between px-3 py-2.5 rounded-md border hover:bg-muted/50 transition-colors cursor-pointer group">
                       <div className="flex items-center gap-3">

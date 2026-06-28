@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Link } from "wouter";
 import { useQueryClient } from "@tanstack/react-query";
 import {
@@ -6,6 +6,7 @@ import {
   useCreateStudent,
   getListStudentsQueryKey,
 } from "@workspace/api-client-react";
+import type { Student } from "@workspace/api-client-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -27,17 +28,59 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Users, Search, GraduationCap } from "lucide-react";
+import { Users, Search, GraduationCap, Loader2 } from "lucide-react";
 import { formatDateTime } from "@/lib/utils";
 
 const GRADE_OPTIONS = ["K", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12"];
 
 const EMPTY_FORM = { name: "", email: "", grade: "", avatarUrl: "" };
 
+const PAGE_LIMIT = 50;
+
 export default function Students() {
   const queryClient = useQueryClient();
-  const { data: students, isLoading } = useListStudents();
+
+  // ── Pagination state ─────────────────────────────────────────────────────────
+  const [cursor, setCursor] = useState<string | undefined>(undefined);
+  const [allStudents, setAllStudents] = useState<Student[]>([]);
+  const appendModeRef = useRef(false);
+
+  const { data: pageData, isLoading, isFetching } = useListStudents({ cursor, limit: PAGE_LIMIT });
+
+  useEffect(() => {
+    if (!pageData?.items) return;
+    if (appendModeRef.current) {
+      setAllStudents((prev) => [...prev, ...pageData.items]);
+    } else {
+      setAllStudents(pageData.items);
+    }
+    appendModeRef.current = false;
+  }, [pageData]);
+
+  function handleLoadMore() {
+    const next = pageData?.pagination?.nextCursor;
+    if (!next) return;
+    appendModeRef.current = true;
+    setCursor(next);
+  }
+
+  function resetPagination() {
+    appendModeRef.current = false;
+    setCursor(undefined);
+  }
+
+  const hasMore = pageData?.pagination?.hasMore ?? false;
+
+  // ── Search ───────────────────────────────────────────────────────────────────
   const [search, setSearch] = useState("");
+
+  const filteredStudents = allStudents.filter(
+    (student) =>
+      student.name.toLowerCase().includes(search.toLowerCase()) ||
+      student.email.toLowerCase().includes(search.toLowerCase()),
+  );
+
+  // ── Create dialog ────────────────────────────────────────────────────────────
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState(EMPTY_FORM);
   const [formError, setFormError] = useState<string | null>(null);
@@ -45,6 +88,7 @@ export default function Students() {
   const { mutate: createStudent, isPending } = useCreateStudent({
     mutation: {
       onSuccess: () => {
+        resetPagination();
         queryClient.invalidateQueries({ queryKey: getListStudentsQueryKey() });
         setOpen(false);
         setForm(EMPTY_FORM);
@@ -76,13 +120,6 @@ export default function Students() {
       },
     });
   }
-
-  const filteredStudents =
-    students?.filter(
-      (student) =>
-        student.name.toLowerCase().includes(search.toLowerCase()) ||
-        student.email.toLowerCase().includes(search.toLowerCase())
-    ) || [];
 
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -207,56 +244,85 @@ export default function Students() {
         </div>
       </div>
 
-      {isLoading ? (
+      {isLoading && allStudents.length === 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {[1, 2, 3, 4, 5, 6].map((i) => (
             <Skeleton key={i} className="h-40 rounded-xl" />
           ))}
         </div>
       ) : filteredStudents.length > 0 ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {filteredStudents.map((student) => (
-            <Link key={student.id} href={`/students/${student.id}`}>
-              <Card className="hover:bg-muted/50 transition-colors cursor-pointer h-full hover-elevate">
-                <CardHeader className="flex flex-row items-center gap-4 pb-2">
-                  <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-lg">
-                    {student.avatarUrl ? (
-                      <img
-                        src={student.avatarUrl}
-                        alt={student.name}
-                        className="w-full h-full rounded-full object-cover"
-                      />
-                    ) : (
-                      student.name.charAt(0)
-                    )}
-                  </div>
-                  <div>
-                    <CardTitle className="text-lg">{student.name}</CardTitle>
-                    <CardDescription>{student.email}</CardDescription>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <div className="flex items-center justify-between mt-2">
-                    <div className="flex flex-col">
-                      <span className="text-xs text-muted-foreground uppercase font-semibold">
-                        Grade
-                      </span>
-                      <span className="font-medium">{student.grade}</span>
+        <>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {filteredStudents.map((student) => (
+              <Link key={student.id} href={`/students/${student.id}`}>
+                <Card className="hover:bg-muted/50 transition-colors cursor-pointer h-full hover-elevate">
+                  <CardHeader className="flex flex-row items-center gap-4 pb-2">
+                    <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-lg">
+                      {student.avatarUrl ? (
+                        <img
+                          src={student.avatarUrl}
+                          alt={student.name}
+                          className="w-full h-full rounded-full object-cover"
+                        />
+                      ) : (
+                        student.name.charAt(0)
+                      )}
                     </div>
-                    <div className="flex flex-col text-right">
-                      <span className="text-xs text-muted-foreground uppercase font-semibold">
-                        Enrolled
-                      </span>
-                      <span className="font-medium">
-                        {student.enrolledCourseIds.length} Courses
-                      </span>
+                    <div>
+                      <CardTitle className="text-lg">{student.name}</CardTitle>
+                      <CardDescription>{student.email}</CardDescription>
                     </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </Link>
-          ))}
-        </div>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="flex items-center justify-between mt-2">
+                      <div className="flex flex-col">
+                        <span className="text-xs text-muted-foreground uppercase font-semibold">
+                          Grade
+                        </span>
+                        <span className="font-medium">{student.grade}</span>
+                      </div>
+                      <div className="flex flex-col text-right">
+                        <span className="text-xs text-muted-foreground uppercase font-semibold">
+                          Enrolled
+                        </span>
+                        <span className="font-medium">
+                          {student.enrolledCourseIds.length} Courses
+                        </span>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </Link>
+            ))}
+          </div>
+
+          {/* Load More / end-of-list */}
+          {!search && (
+            <div className="flex justify-center pt-2">
+              {hasMore ? (
+                <Button
+                  variant="outline"
+                  onClick={handleLoadMore}
+                  disabled={isFetching}
+                  data-testid="load-more-students"
+                >
+                  {isFetching ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Loading…
+                    </>
+                  ) : (
+                    "Load More"
+                  )}
+                </Button>
+              ) : (
+                <p className="text-sm text-muted-foreground">
+                  All {allStudents.length} student{allStudents.length !== 1 ? "s" : ""} loaded
+                </p>
+              )}
+            </div>
+          )}
+        </>
       ) : (
         <Card className="border-dashed">
           <CardContent className="flex flex-col items-center justify-center h-64 space-y-4">

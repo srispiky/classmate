@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useParams, Link, useLocation } from "wouter";
 import { useQueryClient } from "@tanstack/react-query";
+import type { PaginatedStudentList } from "@workspace/api-client-react";
 import {
   useGetCourse,
   getGetCourseQueryKey,
@@ -70,8 +71,8 @@ export default function CourseDetail() {
   const { data: assignments, isLoading: isLoadingAssignments } = useListAssignments({ courseId: id });
   const { data: notes, isLoading: isLoadingNotes } = useListNotes({ courseId: id });
 
-  const enrolledStudents = allStudents?.filter(s => s.enrolledCourseIds.includes(id)) || [];
-  const unenrolledStudents = allStudents?.filter(s => !s.enrolledCourseIds.includes(id)) || [];
+  const enrolledStudents = allStudents?.items?.filter(s => s.enrolledCourseIds.includes(id)) || [];
+  const unenrolledStudents = allStudents?.items?.filter(s => !s.enrolledCourseIds.includes(id)) || [];
 
   // ── Edit dialog state ───────────────────────────────────────────────────────
   const [editOpen, setEditOpen] = useState(false);
@@ -157,12 +158,17 @@ export default function CourseDetail() {
         const enrolledStudentId = variables.data.studentId;
         queryClient.setQueryData(
           getListStudentsQueryKey(),
-          (old: Array<{ id: number; enrolledCourseIds: number[] }> | undefined) =>
-            old?.map(s =>
-              s.id === enrolledStudentId
-                ? { ...s, enrolledCourseIds: [...s.enrolledCourseIds, id] }
-                : s,
-            ),
+          (old: PaginatedStudentList | undefined) =>
+            old
+              ? {
+                  ...old,
+                  items: old.items.map(s =>
+                    s.id === enrolledStudentId
+                      ? { ...s, enrolledCourseIds: [...s.enrolledCourseIds, id] }
+                      : s,
+                  ),
+                }
+              : old,
         );
         queryClient.invalidateQueries({ queryKey: getGetCourseQueryKey(id) });
         setEnrollOpen(false);
@@ -201,12 +207,17 @@ export default function CourseDetail() {
         const removedStudentId = variables.studentId;
         queryClient.setQueryData(
           getListStudentsQueryKey(),
-          (old: Array<{ id: number; enrolledCourseIds: number[] }> | undefined) =>
-            old?.map(s =>
-              s.id === removedStudentId
-                ? { ...s, enrolledCourseIds: s.enrolledCourseIds.filter(cid => cid !== id) }
-                : s,
-            ),
+          (old: PaginatedStudentList | undefined) =>
+            old
+              ? {
+                  ...old,
+                  items: old.items.map(s =>
+                    s.id === removedStudentId
+                      ? { ...s, enrolledCourseIds: s.enrolledCourseIds.filter(cid => cid !== id) }
+                      : s,
+                  ),
+                }
+              : old,
         );
         queryClient.invalidateQueries({ queryKey: getGetCourseQueryKey(id) });
         setUnenrollTarget(null);
@@ -413,9 +424,9 @@ export default function CourseDetail() {
             <div className="space-y-4">
               {[1, 2, 3].map(i => <Skeleton key={i} className="h-24 w-full" />)}
             </div>
-          ) : assignments && assignments.length > 0 ? (
+          ) : assignments?.items && assignments.items.length > 0 ? (
             <div className="space-y-4">
-              {assignments.map(assignment => (
+              {assignments.items.map(assignment => (
                 <Card key={assignment.id}>
                   <CardContent className="p-4 sm:p-6">
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">

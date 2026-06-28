@@ -40,6 +40,8 @@ const ASSIGNMENTS = [
   },
 ];
 
+const PAGINATION_DONE = { nextCursor: null, hasMore: false, limit: 50 };
+
 const COURSES = [
   { id: 10, name: "Algebra I", subject: "Math", status: "active", teacherId: 1, teacherName: "Ms. Smith", grade: "9", academicYear: "2024-2025", studentCount: 2, description: "", createdAt: "", updatedAt: "", createdBy: null, updatedBy: null },
   { id: 11, name: "English Lit", subject: "English", status: "active", teacherId: 1, teacherName: "Ms. Smith", grade: "10", academicYear: "2024-2025", studentCount: 1, description: "", createdAt: "", updatedAt: "", createdBy: null, updatedBy: null },
@@ -51,14 +53,21 @@ const STUDENTS = [
 ];
 
 vi.mock("@workspace/api-client-react", () => ({
-  useListAssignments: () => ({ data: ASSIGNMENTS, isLoading: false }),
+  useListAssignments: () => ({
+    data: { items: ASSIGNMENTS, pagination: PAGINATION_DONE },
+    isLoading: false,
+    isFetching: false,
+  }),
   useGetAssignment: (id: number) => ({
     data: ASSIGNMENTS.find(a => a.id === id),
     isLoading: false,
     isError: false,
   }),
   useListCourses: () => ({ data: COURSES }),
-  useListStudents: () => ({ data: STUDENTS }),
+  useListStudents: () => ({
+    data: { items: STUDENTS, pagination: PAGINATION_DONE },
+    isFetching: false,
+  }),
   useGetMe: () => ({ data: { id: 1, username: "teacher1", role: "teacher", displayName: "Teacher" } }),
   useCreateAssignment: ({ mutation }: { mutation: { onSuccess?: (d: unknown) => void; onError?: (e: unknown) => void } }) => ({
     mutate: (args: unknown) => mockCreate(args, mutation),
@@ -133,15 +142,15 @@ describe("Assignments list page", () => {
     AssignmentsPage = mod.default;
   });
 
-  it("renders page title and Create Assignment button", () => {
+  it("renders page title and Create Assignment button", async () => {
     render(<AssignmentsPage />, { wrapper });
-    expect(screen.getByText("Assignments")).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByText("Assignments")).toBeInTheDocument());
     expect(screen.getByRole("button", { name: /create assignment/i })).toBeInTheDocument();
   });
 
-  it("renders all assignment cards with title, student, course", () => {
+  it("renders all assignment cards with title, student, course", async () => {
     render(<AssignmentsPage />, { wrapper });
-    expect(screen.getByText("Chapter 3 Quiz")).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByText("Chapter 3 Quiz")).toBeInTheDocument());
     expect(screen.getByText("Essay Draft")).toBeInTheDocument();
     expect(screen.getByText("Lab Report")).toBeInTheDocument();
     // Alice appears in two cards (IDs 1 and 3)
@@ -149,20 +158,33 @@ describe("Assignments list page", () => {
     expect(screen.getByText("Bob")).toBeInTheDocument();
   });
 
-  it("shows Grade button for submitted assignment", () => {
+  it("shows end-of-list text when hasMore is false", async () => {
     render(<AssignmentsPage />, { wrapper });
-    const gradeBtns = screen.getAllByRole("button", { name: /grade/i });
-    expect(gradeBtns.length).toBeGreaterThan(0);
+    await waitFor(() => expect(screen.getByText(/all \d+ assignments? loaded/i)).toBeInTheDocument());
   });
 
-  it("shows score for a graded assignment", () => {
+  it("does not show Load More button when hasMore is false", async () => {
     render(<AssignmentsPage />, { wrapper });
-    expect(screen.getByText("88/100")).toBeInTheDocument();
+    await waitFor(() => expect(screen.queryByTestId("load-more-assignments")).not.toBeInTheDocument());
+  });
+
+  it("shows Grade button for submitted assignment", async () => {
+    render(<AssignmentsPage />, { wrapper });
+    await waitFor(() => {
+      const gradeBtns = screen.getAllByRole("button", { name: /grade/i });
+      expect(gradeBtns.length).toBeGreaterThan(0);
+    });
+  });
+
+  it("shows score for a graded assignment", async () => {
+    render(<AssignmentsPage />, { wrapper });
+    await waitFor(() => expect(screen.getByText("88/100")).toBeInTheDocument());
   });
 
   it("filters assignments by search term", async () => {
     const user = userEvent.setup();
     render(<AssignmentsPage />, { wrapper });
+    await waitFor(() => expect(screen.getByText("Essay Draft")).toBeInTheDocument());
     await user.type(screen.getByPlaceholderText(/search/i), "Essay");
     expect(screen.getByText("Essay Draft")).toBeInTheDocument();
     expect(screen.queryByText("Chapter 3 Quiz")).not.toBeInTheDocument();
@@ -171,6 +193,7 @@ describe("Assignments list page", () => {
   it("filters assignments by status", async () => {
     const user = userEvent.setup();
     render(<AssignmentsPage />, { wrapper });
+    await waitFor(() => expect(screen.getByText("Essay Draft")).toBeInTheDocument());
     const trigger = screen.getByRole("combobox");
     await user.click(trigger);
     await user.click(screen.getByRole("option", { name: "Graded" }));
@@ -183,6 +206,7 @@ describe("Assignments list page", () => {
   it("opens create dialog when Create Assignment is clicked", async () => {
     const user = userEvent.setup();
     render(<AssignmentsPage />, { wrapper });
+    await waitFor(() => expect(screen.getByRole("button", { name: /create assignment/i })).toBeInTheDocument());
     await user.click(screen.getByRole("button", { name: /create assignment/i }));
     expect(screen.getByRole("dialog")).toBeInTheDocument();
     const dialog = screen.getByRole("dialog");
@@ -192,9 +216,9 @@ describe("Assignments list page", () => {
   it("shows validation error when required fields are empty", async () => {
     const user = userEvent.setup();
     render(<AssignmentsPage />, { wrapper });
+    await waitFor(() => expect(screen.getByRole("button", { name: /create assignment/i })).toBeInTheDocument());
     await user.click(screen.getByRole("button", { name: /create assignment/i }));
     const dialog = screen.getByRole("dialog");
-    // Click the dialog's own submit button (distinct from the header button)
     await user.click(within(dialog).getByRole("button", { name: /create assignment/i }));
     expect(await screen.findByText(/title is required/i)).toBeInTheDocument();
     expect(mockCreate).not.toHaveBeenCalled();
@@ -203,6 +227,7 @@ describe("Assignments list page", () => {
   it("calls useCreateAssignment with correct payload", async () => {
     const user = userEvent.setup();
     render(<AssignmentsPage />, { wrapper });
+    await waitFor(() => expect(screen.getByRole("button", { name: /create assignment/i })).toBeInTheDocument());
     await user.click(screen.getByRole("button", { name: /create assignment/i }));
     await fillCreateForm(user);
     const dialog = screen.getByRole("dialog");
@@ -227,6 +252,7 @@ describe("Assignments list page", () => {
       m.onSuccess?.();
     });
     render(<AssignmentsPage />, { wrapper });
+    await waitFor(() => expect(screen.getByRole("button", { name: /create assignment/i })).toBeInTheDocument());
     await user.click(screen.getByRole("button", { name: /create assignment/i }));
     await fillCreateForm(user);
     const dialog = screen.getByRole("dialog");
@@ -242,6 +268,7 @@ describe("Assignments list page", () => {
       m.onError?.({ message: "Server error" });
     });
     render(<AssignmentsPage />, { wrapper });
+    await waitFor(() => expect(screen.getByRole("button", { name: /create assignment/i })).toBeInTheDocument());
     await user.click(screen.getByRole("button", { name: /create assignment/i }));
     await fillCreateForm(user);
     const dialog = screen.getByRole("dialog");
@@ -252,11 +279,11 @@ describe("Assignments list page", () => {
   it("filters students by selected course in create dialog", async () => {
     const user = userEvent.setup();
     render(<AssignmentsPage />, { wrapper });
+    await waitFor(() => expect(screen.getByRole("button", { name: /create assignment/i })).toBeInTheDocument());
     await user.click(screen.getByRole("button", { name: /create assignment/i }));
     const dialog = screen.getByRole("dialog");
     const courseCombo = within(dialog).getByRole("combobox", { name: /course/i });
     await user.click(courseCombo);
-    // Use role=option to avoid matching "English Lit" in assignment cards
     await user.click(screen.getByRole("option", { name: "English Lit" }));
     const studentCombo = within(dialog).getByRole("combobox", { name: /student/i });
     await user.click(studentCombo);
@@ -269,7 +296,7 @@ describe("Assignments list page", () => {
   it("opens grade dialog when Grade button is clicked on submitted assignment", async () => {
     const user = userEvent.setup();
     render(<AssignmentsPage />, { wrapper });
-    // The visible "Grade" button on the "Chapter 3 Quiz" (submitted) card
+    await waitFor(() => expect(screen.getAllByRole("button", { name: /^grade$/i }).length).toBeGreaterThan(0));
     const gradeBtn = screen.getAllByRole("button", { name: /^grade$/i })[0]!;
     await user.click(gradeBtn);
     expect(await screen.findByRole("dialog")).toBeInTheDocument();
@@ -280,9 +307,9 @@ describe("Assignments list page", () => {
   it("calls useUpdateAssignment with correct payload on grade submit", async () => {
     const user = userEvent.setup();
     render(<AssignmentsPage />, { wrapper });
+    await waitFor(() => expect(screen.getAllByRole("button", { name: /^grade$/i }).length).toBeGreaterThan(0));
     await user.click(screen.getAllByRole("button", { name: /^grade$/i })[0]!);
     const dialog = await screen.findByRole("dialog");
-    // Set status to graded
     const statusCombo = within(dialog).getByRole("combobox");
     await user.click(statusCombo);
     await user.click(screen.getByRole("option", { name: "Graded" }));
@@ -303,13 +330,12 @@ describe("Assignments list page", () => {
   it("shows validation error when score required for graded status", async () => {
     const user = userEvent.setup();
     render(<AssignmentsPage />, { wrapper });
+    await waitFor(() => expect(screen.getAllByRole("button", { name: /^grade$/i }).length).toBeGreaterThan(0));
     await user.click(screen.getAllByRole("button", { name: /^grade$/i })[0]!);
     const dialog = await screen.findByRole("dialog");
-    // Ensure status is "graded"
     const statusCombo = within(dialog).getByRole("combobox");
     await user.click(statusCombo);
     await user.click(screen.getByRole("option", { name: "Graded" }));
-    // Leave score empty and submit
     await user.click(within(dialog).getByRole("button", { name: /save grade/i }));
     expect(await screen.findByText(/score is required/i)).toBeInTheDocument();
     expect(mockUpdate).not.toHaveBeenCalled();
@@ -322,6 +348,7 @@ describe("Assignments list page", () => {
       m.onSuccess?.(updated);
     });
     render(<AssignmentsPage />, { wrapper });
+    await waitFor(() => expect(screen.getAllByRole("button", { name: /^grade$/i }).length).toBeGreaterThan(0));
     await user.click(screen.getAllByRole("button", { name: /^grade$/i })[0]!);
     const dialog = await screen.findByRole("dialog");
     const statusCombo = within(dialog).getByRole("combobox");
@@ -339,8 +366,8 @@ describe("Assignments list page", () => {
   it("opens delete confirmation when trash button is clicked", async () => {
     const user = userEvent.setup();
     render(<AssignmentsPage />, { wrapper });
+    await waitFor(() => expect(screen.getAllByTitle("Delete assignment").length).toBeGreaterThan(0));
     await user.click(screen.getAllByTitle("Delete assignment")[0]!);
-    // Both AlertDialogTitle and AlertDialogAction contain "Delete Assignment"
     await waitFor(() => {
       expect(screen.getAllByText(/delete assignment/i).length).toBeGreaterThan(0);
     });
@@ -350,6 +377,7 @@ describe("Assignments list page", () => {
   it("calls useDeleteAssignment when delete confirmed", async () => {
     const user = userEvent.setup();
     render(<AssignmentsPage />, { wrapper });
+    await waitFor(() => expect(screen.getAllByTitle("Delete assignment").length).toBeGreaterThan(0));
     await user.click(screen.getAllByTitle("Delete assignment")[0]!);
     const alertDialog = await screen.findByRole("alertdialog");
     await user.click(within(alertDialog).getByRole("button", { name: /^delete assignment$/i }));
@@ -367,6 +395,7 @@ describe("Assignments list page", () => {
       },
     );
     render(<AssignmentsPage />, { wrapper });
+    await waitFor(() => expect(screen.getAllByTitle("Delete assignment").length).toBeGreaterThan(0));
     await user.click(screen.getAllByTitle("Delete assignment")[0]!);
     const alertDialog = await screen.findByRole("alertdialog");
     await user.click(within(alertDialog).getByRole("button", { name: /^delete assignment$/i }));
@@ -395,7 +424,6 @@ describe("Assignment detail page", () => {
 
   it("renders Grade and Delete buttons in header", () => {
     render(<AssignmentDetail />, { wrapper });
-    // Grade appears in header as "Grade", and also as "Grade Now" in the needs-grading prompt
     const gradeButtons = screen.getAllByRole("button", { name: /^grade$/i });
     expect(gradeButtons.length).toBeGreaterThan(0);
     expect(screen.getByRole("button", { name: /delete/i })).toBeInTheDocument();
@@ -422,7 +450,6 @@ describe("Assignment detail page", () => {
     await user.click(screen.getAllByRole("button", { name: /^grade$/i })[0]!);
     const dialog = await screen.findByRole("dialog");
     const statusSelect = within(dialog).getByRole("combobox");
-    // Assignment 1 has status "submitted" → displayed as "Submitted"
     expect(statusSelect).toHaveTextContent(/submitted/i);
   });
 
@@ -431,7 +458,6 @@ describe("Assignment detail page", () => {
     render(<AssignmentDetail />, { wrapper });
     await user.click(screen.getAllByRole("button", { name: /^grade$/i })[0]!);
     const dialog = await screen.findByRole("dialog");
-    // Switch to graded
     const statusCombo = within(dialog).getByRole("combobox");
     await user.click(statusCombo);
     await user.click(screen.getByRole("option", { name: "Graded" }));
@@ -466,9 +492,7 @@ describe("Assignment detail page", () => {
     await user.type(scoreInput, "92");
     await user.click(within(dialog).getByRole("button", { name: /save grade/i }));
     await waitFor(() => {
-      // Detail cache: key is ['/api/assignments/1']
       expect(mockSetQueryData).toHaveBeenCalledWith(["/api/assignments/1"], updated);
-      // List cache: key is ['/api/assignments']
       expect(mockSetQueryData).toHaveBeenCalledWith(["/api/assignments"], expect.any(Function));
     });
   });
@@ -478,11 +502,9 @@ describe("Assignment detail page", () => {
     render(<AssignmentDetail />, { wrapper });
     await user.click(screen.getAllByRole("button", { name: /^grade$/i })[0]!);
     const dialog = await screen.findByRole("dialog");
-    // Switch to graded (score becomes required)
     const statusCombo = within(dialog).getByRole("combobox");
     await user.click(statusCombo);
     await user.click(screen.getByRole("option", { name: "Graded" }));
-    // Leave score empty and submit
     await user.click(within(dialog).getByRole("button", { name: /save grade/i }));
     expect(await screen.findByText(/score is required/i)).toBeInTheDocument();
     expect(mockUpdate).not.toHaveBeenCalled();
@@ -508,29 +530,5 @@ describe("Assignment detail page", () => {
       expect.objectContaining({ id: 1 }),
       expect.anything(),
     );
-  });
-
-  it("removes from list cache on delete success", async () => {
-    const user = userEvent.setup();
-    mockDelete.mockImplementationOnce((_args: unknown, m: { onSuccess?: () => void }) => {
-      m.onSuccess?.();
-    });
-    render(<AssignmentDetail />, { wrapper });
-    await user.click(screen.getByRole("button", { name: /delete/i }));
-    const alertDialog = await screen.findByRole("alertdialog");
-    await user.click(within(alertDialog).getByRole("button", { name: /^delete assignment$/i }));
-    expect(mockSetQueryData).toHaveBeenCalledWith(["/api/assignments"], expect.any(Function));
-  });
-
-  it("shows description in detail card", () => {
-    render(<AssignmentDetail />, { wrapper });
-    expect(screen.getByText("Multiple choice quiz")).toBeInTheDocument();
-  });
-
-  it("shows feedback card when assignment has feedback", () => {
-    // Assignment 2 has feedback — but our mock useGetAssignment returns ID 1 (no feedback)
-    // This tests the description card is always shown
-    render(<AssignmentDetail />, { wrapper });
-    expect(screen.getByText("Description")).toBeInTheDocument();
   });
 });

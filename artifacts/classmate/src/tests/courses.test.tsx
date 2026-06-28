@@ -67,13 +67,16 @@ vi.mock("@workspace/api-client-react", () => ({
     isLoading: false,
   }),
   useListStudents: () => ({
-    data: [
-      { id: 10, name: "Alice", email: "alice@school.edu", grade: "9", enrolledCourseIds: [1], avatarUrl: null, createdAt: "", updatedAt: "", createdBy: null, updatedBy: null },
-      { id: 11, name: "Bob", email: "bob@school.edu", grade: "9", enrolledCourseIds: [], avatarUrl: null, createdAt: "", updatedAt: "", createdBy: null, updatedBy: null },
-    ],
+    data: {
+      items: [
+        { id: 10, name: "Alice", email: "alice@school.edu", grade: "9", enrolledCourseIds: [1], avatarUrl: null, createdAt: "", updatedAt: "", createdBy: null, updatedBy: null },
+        { id: 11, name: "Bob", email: "bob@school.edu", grade: "9", enrolledCourseIds: [], avatarUrl: null, createdAt: "", updatedAt: "", createdBy: null, updatedBy: null },
+      ],
+      pagination: { nextCursor: null, hasMore: false, limit: 50 },
+    },
     isLoading: false,
   }),
-  useListAssignments: () => ({ data: [], isLoading: false }),
+  useListAssignments: () => ({ data: { items: [], pagination: { nextCursor: null, hasMore: false, limit: 50 } }, isLoading: false }),
   useListNotes: () => ({ data: [], isLoading: false }),
   useGetMe: () => ({ data: { id: 1, username: "teacher1", role: "teacher", displayName: "Teacher" } }),
   useCreateCourse: ({ mutation }: { mutation: { onSuccess?: () => void; onError?: (e: unknown) => void } }) => ({

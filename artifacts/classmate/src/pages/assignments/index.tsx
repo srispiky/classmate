@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { Link } from "wouter";
 import { useQueryClient } from "@tanstack/react-query";
 import {
@@ -11,6 +11,7 @@ import {
   useGetMe,
   getListAssignmentsQueryKey,
 } from "@workspace/api-client-react";
+import type { Assignment, PaginatedAssignmentList } from "@workspace/api-client-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -21,35 +22,64 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Search, CheckSquare, Clock, CheckCircle2, AlertCircle, Plus, Trash2, Star, ChevronRight } from "lucide-react";
+import { Search, CheckSquare, Clock, CheckCircle2, AlertCircle, Plus, Trash2, Star, ChevronRight, Loader2 } from "lucide-react";
 import { formatDate } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 
-type Assignment = {
-  id: number;
-  title: string;
-  description: string;
-  courseId: number;
-  courseName: string;
-  studentId: number;
-  studentName: string;
-  dueDate: string;
-  status: "pending" | "submitted" | "graded" | "late";
-  score?: number | null;
-  maxScore: number;
-  feedback?: string | null;
-};
+const PAGE_LIMIT = 50;
 
 export default function Assignments() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const { data: me } = useGetMe();
-  const { data: assignments, isLoading } = useListAssignments();
-  const { data: allCourses } = useListCourses();
-  const { data: allStudents } = useListStudents();
 
+  // ── Pagination state ─────────────────────────────────────────────────────────
+  const [cursor, setCursor] = useState<string | undefined>(undefined);
+  const [allAssignments, setAllAssignments] = useState<Assignment[]>([]);
+  const appendModeRef = useRef(false);
+
+  const { data: pageData, isLoading, isFetching } = useListAssignments({ cursor, limit: PAGE_LIMIT });
+  const { data: allCourses } = useListCourses();
+  const { data: allStudentsData } = useListStudents();
+
+  useEffect(() => {
+    if (!pageData?.items) return;
+    if (appendModeRef.current) {
+      setAllAssignments((prev) => [...prev, ...pageData.items]);
+    } else {
+      setAllAssignments(pageData.items);
+    }
+    appendModeRef.current = false;
+  }, [pageData]);
+
+  function handleLoadMore() {
+    const next = pageData?.pagination?.nextCursor;
+    if (!next) return;
+    appendModeRef.current = true;
+    setCursor(next);
+  }
+
+  function resetPagination() {
+    appendModeRef.current = false;
+    setCursor(undefined);
+  }
+
+  const hasMore = pageData?.pagination?.hasMore ?? false;
+
+  // ── Filters ──────────────────────────────────────────────────────────────────
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
+
+  const filteredAssignments = useMemo(() => {
+    return allAssignments.filter((a) => {
+      const matchesSearch =
+        a.title.toLowerCase().includes(search.toLowerCase()) ||
+        a.studentName.toLowerCase().includes(search.toLowerCase()) ||
+        a.courseName.toLowerCase().includes(search.toLowerCase());
+      const matchesStatus = statusFilter === "all" || a.status === statusFilter;
+      return matchesSearch && matchesStatus;
+    });
+  }, [allAssignments, search, statusFilter]);
 
   // ── Create dialog state ─────────────────────────────────────────────────────
   const [createOpen, setCreateOpen] = useState(false);
@@ -61,6 +91,12 @@ export default function Assignments() {
   const [createMaxScore, setCreateMaxScore] = useState("100");
   const [createError, setCreateError] = useState<string | null>(null);
 
+  const courseStudents = useMemo(() => {
+    if (!createCourseId || !allStudentsData?.items) return [];
+    const cid = parseInt(createCourseId);
+    return allStudentsData.items.filter((s) => s.enrolledCourseIds.includes(cid));
+  }, [createCourseId, allStudentsData]);
+
   // ── Grade dialog state ──────────────────────────────────────────────────────
   const [gradeTarget, setGradeTarget] = useState<Assignment | null>(null);
   const [gradeStatus, setGradeStatus] = useState<string>("graded");
@@ -71,28 +107,11 @@ export default function Assignments() {
   // ── Delete dialog state ─────────────────────────────────────────────────────
   const [deleteTarget, setDeleteTarget] = useState<{ id: number; title: string } | null>(null);
 
-  // ── Filtered data ───────────────────────────────────────────────────────────
-  const filteredAssignments = useMemo(() => {
-    return (assignments ?? []).filter(a => {
-      const matchesSearch =
-        a.title.toLowerCase().includes(search.toLowerCase()) ||
-        a.studentName.toLowerCase().includes(search.toLowerCase()) ||
-        a.courseName.toLowerCase().includes(search.toLowerCase());
-      const matchesStatus = statusFilter === "all" || a.status === statusFilter;
-      return matchesSearch && matchesStatus;
-    });
-  }, [assignments, search, statusFilter]);
-
-  const courseStudents = useMemo(() => {
-    if (!createCourseId || !allStudents) return [];
-    const cid = parseInt(createCourseId);
-    return allStudents.filter(s => s.enrolledCourseIds.includes(cid));
-  }, [createCourseId, allStudents]);
-
   // ── Mutations ───────────────────────────────────────────────────────────────
   const { mutate: createAssignment, isPending: isCreating } = useCreateAssignment({
     mutation: {
       onSuccess: () => {
+        resetPagination();
         queryClient.invalidateQueries({ queryKey: getListAssignmentsQueryKey() });
         setCreateOpen(false);
         resetCreate();
@@ -113,9 +132,10 @@ export default function Assignments() {
       onSuccess: (data) => {
         queryClient.setQueryData(
           getListAssignmentsQueryKey(),
-          (old: Assignment[] | undefined) =>
-            old?.map(a => (a.id === data.id ? { ...a, ...data } : a)),
+          (old: PaginatedAssignmentList | undefined) =>
+            old ? { ...old, items: old.items.map((a) => (a.id === data.id ? { ...a, ...data } : a)) } : old,
         );
+        setAllAssignments((prev) => prev.map((a) => (a.id === data.id ? { ...a, ...data } : a)));
         setGradeTarget(null);
         resetGrade();
         toast({ title: "Assignment updated", description: "Changes have been saved." });
@@ -135,8 +155,10 @@ export default function Assignments() {
       onSuccess: (_data, variables) => {
         queryClient.setQueryData(
           getListAssignmentsQueryKey(),
-          (old: Assignment[] | undefined) => old?.filter(a => a.id !== variables.id),
+          (old: PaginatedAssignmentList | undefined) =>
+            old ? { ...old, items: old.items.filter((a) => a.id !== variables.id) } : old,
         );
+        setAllAssignments((prev) => prev.filter((a) => a.id !== variables.id));
         setDeleteTarget(null);
         toast({ title: "Assignment deleted", description: "The assignment has been removed." });
       },
@@ -281,81 +303,110 @@ export default function Assignments() {
       </div>
 
       {/* ── List ────────────────────────────────────────────────────────────── */}
-      {isLoading ? (
+      {isLoading && allAssignments.length === 0 ? (
         <div className="space-y-4">
-          {[1, 2, 3, 4, 5].map(i => <Skeleton key={i} className="h-24 w-full" />)}
+          {[1, 2, 3, 4, 5].map((i) => <Skeleton key={i} className="h-24 w-full" />)}
         </div>
       ) : filteredAssignments.length > 0 ? (
-        <div className="space-y-4">
-          {filteredAssignments.map(assignment => (
-            <Card key={assignment.id} className="hover:bg-muted/50 transition-colors group">
-              <CardContent className="p-4 sm:p-6">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                  <Link href={`/assignments/${assignment.id}`} className="flex-1 min-w-0">
-                    <div className="space-y-1">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        {getStatusIcon(assignment.status)}
-                        <h3 className="font-semibold text-lg group-hover:underline">{assignment.title}</h3>
-                        <Badge variant={getStatusBadgeVariant(assignment.status)}>
-                          {assignment.status}
-                        </Badge>
+        <>
+          <div className="space-y-4">
+            {filteredAssignments.map((assignment) => (
+              <Card key={assignment.id} className="hover:bg-muted/50 transition-colors group">
+                <CardContent className="p-4 sm:p-6">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    <Link href={`/assignments/${assignment.id}`} className="flex-1 min-w-0">
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          {getStatusIcon(assignment.status)}
+                          <h3 className="font-semibold text-lg group-hover:underline">{assignment.title}</h3>
+                          <Badge variant={getStatusBadgeVariant(assignment.status)}>
+                            {assignment.status}
+                          </Badge>
+                        </div>
+                        <div className="text-sm text-muted-foreground flex flex-wrap items-center gap-x-2 gap-y-1">
+                          <span className="font-medium text-foreground">{assignment.studentName}</span>
+                          <span>•</span>
+                          <span>{assignment.courseName}</span>
+                          <span>•</span>
+                          <span>Due {formatDate(assignment.dueDate)}</span>
+                        </div>
                       </div>
-                      <div className="text-sm text-muted-foreground flex flex-wrap items-center gap-x-2 gap-y-1">
-                        <span className="font-medium text-foreground">{assignment.studentName}</span>
-                        <span>•</span>
-                        <span>{assignment.courseName}</span>
-                        <span>•</span>
-                        <span>Due {formatDate(assignment.dueDate)}</span>
-                      </div>
-                    </div>
-                  </Link>
+                    </Link>
 
-                  <div className="flex items-center gap-2 sm:w-auto shrink-0">
-                    {assignment.score != null ? (
-                      <div className="font-bold text-xl text-primary mr-2">
-                        {assignment.score}/{assignment.maxScore}
-                      </div>
-                    ) : (assignment.status === "submitted" || assignment.status === "late") ? (
+                    <div className="flex items-center gap-2 sm:w-auto shrink-0">
+                      {assignment.score != null ? (
+                        <div className="font-bold text-xl text-primary mr-2">
+                          {assignment.score}/{assignment.maxScore}
+                        </div>
+                      ) : (assignment.status === "submitted" || assignment.status === "late") ? (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="text-amber-600 border-amber-300 hover:bg-amber-50"
+                          onClick={(e) => { e.preventDefault(); openGrade(assignment); }}
+                        >
+                          <Star className="mr-1.5 h-3.5 w-3.5" />
+                          Grade
+                        </Button>
+                      ) : null}
+
                       <Button
                         size="sm"
-                        variant="outline"
-                        className="text-amber-600 border-amber-300 hover:bg-amber-50"
-                        onClick={(e) => { e.preventDefault(); openGrade(assignment as Assignment); }}
+                        variant="ghost"
+                        className="opacity-0 group-hover:opacity-100 transition-opacity"
+                        title="Grade / update"
+                        onClick={(e) => { e.preventDefault(); openGrade(assignment); }}
                       >
-                        <Star className="mr-1.5 h-3.5 w-3.5" />
-                        Grade
+                        <Star className="h-4 w-4" />
                       </Button>
-                    ) : null}
 
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      className="opacity-0 group-hover:opacity-100 transition-opacity"
-                      title="Grade / update"
-                      onClick={(e) => { e.preventDefault(); openGrade(assignment as Assignment); }}
-                    >
-                      <Star className="h-4 w-4" />
-                    </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="opacity-0 group-hover:opacity-100 transition-opacity text-destructive hover:text-destructive"
+                        title="Delete assignment"
+                        onClick={(e) => { e.preventDefault(); setDeleteTarget({ id: assignment.id, title: assignment.title }); }}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
 
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      className="opacity-0 group-hover:opacity-100 transition-opacity text-destructive hover:text-destructive"
-                      title="Delete assignment"
-                      onClick={(e) => { e.preventDefault(); setDeleteTarget({ id: assignment.id, title: assignment.title }); }}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-
-                    <Link href={`/assignments/${assignment.id}`}>
-                      <ChevronRight className="h-5 w-5 text-muted-foreground" />
-                    </Link>
+                      <Link href={`/assignments/${assignment.id}`}>
+                        <ChevronRight className="h-5 w-5 text-muted-foreground" />
+                      </Link>
+                    </div>
                   </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+
+          {/* Load More / end-of-list (only shown when no filters active) */}
+          {!search && statusFilter === "all" && (
+            <div className="flex justify-center pt-2">
+              {hasMore ? (
+                <Button
+                  variant="outline"
+                  onClick={handleLoadMore}
+                  disabled={isFetching}
+                  data-testid="load-more-assignments"
+                >
+                  {isFetching ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Loading…
+                    </>
+                  ) : (
+                    "Load More"
+                  )}
+                </Button>
+              ) : (
+                <p className="text-sm text-muted-foreground">
+                  All {allAssignments.length} assignment{allAssignments.length !== 1 ? "s" : ""} loaded
+                </p>
+              )}
+            </div>
+          )}
+        </>
       ) : (
         <Card className="border-dashed">
           <CardContent className="flex flex-col items-center justify-center h-64 space-y-4">
@@ -417,8 +468,8 @@ export default function Assignments() {
                 </SelectTrigger>
                 <SelectContent>
                   {(allCourses ?? [])
-                    .filter(c => c.status === "active")
-                    .map(c => (
+                    .filter((c) => c.status === "active")
+                    .map((c) => (
                       <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>
                     ))}
                 </SelectContent>
@@ -435,7 +486,7 @@ export default function Assignments() {
                   <SelectValue placeholder={createCourseId ? "Select a student..." : "Select a course first"} />
                 </SelectTrigger>
                 <SelectContent>
-                  {courseStudents.map(s => (
+                  {courseStudents.map((s) => (
                     <SelectItem key={s.id} value={String(s.id)}>{s.name}</SelectItem>
                   ))}
                   {createCourseId && courseStudents.length === 0 && (
@@ -509,23 +560,22 @@ export default function Assignments() {
                 <Label htmlFor="grade-score">
                   Score
                   <span className="text-muted-foreground font-normal ml-1">/ {gradeTarget.maxScore}</span>
-                  {gradeStatus !== "graded" && <span className="text-muted-foreground font-normal ml-1">(optional)</span>}
                 </Label>
                 <Input
                   id="grade-score"
                   type="number"
-                  min="0"
+                  min={0}
                   max={gradeTarget.maxScore}
-                  placeholder={`0–${gradeTarget.maxScore}`}
+                  placeholder="e.g. 85"
                   value={gradeScore}
                   onChange={(e) => setGradeScore(e.target.value)}
                 />
               </div>
               <div className="space-y-1.5">
-                <Label htmlFor="grade-feedback">Feedback <span className="text-muted-foreground font-normal">(optional)</span></Label>
+                <Label htmlFor="grade-feedback">Feedback</Label>
                 <Textarea
                   id="grade-feedback"
-                  placeholder="Leave feedback for the student..."
+                  placeholder="Optional feedback for the student..."
                   value={gradeFeedback}
                   onChange={(e) => setGradeFeedback(e.target.value)}
                   rows={3}
@@ -539,19 +589,20 @@ export default function Assignments() {
               Cancel
             </Button>
             <Button onClick={handleGrade} disabled={isGrading}>
-              {isGrading ? "Saving..." : "Save Grade"}
+              {isGrading ? "Saving…" : "Save Grade"}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      {/* ── Delete Confirmation ──────────────────────────────────────────────── */}
+      {/* ── Delete Confirmation ─────────────────────────────────────────────── */}
       <AlertDialog open={deleteTarget !== null} onOpenChange={(open) => { if (!open) setDeleteTarget(null); }}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Delete Assignment</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete <strong>{deleteTarget?.title}</strong>? This action cannot be undone.
+              Are you sure you want to delete{" "}
+              <span className="font-medium">{deleteTarget?.title}</span>? This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -561,7 +612,7 @@ export default function Assignments() {
               onClick={() => deleteTarget && deleteAssignment({ id: deleteTarget.id })}
               disabled={isDeleting}
             >
-              {isDeleting ? "Deleting..." : "Delete Assignment"}
+              Delete Assignment
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
