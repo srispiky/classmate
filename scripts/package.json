@@ -8,6 +8,9 @@
     "seed-admin": "tsx ./src/seed-admin.ts",
     "migrate:enrollments": "tsx ./src/migrate-course-enrollments.ts",
     "check-barrel": "tsx ./src/check-api-barrel.ts",
+    "backup": "tsx ./src/backup.ts",
+    "backup:weekly": "cross-env BACKUP_RETENTION_DAYS=28 BACKUP_ENV=weekly tsx ./src/backup.ts",
+    "test": "vitest run src/backup-lib.test.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
@@ -18,6 +21,8 @@
     "@types/bcryptjs": "^3.0.0",
     "@types/node": "catalog:",
     "bcryptjs": "^3.0.3",
-    "tsx": "catalog:"
+    "cross-env": "^7.0.3",
+    "tsx": "catalog:",
+    "vitest": "catalog:"
   }
 }

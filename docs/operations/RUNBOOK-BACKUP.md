@@ -1,7 +1,7 @@
 # Backup, Recovery & Restore Runbook — Classmate Connect
 
 **Applies to:** All environments
-**Last updated:** Sprint 9 Chunk 6
+**Last updated:** Sprint 10 Chunk 6
 
 ---
 
@@ -31,68 +31,77 @@ No cloud provider is assumed. The commands below use `pg_dump` (available in all
 
 ## 2 — Backup Procedure
 
-### Option A — Plain SQL dump (portable, human-readable)
+The backup script is implemented in `scripts/src/backup.ts` and invoked via npm scripts.
+It uses `pg_dump --format=custom --compress=9`, writes a timestamped file, and runs retention cleanup automatically.
+
+### Standard daily backup
 
 ```bash
-pg_dump \
-  --no-password \
-  --format=plain \
-  --file="classmate_$(date +%Y%m%d_%H%M%S).sql" \
-  "$DATABASE_URL"
+# From the project root
+BACKUP_DIR=/var/backups/classmate \
+  pnpm --filter @workspace/scripts run backup
 ```
 
-Produces a `.sql` file that can be inspected, edited, and piped into `psql`.
+Output filename format: `classmate_YYYYMMDD_HHMMSS_{env}.dump`
+Example: `classmate_20260628_020000_production.dump`
 
-### Option B — Custom format dump (compressed, selective restore)
+### Weekly backup (28-day retention)
 
 ```bash
-pg_dump \
-  --no-password \
-  --format=custom \
-  --compress=9 \
-  --file="classmate_$(date +%Y%m%d_%H%M%S).dump" \
-  "$DATABASE_URL"
+BACKUP_DIR=/var/backups/classmate \
+  pnpm --filter @workspace/scripts run backup:weekly
 ```
 
-Produces a binary `.dump` file. Smaller on disk; allows selective table restore via `pg_restore -t <table>`.
-
-### Recommended daily automation
+### Pre-migration or pre-release backup (keep indefinitely)
 
 ```bash
-#!/usr/bin/env bash
-set -euo pipefail
-
-BACKUP_DIR="/var/backups/classmate"
-RETENTION_DAYS=7
-TIMESTAMP=$(date +%Y%m%d_%H%M%S)
-FILE="${BACKUP_DIR}/classmate_${TIMESTAMP}.dump"
-
-mkdir -p "$BACKUP_DIR"
-
-pg_dump \
-  --no-password \
-  --format=custom \
-  --compress=9 \
-  --file="$FILE" \
-  "$DATABASE_URL"
-
-echo "Backup written to $FILE ($(du -h "$FILE" | cut -f1))"
-
-# Prune files older than retention period
-find "$BACKUP_DIR" -name "*.dump" -mtime "+${RETENTION_DAYS}" -delete
-echo "Pruned backups older than ${RETENTION_DAYS} days"
+BACKUP_DIR=/var/backups/classmate \
+BACKUP_ENV=premigration \
+BACKUP_RETENTION_DAYS=9999 \
+  pnpm --filter @workspace/scripts run backup
 ```
 
-Schedule this with `cron` or your platform's job scheduler:
+### Configuration variables
 
+| Variable | Required | Default | Description |
+|---|---|---|---|
+| `DATABASE_URL` | **Yes** | — | PostgreSQL connection string |
+| `BACKUP_DIR` | No | `./backups` | Directory where `.dump` files are written |
+| `BACKUP_RETENTION_DAYS` | No | `7` | Days to keep daily backups before pruning |
+| `BACKUP_ENV` | No | `$NODE_ENV` or `development` | Label embedded in the filename |
+
+### Scheduling (external scheduler)
+
+Replit does not provide a native cron facility. Schedule the backup from an external system:
+
+**GitHub Actions (recommended)** — create `.github/workflows/backup.yml`:
+```yaml
+on:
+  schedule:
+    - cron: '0 2 * * *'   # 02:00 UTC daily
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - run: pnpm install --filter @workspace/scripts
+      - run: pnpm --filter @workspace/scripts run backup
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          BACKUP_DIR: /tmp/classmate-backups
+          BACKUP_ENV: production
 ```
-0 2 * * * /opt/classmate/scripts/backup.sh >> /var/log/classmate-backup.log 2>&1
+
+**Operator machine cron** — if running from a server with repo access:
+```
+0 2 * * * cd /opt/classmate && BACKUP_DIR=/var/backups/classmate pnpm --filter @workspace/scripts run backup >> /var/log/classmate-backup.log 2>&1
 ```
 
 ### Verify a backup is readable
 
 ```bash
-pg_restore --list classmate_20250611_020000.dump | head -20
+pg_restore --list classmate_20260628_020000_production.dump | head -20
 # Should list tables: students, courses, assignments, assessments, notes, activity, users, session, announcements
 ```
 
