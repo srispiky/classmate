@@ -5,6 +5,90 @@
  * Classmate API specification
  * OpenAPI spec version: 0.1.0
  */
+export interface PaginationMetadata {
+  /** Opaque cursor for the next page. Null when no further pages exist. */
+  nextCursor: string | null;
+  /** True when additional records exist beyond this page. */
+  hasMore: boolean;
+  /** Page size used for this response. */
+  limit: number;
+}
+
+export interface Student {
+  id: number;
+  name: string;
+  email: string;
+  grade: string;
+  avatarUrl?: string | null;
+  enrolledCourseIds: number[];
+  createdAt: string;
+  updatedAt: string;
+  createdBy?: number | null;
+  updatedBy?: number | null;
+}
+
+export interface PaginatedStudentList {
+  items: Student[];
+  pagination: PaginationMetadata;
+}
+
+export type AssignmentStatus =
+  (typeof AssignmentStatus)[keyof typeof AssignmentStatus];
+
+export const AssignmentStatus = {
+  pending: "pending",
+  submitted: "submitted",
+  graded: "graded",
+  late: "late",
+} as const;
+
+export interface Assignment {
+  id: number;
+  title: string;
+  description: string;
+  courseId: number;
+  courseName: string;
+  studentId: number;
+  studentName: string;
+  dueDate: string;
+  status: AssignmentStatus;
+  score?: number | null;
+  maxScore: number;
+  feedback?: string | null;
+  createdAt: string;
+  updatedAt?: string;
+  createdBy?: number | null;
+  updatedBy?: number | null;
+}
+
+export interface PaginatedAssignmentList {
+  items: Assignment[];
+  pagination: PaginationMetadata;
+}
+
+export interface Assessment {
+  id: number;
+  studentId: number;
+  studentName: string;
+  courseId: number;
+  courseName: string;
+  title: string;
+  score: number;
+  maxScore: number;
+  percentage: number;
+  strengths: string[];
+  weaknesses: string[];
+  createdAt: string;
+  updatedAt?: string;
+  createdBy?: number | null;
+  updatedBy?: number | null;
+}
+
+export interface PaginatedAssessmentList {
+  items: Assessment[];
+  pagination: PaginationMetadata;
+}
+
 export interface Enrollment {
   id: number;
   courseId: number;
@@ -22,19 +106,6 @@ export interface EnrollStudentBody {
 
 export interface HealthStatus {
   status: string;
-}
-
-export interface Student {
-  id: number;
-  name: string;
-  email: string;
-  grade: string;
-  avatarUrl?: string | null;
-  enrolledCourseIds: number[];
-  createdAt: string;
-  updatedAt: string;
-  createdBy?: number | null;
-  updatedBy?: number | null;
 }
 
 export interface CreateStudentBody {
@@ -184,35 +255,6 @@ export interface UpdateCourseBody {
   description?: string;
 }
 
-export type AssignmentStatus =
-  (typeof AssignmentStatus)[keyof typeof AssignmentStatus];
-
-export const AssignmentStatus = {
-  pending: "pending",
-  submitted: "submitted",
-  graded: "graded",
-  late: "late",
-} as const;
-
-export interface Assignment {
-  id: number;
-  title: string;
-  description: string;
-  courseId: number;
-  courseName: string;
-  studentId: number;
-  studentName: string;
-  dueDate: string;
-  status: AssignmentStatus;
-  score?: number | null;
-  maxScore: number;
-  feedback?: string | null;
-  createdAt: string;
-  updatedAt?: string;
-  createdBy?: number | null;
-  updatedBy?: number | null;
-}
-
 export interface CreateAssignmentBody {
   title: string;
   description: string;
@@ -318,24 +360,6 @@ export interface UpdateNoteBody {
   content?: string;
   topic?: string;
   videoUrl?: string;
-}
-
-export interface Assessment {
-  id: number;
-  studentId: number;
-  studentName: string;
-  courseId: number;
-  courseName: string;
-  title: string;
-  score: number;
-  maxScore: number;
-  percentage: number;
-  strengths: string[];
-  weaknesses: string[];
-  createdAt: string;
-  updatedAt?: string;
-  createdBy?: number | null;
-  updatedBy?: number | null;
 }
 
 export interface CreateAssessmentBody {
@@ -791,9 +815,32 @@ export type Logout200 = {
   ok: boolean;
 };
 
+export type ListStudentsParams = {
+  /**
+   * Maximum number of items per page (1–100, default 50).
+   * @minimum 1
+   * @maximum 100
+   */
+  limit?: number;
+  /**
+   * Opaque cursor from a previous response's pagination.nextCursor. Omit for the first page.
+   */
+  cursor?: string;
+};
+
 export type ListAssignmentsParams = {
   courseId?: number;
   studentId?: number;
+  /**
+   * Maximum number of items per page (1–100, default 50).
+   * @minimum 1
+   * @maximum 100
+   */
+  limit?: number;
+  /**
+   * Opaque cursor from a previous response's pagination.nextCursor. Omit for the first page.
+   */
+  cursor?: string;
 };
 
 export type ListNotesParams = {
@@ -807,6 +854,16 @@ export type ListAnnouncementsParams = {
 export type ListAssessmentsParams = {
   studentId?: number;
   courseId?: number;
+  /**
+   * Maximum number of items per page (1–100, default 50).
+   * @minimum 1
+   * @maximum 100
+   */
+  limit?: number;
+  /**
+   * Opaque cursor from a previous response's pagination.nextCursor. Omit for the first page.
+   */
+  cursor?: string;
 };
 
 export type GetStudentReportSummaryParams = {

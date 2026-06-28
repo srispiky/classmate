@@ -1,0 +1,191 @@
+# Sprint 10 Chunk 2 — Pagination Foundation Implementation
+
+Before making changes:
+
+1. Read and understand:
+   - Sprint 10 Chunk 1 Architecture Review
+   - OpenAPI pagination design
+   - students routes
+   - assignments routes
+   - assessments routes
+   - generated API schemas
+   - existing list endpoint implementations
+
+2. Follow established architecture:
+
+   - OpenAPI-first
+   - generated clients
+   - Zod validation
+   - Layer 1 authorization
+   - Layer 2 scope filtering
+   - Layer 3 ownership validation
+   - soft-delete filtering
+
+3. Keep changes narrowly scoped.
+
+--------------------------------------------------
+OBJECTIVE
+--------------------------------------------------
+
+Implement pagination infrastructure only.
+
+Do NOT update frontend pages yet.
+
+Do NOT remove existing filtering behavior.
+
+Do NOT change authorization behavior.
+
+--------------------------------------------------
+PART 1 — OPENAPI IMPLEMENTATION
+--------------------------------------------------
+
+Implement the pagination schemas approved in
+Sprint 10 Chunk 1.
+
+Add:
+
+- PaginationMetadata
+- PaginatedStudentList
+- PaginatedAssignmentList
+- PaginatedAssessmentList
+
+Update:
+
+GET /students
+GET /assignments
+GET /assessments
+
+to return paginated response objects.
+
+Preserve backward compatibility strategy defined
+during architecture review.
+
+--------------------------------------------------
+PART 2 — QUERY PARAMS
+--------------------------------------------------
+
+Implement:
+
+cursor
+limit
+
+Validation requirements:
+
+- limit default value
+- limit maximum value
+- invalid cursor handling
+- invalid limit handling
+
+Use Zod validation.
+
+--------------------------------------------------
+PART 3 — BACKEND QUERY IMPLEMENTATION
+--------------------------------------------------
+
+Implement pagination in:
+
+GET /students
+GET /assignments
+GET /assessments
+
+Requirements:
+
+- apply Layer 2 scope filtering first
+- apply soft-delete filtering
+- apply pagination last
+
+Verify:
+
+Teacher A never sees Teacher B data.
+
+Pagination must not bypass scoping.
+
+--------------------------------------------------
+PART 4 — RESPONSE SHAPE
+--------------------------------------------------
+
+Return:
+
+{
+  items: [],
+  pagination: {
+      nextCursor,
+      hasMore,
+      limit
+  }
+}
+
+Verify consistency across all three endpoints.
+
+--------------------------------------------------
+PART 5 — TESTS
+--------------------------------------------------
+
+Add tests covering:
+
+Students:
+
+- first page
+- second page
+- end of results
+
+Assignments:
+
+- first page
+- second page
+- end of results
+
+Assessments:
+
+- first page
+- second page
+- end of results
+
+Authorization:
+
+- teacher scoping preserved
+- admin sees global
+- no scope leakage through pagination
+
+Validation:
+
+- invalid cursor
+- invalid limit
+- max limit enforcement
+
+--------------------------------------------------
+PART 6 — REGRESSION REVIEW
+--------------------------------------------------
+
+Verify:
+
+Existing filters still work.
+
+Existing search still works.
+
+Existing authorization still works.
+
+Existing OpenAPI generation succeeds.
+
+--------------------------------------------------
+PART 7 — DELIVERABLE
+--------------------------------------------------
+
+Provide:
+
+1. Files modified
+2. OpenAPI changes
+3. Query implementation details
+4. Test coverage added
+5. Regression results
+6. Known frontend impacts
+
+--------------------------------------------------
+GIT REQUIREMENT
+--------------------------------------------------
+
+git add .
+git commit -m "feat(sprint10): add paginated list endpoint foundation"
+git push origin main
+
+Include commit hash in report.

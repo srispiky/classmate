@@ -44,9 +44,13 @@ import type {
   ListAssessmentsParams,
   ListAssignmentsParams,
   ListNotesParams,
+  ListStudentsParams,
   LoginBody,
   Logout200,
   Note,
+  PaginatedAssessmentList,
+  PaginatedAssignmentList,
+  PaginatedStudentList,
   ResetPasswordInput,
   ResetPasswordResult,
   Student,
@@ -794,41 +798,57 @@ export function useHealthCheck<
 /**
  * @summary List all students
  */
-export const getListStudentsUrl = () => {
-  return `/api/students`;
+export const getListStudentsUrl = (params?: ListStudentsParams) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/students?${stringifiedParams}`
+    : `/api/students`;
 };
 
 export const listStudents = async (
+  params?: ListStudentsParams,
   options?: RequestInit,
-): Promise<Student[]> => {
-  return customFetch<Student[]>(getListStudentsUrl(), {
+): Promise<PaginatedStudentList> => {
+  return customFetch<PaginatedStudentList>(getListStudentsUrl(params), {
     ...options,
     method: "GET",
   });
 };
 
-export const getListStudentsQueryKey = () => {
-  return [`/api/students`] as const;
+export const getListStudentsQueryKey = (params?: ListStudentsParams) => {
+  return [`/api/students`, ...(params ? [params] : [])] as const;
 };
 
 export const getListStudentsQueryOptions = <
   TData = Awaited<ReturnType<typeof listStudents>>,
   TError = ErrorType<unknown>,
->(options?: {
-  query?: UseQueryOptions<
-    Awaited<ReturnType<typeof listStudents>>,
-    TError,
-    TData
-  >;
-  request?: SecondParameter<typeof customFetch>;
-}) => {
+>(
+  params?: ListStudentsParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listStudents>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
   const { query: queryOptions, request: requestOptions } = options ?? {};
 
-  const queryKey = queryOptions?.queryKey ?? getListStudentsQueryKey();
+  const queryKey = queryOptions?.queryKey ?? getListStudentsQueryKey(params);
 
   const queryFn: QueryFunction<Awaited<ReturnType<typeof listStudents>>> = ({
     signal,
-  }) => listStudents({ signal, ...requestOptions });
+  }) => listStudents(params, { signal, ...requestOptions });
 
   return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
     Awaited<ReturnType<typeof listStudents>>,
@@ -849,15 +869,18 @@ export type ListStudentsQueryError = ErrorType<unknown>;
 export function useListStudents<
   TData = Awaited<ReturnType<typeof listStudents>>,
   TError = ErrorType<unknown>,
->(options?: {
-  query?: UseQueryOptions<
-    Awaited<ReturnType<typeof listStudents>>,
-    TError,
-    TData
-  >;
-  request?: SecondParameter<typeof customFetch>;
-}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
-  const queryOptions = getListStudentsQueryOptions(options);
+>(
+  params?: ListStudentsParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listStudents>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListStudentsQueryOptions(params, options);
 
   const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
     queryKey: QueryKey;
@@ -1998,8 +2021,8 @@ export const getListAssignmentsUrl = (params?: ListAssignmentsParams) => {
 export const listAssignments = async (
   params?: ListAssignmentsParams,
   options?: RequestInit,
-): Promise<Assignment[]> => {
-  return customFetch<Assignment[]>(getListAssignmentsUrl(params), {
+): Promise<PaginatedAssignmentList> => {
+  return customFetch<PaginatedAssignmentList>(getListAssignmentsUrl(params), {
     ...options,
     method: "GET",
   });
@@ -3305,8 +3328,8 @@ export const getListAssessmentsUrl = (params?: ListAssessmentsParams) => {
 export const listAssessments = async (
   params?: ListAssessmentsParams,
   options?: RequestInit,
-): Promise<Assessment[]> => {
-  return customFetch<Assessment[]>(getListAssessmentsUrl(params), {
+): Promise<PaginatedAssessmentList> => {
+  return customFetch<PaginatedAssessmentList>(getListAssessmentsUrl(params), {
     ...options,
     method: "GET",
   });

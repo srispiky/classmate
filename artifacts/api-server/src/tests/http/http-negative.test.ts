@@ -232,7 +232,7 @@ describe("Soft-deleted resources are not returned", () => {
   it("GET /api/students list does not include soft-deleted student", async () => {
     const r = await adminAgent.get("/api/students");
     expect(r.status).toBe(200);
-    const ids: number[] = (r.body as Array<{ id: number }>).map((s) => s.id);
+    const ids: number[] = (r.body.items as Array<{ id: number }>).map((s) => s.id);
     expect(ids).not.toContain(softDeletedStudentId);
   });
 });

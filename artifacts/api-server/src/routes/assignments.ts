@@ -57,12 +57,24 @@ router.get(
     }
 
     // Layer 2 applied inside listAssignments() via assignmentPolicy.getScopeCondition()
-    const assignments = await listAssignments(scope, {
-      courseId: queryParams.data.courseId,
-      studentId: queryParams.data.studentId,
-    });
+    const result = await listAssignments(
+      scope,
+      {
+        courseId: queryParams.data.courseId,
+        studentId: queryParams.data.studentId,
+      },
+      {
+        limit: queryParams.data.limit,
+        cursor: queryParams.data.cursor,
+      },
+    );
 
-    res.json(ListAssignmentsResponse.parse(assignments.map(serializeAssignment)));
+    res.json(
+      ListAssignmentsResponse.parse({
+        items: result.items.map(serializeAssignment),
+        pagination: result.pagination,
+      }),
+    );
   },
 );
 

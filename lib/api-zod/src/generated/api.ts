@@ -156,19 +156,52 @@ export const HealthCheckResponse = zod.object({
 /**
  * @summary List all students
  */
-export const ListStudentsResponseItem = zod.object({
-  id: zod.number(),
-  name: zod.string(),
-  email: zod.string(),
-  grade: zod.string(),
-  avatarUrl: zod.string().nullish(),
-  enrolledCourseIds: zod.array(zod.number()),
-  createdAt: zod.string(),
-  updatedAt: zod.string(),
-  createdBy: zod.number().nullish(),
-  updatedBy: zod.number().nullish(),
+export const listStudentsQueryLimitDefault = 50;
+export const listStudentsQueryLimitMax = 100;
+
+export const ListStudentsQueryParams = zod.object({
+  limit: zod.coerce
+    .number()
+    .min(1)
+    .max(listStudentsQueryLimitMax)
+    .default(listStudentsQueryLimitDefault)
+    .describe("Maximum number of items per page (1–100, default 50)."),
+  cursor: zod.coerce
+    .string()
+    .optional()
+    .describe(
+      "Opaque cursor from a previous response's pagination.nextCursor. Omit for the first page.",
+    ),
 });
-export const ListStudentsResponse = zod.array(ListStudentsResponseItem);
+
+export const ListStudentsResponse = zod.object({
+  items: zod.array(
+    zod.object({
+      id: zod.number(),
+      name: zod.string(),
+      email: zod.string(),
+      grade: zod.string(),
+      avatarUrl: zod.string().nullish(),
+      enrolledCourseIds: zod.array(zod.number()),
+      createdAt: zod.string(),
+      updatedAt: zod.string(),
+      createdBy: zod.number().nullish(),
+      updatedBy: zod.number().nullish(),
+    }),
+  ),
+  pagination: zod.object({
+    nextCursor: zod
+      .string()
+      .nullable()
+      .describe(
+        "Opaque cursor for the next page. Null when no further pages exist.",
+      ),
+    hasMore: zod
+      .boolean()
+      .describe("True when additional records exist beyond this page."),
+    limit: zod.number().describe("Page size used for this response."),
+  }),
+});
 
 /**
  * @summary Create a student
@@ -419,30 +452,60 @@ export const UnenrollStudentParams = zod.object({
 /**
  * @summary List assignments
  */
+export const listAssignmentsQueryLimitDefault = 50;
+export const listAssignmentsQueryLimitMax = 100;
+
 export const ListAssignmentsQueryParams = zod.object({
   courseId: zod.coerce.number().optional(),
   studentId: zod.coerce.number().optional(),
+  limit: zod.coerce
+    .number()
+    .min(1)
+    .max(listAssignmentsQueryLimitMax)
+    .default(listAssignmentsQueryLimitDefault)
+    .describe("Maximum number of items per page (1–100, default 50)."),
+  cursor: zod.coerce
+    .string()
+    .optional()
+    .describe(
+      "Opaque cursor from a previous response's pagination.nextCursor. Omit for the first page.",
+    ),
 });
 
-export const ListAssignmentsResponseItem = zod.object({
-  id: zod.number(),
-  title: zod.string(),
-  description: zod.string(),
-  courseId: zod.number(),
-  courseName: zod.string(),
-  studentId: zod.number(),
-  studentName: zod.string(),
-  dueDate: zod.string(),
-  status: zod.enum(["pending", "submitted", "graded", "late"]),
-  score: zod.number().nullish(),
-  maxScore: zod.number(),
-  feedback: zod.string().nullish(),
-  createdAt: zod.string(),
-  updatedAt: zod.string().optional(),
-  createdBy: zod.number().nullish(),
-  updatedBy: zod.number().nullish(),
+export const ListAssignmentsResponse = zod.object({
+  items: zod.array(
+    zod.object({
+      id: zod.number(),
+      title: zod.string(),
+      description: zod.string(),
+      courseId: zod.number(),
+      courseName: zod.string(),
+      studentId: zod.number(),
+      studentName: zod.string(),
+      dueDate: zod.string(),
+      status: zod.enum(["pending", "submitted", "graded", "late"]),
+      score: zod.number().nullish(),
+      maxScore: zod.number(),
+      feedback: zod.string().nullish(),
+      createdAt: zod.string(),
+      updatedAt: zod.string().optional(),
+      createdBy: zod.number().nullish(),
+      updatedBy: zod.number().nullish(),
+    }),
+  ),
+  pagination: zod.object({
+    nextCursor: zod
+      .string()
+      .nullable()
+      .describe(
+        "Opaque cursor for the next page. Null when no further pages exist.",
+      ),
+    hasMore: zod
+      .boolean()
+      .describe("True when additional records exist beyond this page."),
+    limit: zod.number().describe("Page size used for this response."),
+  }),
 });
-export const ListAssignmentsResponse = zod.array(ListAssignmentsResponseItem);
 
 /**
  * @summary Create assignment
@@ -704,29 +767,59 @@ export const DeleteAnnouncementParams = zod.object({
 /**
  * @summary List assessments
  */
+export const listAssessmentsQueryLimitDefault = 50;
+export const listAssessmentsQueryLimitMax = 100;
+
 export const ListAssessmentsQueryParams = zod.object({
   studentId: zod.coerce.number().optional(),
   courseId: zod.coerce.number().optional(),
+  limit: zod.coerce
+    .number()
+    .min(1)
+    .max(listAssessmentsQueryLimitMax)
+    .default(listAssessmentsQueryLimitDefault)
+    .describe("Maximum number of items per page (1–100, default 50)."),
+  cursor: zod.coerce
+    .string()
+    .optional()
+    .describe(
+      "Opaque cursor from a previous response's pagination.nextCursor. Omit for the first page.",
+    ),
 });
 
-export const ListAssessmentsResponseItem = zod.object({
-  id: zod.number(),
-  studentId: zod.number(),
-  studentName: zod.string(),
-  courseId: zod.number(),
-  courseName: zod.string(),
-  title: zod.string(),
-  score: zod.number(),
-  maxScore: zod.number(),
-  percentage: zod.number(),
-  strengths: zod.array(zod.string()),
-  weaknesses: zod.array(zod.string()),
-  createdAt: zod.string(),
-  updatedAt: zod.string().optional(),
-  createdBy: zod.number().nullish(),
-  updatedBy: zod.number().nullish(),
+export const ListAssessmentsResponse = zod.object({
+  items: zod.array(
+    zod.object({
+      id: zod.number(),
+      studentId: zod.number(),
+      studentName: zod.string(),
+      courseId: zod.number(),
+      courseName: zod.string(),
+      title: zod.string(),
+      score: zod.number(),
+      maxScore: zod.number(),
+      percentage: zod.number(),
+      strengths: zod.array(zod.string()),
+      weaknesses: zod.array(zod.string()),
+      createdAt: zod.string(),
+      updatedAt: zod.string().optional(),
+      createdBy: zod.number().nullish(),
+      updatedBy: zod.number().nullish(),
+    }),
+  ),
+  pagination: zod.object({
+    nextCursor: zod
+      .string()
+      .nullable()
+      .describe(
+        "Opaque cursor for the next page. Null when no further pages exist.",
+      ),
+    hasMore: zod
+      .boolean()
+      .describe("True when additional records exist beyond this page."),
+    limit: zod.number().describe("Page size used for this response."),
+  }),
 });
-export const ListAssessmentsResponse = zod.array(ListAssessmentsResponseItem);
 
 /**
  * @summary Submit an assessment result

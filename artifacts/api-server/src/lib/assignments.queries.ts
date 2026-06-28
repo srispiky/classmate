@@ -1,8 +1,20 @@
-import { eq, and, isNull } from "drizzle-orm";
+import { eq, and, or, gt, isNull } from "drizzle-orm";
 import type { SQL } from "drizzle-orm";
 import { db, assignmentsTable, studentsTable, coursesTable } from "@workspace/db";
 import type { ScopeContext } from "./scope-context";
 import { mixedResourceScopeFilter } from "./scope-filter";
+import {
+  encodeCursor,
+  decodeDateIdCursor,
+  type DateIdCursorPayload,
+  type PaginatedResult,
+  DEFAULT_LIMIT,
+} from "./pagination";
+
+export interface AssignmentPaginationOptions {
+  limit?: number;
+  cursor?: string;
+}
 
 export interface AssignmentFilters {
   courseId?: number;
@@ -128,27 +140,54 @@ export function buildAssignmentListConditions(
 }
 
 /**
- * Layer 2 — scope-filtered assignment list.
+ * Layer 2 — scope-filtered, cursor-paginated assignment list.
  *
- * Uses JOINs to resolve student and course names in a single query,
- * replacing the prior N+1 pattern (N reads per assignment).
- * Scope filter is applied before ORDER BY.
+ * Uses JOINs to resolve student and course names in a single query.
+ * Scope filter (Layer 2) is applied before the cursor condition so
+ * pagination can never widen the caller's data visibility.
+ *
+ * Sort order: (dueDate ASC, id ASC) — id is the primary-key tiebreaker
+ * for assignments sharing the same due date.
  */
 export async function listAssignments(
   scope: ScopeContext,
   filters: Partial<AssignmentFilters> = {},
-): Promise<AssignmentRow[]> {
+  pagination: AssignmentPaginationOptions = {},
+): Promise<PaginatedResult<AssignmentRow>> {
+  const limit = Math.min(pagination.limit ?? DEFAULT_LIMIT, 100);
   const conditions = buildAssignmentListConditions(scope, filters);
 
-  const rows = await db
+  if (pagination.cursor) {
+    const decoded: DateIdCursorPayload | null = decodeDateIdCursor(pagination.cursor);
+    if (!decoded) {
+      return { items: [], pagination: { nextCursor: null, hasMore: false, limit } };
+    }
+    const cursorCond = or(
+      gt(assignmentsTable.dueDate, decoded.ts),
+      and(eq(assignmentsTable.dueDate, decoded.ts), gt(assignmentsTable.id, decoded.id)),
+    );
+    if (cursorCond) conditions.push(cursorCond);
+  }
+
+  const rawRows = await db
     .select(JOIN_SELECT)
     .from(assignmentsTable)
     .leftJoin(studentsTable, eq(assignmentsTable.studentId, studentsTable.id))
     .leftJoin(coursesTable, eq(assignmentsTable.courseId, coursesTable.id))
     .where(conditions.length > 0 ? and(...conditions) : undefined)
-    .orderBy(assignmentsTable.dueDate);
+    .orderBy(assignmentsTable.dueDate, assignmentsTable.id)
+    .limit(limit + 1);
 
-  return rows.map(toAssignmentRow);
+  const hasMore = rawRows.length > limit;
+  const pageRows = hasMore ? rawRows.slice(0, limit) : rawRows;
+  const lastRow = pageRows.at(-1);
+  const nextCursor =
+    hasMore && lastRow ? encodeCursor({ ts: lastRow.dueDate, id: lastRow.id }) : null;
+
+  return {
+    items: pageRows.map(toAssignmentRow),
+    pagination: { nextCursor, hasMore, limit },
+  };
 }
 
 /**

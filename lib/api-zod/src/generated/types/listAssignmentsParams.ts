@@ -9,4 +9,14 @@
 export type ListAssignmentsParams = {
   courseId?: number;
   studentId?: number;
+  /**
+   * Maximum number of items per page (1–100, default 50).
+   * @minimum 1
+   * @maximum 100
+   */
+  limit?: number;
+  /**
+   * Opaque cursor from a previous response's pagination.nextCursor. Omit for the first page.
+   */
+  cursor?: string;
 };

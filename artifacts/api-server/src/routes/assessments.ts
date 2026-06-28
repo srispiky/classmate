@@ -139,12 +139,24 @@ router.get(
     }
 
     // Layer 2 applied inside listAssessments() via assessmentPolicy.getScopeCondition()
-    const assessments = await listAssessments(scope, {
-      studentId: queryParams.data.studentId,
-      courseId: queryParams.data.courseId,
-    });
+    const result = await listAssessments(
+      scope,
+      {
+        studentId: queryParams.data.studentId,
+        courseId: queryParams.data.courseId,
+      },
+      {
+        limit: queryParams.data.limit,
+        cursor: queryParams.data.cursor,
+      },
+    );
 
-    res.json(ListAssessmentsResponse.parse(assessments.map(serializeAssessment)));
+    res.json(
+      ListAssessmentsResponse.parse({
+        items: result.items.map(serializeAssessment),
+        pagination: result.pagination,
+      }),
+    );
   },
 );
 

@@ -8,6 +8,7 @@ import {
   UpdateStudentParams,
   UpdateStudentBody,
   UpdateStudentResponse,
+  ListStudentsQueryParams,
   ListStudentsResponse,
   GetStudentProgressParams,
   GetStudentProgressResponse,
@@ -19,6 +20,7 @@ import { requireRole } from "../middleware/require-role";
 import { studentPolicy } from "../lib/policies/student-scope-policy";
 import { PolicyAuthorizationError } from "../lib/policies/resource-scope-policy";
 import { computeRiskLevel, computeTrend, buildTimeline } from "../services/progress-analytics.service";
+import { listStudents } from "../lib/students.queries";
 
 const router: IRouter = Router();
 
@@ -81,17 +83,40 @@ async function applyLayer3Guard(
 // Layer 1: admin + teacher only (requireRole).
 // Layer 2: teachers see only students enrolled in at least one of their courses.
 // Admins receive all active students (no filter).
+// Pagination: cursor-based, (name ASC, id ASC). Returns paginated envelope.
 router.get("/students", requireRole("admin", "teacher"), async (req, res): Promise<void> => {
+  const queryParams = ListStudentsQueryParams.safeParse(req.query);
+  if (!queryParams.success) {
+    res.status(400).json({ error: queryParams.error.message });
+    return;
+  }
+
   const scope = buildScopeContext(req.session as ClassmateSession);
   const scopeCondition = studentPolicy.getScopeCondition(scope);
 
-  const students = await db
-    .select()
-    .from(studentsTable)
-    .where(and(isNull(studentsTable.deletedAt), scopeCondition))
-    .orderBy(studentsTable.name);
+  const result = await listStudents({
+    limit: queryParams.data.limit,
+    cursor: queryParams.data.cursor,
+    scopeCondition,
+  });
 
-  res.json(ListStudentsResponse.parse(students.map(serializeStudent)));
+  res.json(
+    ListStudentsResponse.parse({
+      items: result.items.map((s) => ({
+        id: s.id,
+        name: s.name,
+        email: s.email,
+        grade: s.grade,
+        avatarUrl: s.avatarUrl ?? null,
+        enrolledCourseIds: s.enrolledCourseIds,
+        createdAt: s.createdAt.toISOString(),
+        updatedAt: s.updatedAt.toISOString(),
+        createdBy: s.createdBy ?? null,
+        updatedBy: s.updatedBy ?? null,
+      })),
+      pagination: result.pagination,
+    }),
+  );
 });
 
 // ── POST /api/students ────────────────────────────────────────────────────────

@@ -6,9 +6,7 @@
  * OpenAPI spec version: 0.1.0
  */
 
-export type ListAssessmentsParams = {
-  studentId?: number;
-  courseId?: number;
+export type ListStudentsParams = {
   /**
    * Maximum number of items per page (1–100, default 50).
    * @minimum 1

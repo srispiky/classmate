@@ -238,15 +238,29 @@ paths:
       operationId: listStudents
       tags: [students]
       summary: List all students
+      parameters:
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 50
+          description: Maximum number of items per page (1–100, default 50).
+        - name: cursor
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Opaque cursor from a previous response's pagination.nextCursor. Omit for the first page.
       responses:
         "200":
-          description: List of students
+          description: Paginated list of students
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  $ref: "#/components/schemas/Student"
+                $ref: "#/components/schemas/PaginatedStudentList"
     post:
       operationId: createStudent
       tags: [students]
@@ -521,15 +535,28 @@ paths:
           required: false
           schema:
             type: integer
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 50
+          description: Maximum number of items per page (1–100, default 50).
+        - name: cursor
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Opaque cursor from a previous response's pagination.nextCursor. Omit for the first page.
       responses:
         "200":
-          description: List of assignments
+          description: Paginated list of assignments
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  $ref: "#/components/schemas/Assignment"
+                $ref: "#/components/schemas/PaginatedAssignmentList"
     post:
       operationId: createAssignment
       tags: [assignments]
@@ -808,15 +835,28 @@ paths:
           required: false
           schema:
             type: integer
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 50
+          description: Maximum number of items per page (1–100, default 50).
+        - name: cursor
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Opaque cursor from a previous response's pagination.nextCursor. Omit for the first page.
       responses:
         "200":
-          description: Assessments
+          description: Paginated list of assessments
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  $ref: "#/components/schemas/Assessment"
+                $ref: "#/components/schemas/PaginatedAssessmentList"
     post:
       operationId: createAssessment
       tags: [assessments]
@@ -1311,6 +1351,54 @@ components:
       description: Session cookie set by the server after login
 
   schemas:
+    PaginationMetadata:
+      type: object
+      properties:
+        nextCursor:
+          type: string
+          nullable: true
+          description: Opaque cursor for the next page. Null when no further pages exist.
+        hasMore:
+          type: boolean
+          description: True when additional records exist beyond this page.
+        limit:
+          type: integer
+          description: Page size used for this response.
+      required: [nextCursor, hasMore, limit]
+
+    PaginatedStudentList:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/Student"
+        pagination:
+          $ref: "#/components/schemas/PaginationMetadata"
+      required: [items, pagination]
+
+    PaginatedAssignmentList:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/Assignment"
+        pagination:
+          $ref: "#/components/schemas/PaginationMetadata"
+      required: [items, pagination]
+
+    PaginatedAssessmentList:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/Assessment"
+        pagination:
+          $ref: "#/components/schemas/PaginationMetadata"
+      required: [items, pagination]
+
     Enrollment:
       type: object
       properties:

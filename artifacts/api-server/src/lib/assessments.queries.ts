@@ -1,8 +1,20 @@
-import { eq, and, isNull } from "drizzle-orm";
+import { eq, and, or, gt, isNull, sql } from "drizzle-orm";
 import type { SQL } from "drizzle-orm";
 import { db, assessmentsTable, studentsTable, coursesTable } from "@workspace/db";
 import type { ScopeContext } from "./scope-context";
 import { mixedResourceScopeFilter } from "./scope-filter";
+import {
+  encodeCursor,
+  decodeDateIdCursor,
+  type DateIdCursorPayload,
+  type PaginatedResult,
+  DEFAULT_LIMIT,
+} from "./pagination";
+
+export interface AssessmentPaginationOptions {
+  limit?: number;
+  cursor?: string;
+}
 
 export interface AssessmentFilters {
   studentId?: number;
@@ -119,26 +131,61 @@ export function buildAssessmentListConditions(
 }
 
 /**
- * Layer 2 — scope-filtered assessment list.
+ * Layer 2 — scope-filtered, cursor-paginated assessment list.
  *
  * Uses JOINs to resolve student and course names in a single query.
- * Scope filter is applied before ORDER BY.
+ * Scope filter (Layer 2) is applied before the cursor condition so
+ * pagination can never widen the caller's data visibility.
+ *
+ * Sort order: (createdAt ASC, id ASC) — id is the primary-key tiebreaker
+ * for assessments recorded at the same instant.
  */
 export async function listAssessments(
   scope: ScopeContext,
   filters: Partial<AssessmentFilters> = {},
-): Promise<AssessmentRow[]> {
+  pagination: AssessmentPaginationOptions = {},
+): Promise<PaginatedResult<AssessmentRow>> {
+  const limit = Math.min(pagination.limit ?? DEFAULT_LIMIT, 100);
   const conditions = buildAssessmentListConditions(scope, filters);
 
-  const rows = await db
+  if (pagination.cursor) {
+    const decoded: DateIdCursorPayload | null = decodeDateIdCursor(pagination.cursor);
+    if (!decoded) {
+      return { items: [], pagination: { nextCursor: null, hasMore: false, limit } };
+    }
+    const cursorTs = new Date(decoded.ts);
+    // date_trunc('milliseconds', ...) aligns DB microsecond precision to the
+    // millisecond precision of JS Date / toISOString(), preventing the cursor
+    // from re-fetching the last row on subsequent pages.
+    const truncatedCol = sql`date_trunc('milliseconds', ${assessmentsTable.createdAt})`;
+    const cursorCond = or(
+      sql`${truncatedCol} > ${cursorTs}`,
+      and(sql`${truncatedCol} = ${cursorTs}`, gt(assessmentsTable.id, decoded.id)),
+    );
+    if (cursorCond) conditions.push(cursorCond);
+  }
+
+  const rawRows = await db
     .select(JOIN_SELECT)
     .from(assessmentsTable)
     .leftJoin(studentsTable, eq(assessmentsTable.studentId, studentsTable.id))
     .leftJoin(coursesTable, eq(assessmentsTable.courseId, coursesTable.id))
     .where(conditions.length > 0 ? and(...conditions) : undefined)
-    .orderBy(assessmentsTable.createdAt);
+    .orderBy(assessmentsTable.createdAt, assessmentsTable.id)
+    .limit(limit + 1);
 
-  return rows.map(toAssessmentRow);
+  const hasMore = rawRows.length > limit;
+  const pageRows = hasMore ? rawRows.slice(0, limit) : rawRows;
+  const lastRow = pageRows.at(-1);
+  const nextCursor =
+    hasMore && lastRow
+      ? encodeCursor({ ts: lastRow.createdAt.toISOString(), id: lastRow.id })
+      : null;
+
+  return {
+    items: pageRows.map(toAssessmentRow),
+    pagination: { nextCursor, hasMore, limit },
+  };
 }
 
 /**
