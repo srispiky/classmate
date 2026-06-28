@@ -130,18 +130,28 @@ router.post("/students", requireRole("admin", "teacher"), async (req, res): Prom
     return;
   }
 
-  const [student] = await db
-    .insert(studentsTable)
-    .values({
-      name: parsed.data.name,
-      email: parsed.data.email,
-      grade: parsed.data.grade,
-      avatarUrl: parsed.data.avatarUrl ?? null,
-      enrolledCourseIds: [],
-      createdBy: scope.userId,
-      updatedBy: scope.userId,
-    })
-    .returning();
+  let student: typeof studentsTable.$inferSelect | undefined;
+  try {
+    [student] = await db
+      .insert(studentsTable)
+      .values({
+        name: parsed.data.name,
+        email: parsed.data.email,
+        grade: parsed.data.grade,
+        avatarUrl: parsed.data.avatarUrl ?? null,
+        enrolledCourseIds: [],
+        createdBy: scope.userId,
+        updatedBy: scope.userId,
+      })
+      .returning();
+  } catch (err: unknown) {
+    const code = (err as { code?: string }).code;
+    if (code === "23505") {
+      res.status(409).json({ error: "A student with that email already exists." });
+      return;
+    }
+    throw err;
+  }
 
   res.status(201).json(GetStudentResponse.parse(serializeStudent(student!)));
 });

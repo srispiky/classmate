@@ -95,10 +95,11 @@ export default function Students() {
         setFormError(null);
       },
       onError: (err: unknown) => {
+        const e = err as { response?: { data?: { error?: string } }; message?: string };
         const msg =
-          err && typeof err === "object" && "message" in err
-            ? String((err as { message: unknown }).message)
-            : "Failed to add student. Please try again.";
+          e?.response?.data?.error ??
+          e?.message ??
+          "Failed to add student. Please try again.";
         setFormError(msg);
       },
     },
