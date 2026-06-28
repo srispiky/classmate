@@ -58,3 +58,6 @@ AI-powered educational platform for tracking student progress, assignments, and 
 
 ### Codegen Note
 After codegen, the `lib/api-zod/src/index.ts` is overwritten to only export from `./generated/api` to avoid name conflicts with the types barrel. This is handled automatically in the codegen script.
+
+## User Preferences
+- **GitHub push after every code change** — run `git push origin main` at the end of every sprint/chunk that contains code changes. The remote is already configured with credentials.
