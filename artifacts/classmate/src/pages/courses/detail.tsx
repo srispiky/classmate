@@ -69,7 +69,8 @@ export default function CourseDetail() {
   });
   const { data: allStudents, isLoading: isLoadingStudents } = useListStudents();
   const { data: assignments, isLoading: isLoadingAssignments } = useListAssignments({ courseId: id });
-  const { data: notes, isLoading: isLoadingNotes } = useListNotes({ courseId: id });
+  const { data: notesPage, isLoading: isLoadingNotes } = useListNotes({ courseId: id, limit: 100 });
+  const notes = notesPage?.items ?? [];
 
   const enrolledStudents = allStudents?.items?.filter(s => s.enrolledCourseIds.includes(id)) || [];
   const unenrolledStudents = allStudents?.items?.filter(s => !s.enrolledCourseIds.includes(id)) || [];
@@ -473,7 +474,7 @@ export default function CourseDetail() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {[1, 2].map(i => <Skeleton key={i} className="h-32 w-full" />)}
             </div>
-          ) : notes && notes.length > 0 ? (
+          ) : notes.length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {notes.map(note => (
                 <Link key={note.id} href={`/notes/${note.id}`}>

@@ -43,13 +43,17 @@ import type {
   ListAnnouncementsParams,
   ListAssessmentsParams,
   ListAssignmentsParams,
+  ListCoursesParams,
   ListNotesParams,
   ListStudentsParams,
   LoginBody,
   Logout200,
   Note,
+  PaginatedAnnouncementList,
   PaginatedAssessmentList,
   PaginatedAssignmentList,
+  PaginatedCourseList,
+  PaginatedNoteList,
   PaginatedStudentList,
   ResetPasswordInput,
   ResetPasswordResult,
@@ -1415,39 +1419,57 @@ export function useGetStudentProgressTimeline<
 /**
  * @summary List all courses
  */
-export const getListCoursesUrl = () => {
-  return `/api/courses`;
+export const getListCoursesUrl = (params?: ListCoursesParams) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/courses?${stringifiedParams}`
+    : `/api/courses`;
 };
 
-export const listCourses = async (options?: RequestInit): Promise<Course[]> => {
-  return customFetch<Course[]>(getListCoursesUrl(), {
+export const listCourses = async (
+  params?: ListCoursesParams,
+  options?: RequestInit,
+): Promise<PaginatedCourseList> => {
+  return customFetch<PaginatedCourseList>(getListCoursesUrl(params), {
     ...options,
     method: "GET",
   });
 };
 
-export const getListCoursesQueryKey = () => {
-  return [`/api/courses`] as const;
+export const getListCoursesQueryKey = (params?: ListCoursesParams) => {
+  return [`/api/courses`, ...(params ? [params] : [])] as const;
 };
 
 export const getListCoursesQueryOptions = <
   TData = Awaited<ReturnType<typeof listCourses>>,
   TError = ErrorType<unknown>,
->(options?: {
-  query?: UseQueryOptions<
-    Awaited<ReturnType<typeof listCourses>>,
-    TError,
-    TData
-  >;
-  request?: SecondParameter<typeof customFetch>;
-}) => {
+>(
+  params?: ListCoursesParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listCourses>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
   const { query: queryOptions, request: requestOptions } = options ?? {};
 
-  const queryKey = queryOptions?.queryKey ?? getListCoursesQueryKey();
+  const queryKey = queryOptions?.queryKey ?? getListCoursesQueryKey(params);
 
   const queryFn: QueryFunction<Awaited<ReturnType<typeof listCourses>>> = ({
     signal,
-  }) => listCourses({ signal, ...requestOptions });
+  }) => listCourses(params, { signal, ...requestOptions });
 
   return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
     Awaited<ReturnType<typeof listCourses>>,
@@ -1468,15 +1490,18 @@ export type ListCoursesQueryError = ErrorType<unknown>;
 export function useListCourses<
   TData = Awaited<ReturnType<typeof listCourses>>,
   TError = ErrorType<unknown>,
->(options?: {
-  query?: UseQueryOptions<
-    Awaited<ReturnType<typeof listCourses>>,
-    TError,
-    TData
-  >;
-  request?: SecondParameter<typeof customFetch>;
-}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
-  const queryOptions = getListCoursesQueryOptions(options);
+>(
+  params?: ListCoursesParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listCourses>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListCoursesQueryOptions(params, options);
 
   const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
     queryKey: QueryKey;
@@ -2459,8 +2484,8 @@ export const getListNotesUrl = (params?: ListNotesParams) => {
 export const listNotes = async (
   params?: ListNotesParams,
   options?: RequestInit,
-): Promise<Note[]> => {
-  return customFetch<Note[]>(getListNotesUrl(params), {
+): Promise<PaginatedNoteList> => {
+  return customFetch<PaginatedNoteList>(getListNotesUrl(params), {
     ...options,
     method: "GET",
   });
@@ -2887,11 +2912,14 @@ export const getListAnnouncementsUrl = (params?: ListAnnouncementsParams) => {
 export const listAnnouncements = async (
   params?: ListAnnouncementsParams,
   options?: RequestInit,
-): Promise<Announcement[]> => {
-  return customFetch<Announcement[]>(getListAnnouncementsUrl(params), {
-    ...options,
-    method: "GET",
-  });
+): Promise<PaginatedAnnouncementList> => {
+  return customFetch<PaginatedAnnouncementList>(
+    getListAnnouncementsUrl(params),
+    {
+      ...options,
+      method: "GET",
+    },
+  );
 };
 
 export const getListAnnouncementsQueryKey = (

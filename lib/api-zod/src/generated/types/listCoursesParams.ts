@@ -6,8 +6,7 @@
  * OpenAPI spec version: 0.1.0
  */
 
-export type ListAnnouncementsParams = {
-  courseId?: number;
+export type ListCoursesParams = {
   /**
    * Page size (default 50, max 100).
    */

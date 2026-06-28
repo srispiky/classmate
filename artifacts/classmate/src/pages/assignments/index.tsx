@@ -39,7 +39,8 @@ export default function Assignments() {
   const appendModeRef = useRef(false);
 
   const { data: pageData, isLoading, isFetching } = useListAssignments({ cursor, limit: PAGE_LIMIT });
-  const { data: allCourses } = useListCourses();
+  const { data: coursesPageData } = useListCourses({ limit: 100 });
+  const allCourses = coursesPageData?.items ?? [];
   const { data: allStudentsData } = useListStudents();
 
   useEffect(() => {
@@ -467,7 +468,7 @@ export default function Assignments() {
                   <SelectValue placeholder="Select a course..." />
                 </SelectTrigger>
                 <SelectContent>
-                  {(allCourses ?? [])
+                  {allCourses
                     .filter((c) => c.status === "active")
                     .map((c) => (
                       <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>

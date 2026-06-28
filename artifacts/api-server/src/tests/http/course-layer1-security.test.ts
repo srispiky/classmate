@@ -87,13 +87,15 @@ describe("F1 fix — GET /api/courses — Layer 1 requireRole('admin','teacher')
   it("teacher → 200 (Layer 1 passes, Layer 2 scopes to owned courses)", async () => {
     const r = await teacherAgent.get("/api/courses");
     expect(r.status).toBe(200);
-    expect(Array.isArray(r.body)).toBe(true);
+    expect(Array.isArray(r.body.items)).toBe(true);
+    expect(r.body).toHaveProperty("pagination");
   });
 
   it("admin → 200 (Layer 1 passes, admin sees all courses)", async () => {
     const r = await adminAgent.get("/api/courses");
     expect(r.status).toBe(200);
-    expect(Array.isArray(r.body)).toBe(true);
+    expect(Array.isArray(r.body.items)).toBe(true);
+    expect(r.body).toHaveProperty("pagination");
   });
 });
 

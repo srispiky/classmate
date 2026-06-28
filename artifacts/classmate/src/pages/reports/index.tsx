@@ -7,7 +7,8 @@ import { BarChart3, Users, BookOpen, AlertCircle, ArrowRight } from "lucide-reac
 
 export default function Reports() {
   const { data: students, isLoading: isLoadingStudents } = useListStudents();
-  const { data: courses, isLoading: isLoadingCourses } = useListCourses();
+  const { data: coursesPage, isLoading: isLoadingCourses } = useListCourses({ limit: 100 });
+  const courses = coursesPage?.items ?? [];
 
   return (
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -88,7 +89,7 @@ export default function Reports() {
               <div className="space-y-3">
                 {[1, 2, 3].map(i => <Skeleton key={i} className="h-12 w-full" />)}
               </div>
-            ) : courses && courses.length > 0 ? (
+            ) : courses.length > 0 ? (
               <div className="space-y-2">
                 {courses.map((course: Course) => (
                   <Link key={course.id} href={`/reports/course/${course.id}`}>

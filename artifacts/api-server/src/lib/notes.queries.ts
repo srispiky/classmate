@@ -1,8 +1,24 @@
-import { eq, and, isNull } from "drizzle-orm";
+/**
+ * Note list query with cursor-based pagination.
+ *
+ * Layer 2 scope filtering is applied via applyTeacherScopeFilter() before the
+ * cursor condition is appended — the cursor never widens or bypasses the scope.
+ *
+ * Sort order: (createdAt ASC, id ASC) — id is the primary-key tiebreaker
+ * for ties on the same timestamp, guaranteeing a stable page boundary.
+ */
+
+import { eq, and, or, gt, isNull } from "drizzle-orm";
 import type { SQL } from "drizzle-orm";
 import { db, notesTable, coursesTable } from "@workspace/db";
 import type { ScopeContext } from "./scope-context";
 import { applyTeacherScopeFilter } from "../shared/auth/teacher-scope-validator";
+import {
+  encodeCursor,
+  decodeDateIdCursor,
+  DEFAULT_LIMIT,
+  type PaginatedResult,
+} from "./pagination";
 
 export interface NoteFilters {
   courseId?: number;
@@ -107,25 +123,57 @@ export function buildNoteListConditions(
 }
 
 /**
- * Layer 2 — scope-filtered note list.
+ * Layer 2 — scope-filtered, cursor-paginated note list.
  *
  * Uses a JOIN to resolve course name in a single query (no N+1).
  * Scope filter applied at the database level — no in-memory filtering.
+ * Sorted by (createdAt ASC, id ASC) for a stable page boundary.
  */
 export async function listNotes(
   scope: ScopeContext,
   filters: Partial<NoteFilters> = {},
-): Promise<NoteRow[]> {
-  const conditions = buildNoteListConditions(scope, filters);
+  options: { limit?: number; cursor?: string } = {},
+): Promise<PaginatedResult<NoteRow>> {
+  const limit = Math.min(options.limit ?? DEFAULT_LIMIT, 100);
+  const baseConditions = buildNoteListConditions(scope, filters);
 
-  const rows = await db
+  const conditions: (SQL | undefined)[] = [...baseConditions];
+
+  if (options.cursor) {
+    const decoded = decodeDateIdCursor(options.cursor);
+    if (!decoded) {
+      return { items: [], pagination: { nextCursor: null, hasMore: false, limit } };
+    }
+    const cursorCond = or(
+      gt(notesTable.createdAt, new Date(decoded.ts)),
+      and(eq(notesTable.createdAt, new Date(decoded.ts)), gt(notesTable.id, decoded.id)),
+    );
+    conditions.push(cursorCond);
+  }
+
+  const validConditions = conditions.filter((c): c is SQL => c !== undefined);
+
+  const rawRows = await db
     .select(JOIN_SELECT)
     .from(notesTable)
     .leftJoin(coursesTable, eq(notesTable.courseId, coursesTable.id))
-    .where(conditions.length > 0 ? and(...conditions) : undefined)
-    .orderBy(notesTable.createdAt);
+    .where(validConditions.length > 0 ? and(...validConditions) : undefined)
+    .orderBy(notesTable.createdAt, notesTable.id)
+    .limit(limit + 1);
 
-  return rows.map(toNoteRow);
+  const hasMore = rawRows.length > limit;
+  const pageRows = hasMore ? rawRows.slice(0, limit) : rawRows;
+  const lastRow = pageRows.at(-1);
+
+  const nextCursor =
+    hasMore && lastRow
+      ? encodeCursor({ ts: lastRow.createdAt.toISOString(), id: lastRow.id })
+      : null;
+
+  return {
+    items: pageRows.map(toNoteRow),
+    pagination: { nextCursor, hasMore, limit },
+  };
 }
 
 /**

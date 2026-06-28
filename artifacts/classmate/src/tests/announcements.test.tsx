@@ -112,14 +112,21 @@ const mockState: {
   detail: { ...ANNOUNCEMENTS[0] },
 };
 
+// ── Stable paginated stubs ────────────────────────────────────────────────────
+// Getter-based: wrapper object is always the same reference (prevents infinite
+// useEffect loops), while items dynamically reflects the current mockState.
+const ANN_PAGINATION = { nextCursor: null as null, hasMore: false, limit: 50 };
+const announcementsPageStub = { get items() { return mockState.announcements; }, pagination: ANN_PAGINATION };
+const coursesPageStubAnn = { items: COURSES as unknown[], pagination: ANN_PAGINATION };
+
 vi.mock("@workspace/api-client-react", () => ({
-  useListAnnouncements: () => ({ data: mockState.announcements, isLoading: false }),
+  useListAnnouncements: () => ({ data: announcementsPageStub, isLoading: false, isFetching: false }),
   useGetAnnouncement: (id: number) => ({
     data: mockState.detail.id === id ? mockState.detail : undefined,
     isLoading: false,
     isError: false,
   }),
-  useListCourses: () => ({ data: COURSES }),
+  useListCourses: () => ({ data: coursesPageStubAnn, isFetching: false }),
   useGetMe: () => ({
     data: { id: 1, username: "teacher1", role: "teacher", displayName: "Ms. Smith" },
   }),
@@ -381,7 +388,7 @@ describe("Announcements list page", () => {
     );
   });
 
-  it("updates list cache on edit success", async () => {
+  it("updates detail cache and local list on edit success", async () => {
     const updated = { ...ANNOUNCEMENTS[0], title: "Updated Title" };
     mockUpdate.mockImplementationOnce(
       (
@@ -396,10 +403,13 @@ describe("Announcements list page", () => {
     await userEvent.click(editBtns[0]);
     await screen.findByRole("dialog");
     await userEvent.click(screen.getByRole("button", { name: /save changes/i }));
+    // Detail cache updated with new data
     expect(mockSetQueryData).toHaveBeenCalledWith(
-      ["/api/announcements"],
-      expect.any(Function),
+      ["/api/announcements/1"],
+      updated,
     );
+    // Dialog dismissed
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   });
 
   it("shows validation error in edit dialog when title is cleared", async () => {
@@ -441,13 +451,13 @@ describe("Announcements list page", () => {
     );
   });
 
-  it("removes announcement from list cache after delete", async () => {
+  it("removes announcement from local list after delete (no setQueryData)", async () => {
     mockDelete.mockImplementationOnce(
       (
-        _args: unknown,
+        args: unknown,
         m: { onSuccess?: (d: unknown, v: { id: number }) => void },
       ) => {
-        m.onSuccess?.(undefined, { id: 1 });
+        m.onSuccess?.(undefined, args as { id: number });
       },
     );
     renderAnnouncements();
@@ -458,11 +468,15 @@ describe("Announcements list page", () => {
     await userEvent.click(
       screen.getByRole("button", { name: /^delete announcement$/i }),
     );
+    expect(mockDelete).toHaveBeenCalledOnce();
+    // Local state updated — no setQueryData on list cache needed
+    expect(mockSetQueryData).not.toHaveBeenCalledWith(
+      ["/api/announcements"],
+      expect.any(Function),
+    );
+    // AlertDialog dismissed
     await waitFor(() => {
-      expect(mockSetQueryData).toHaveBeenCalledWith(
-        ["/api/announcements"],
-        expect.any(Function),
-      );
+      expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument();
     });
   });
 });

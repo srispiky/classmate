@@ -38,6 +38,7 @@ function serializeNote(n: NoteRow) {
 
 // Layer 1: only admin and teacher may access the teacher-facing notes list.
 // Student/parent access is served by /student/notes instead.
+// Pagination: cursor-based, (createdAt ASC, id ASC). Returns paginated envelope.
 router.get("/notes", requireRole("admin", "teacher"), async (req, res): Promise<void> => {
   const scope = buildScopeContext(req.session as ClassmateSession);
 
@@ -48,9 +49,18 @@ router.get("/notes", requireRole("admin", "teacher"), async (req, res): Promise<
   }
 
   // Layer 2: notesPolicy.getScopeCondition() applied inside listNotes().
-  const notes = await listNotes(scope, { courseId: queryParams.data.courseId });
+  const result = await listNotes(
+    scope,
+    { courseId: queryParams.data.courseId },
+    { limit: queryParams.data.limit, cursor: queryParams.data.cursor },
+  );
 
-  res.json(ListNotesResponse.parse(notes.map(serializeNote)));
+  res.json(
+    ListNotesResponse.parse({
+      items: result.items.map(serializeNote),
+      pagination: result.pagination,
+    }),
+  );
 });
 
 // ── POST /api/notes ──────────────────────────────────────────────────────────

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Link } from "wouter";
 import { useQueryClient } from "@tanstack/react-query";
 import {
@@ -7,12 +7,13 @@ import {
   getListCoursesQueryKey,
   useGetMe,
 } from "@workspace/api-client-react";
+import type { Course } from "@workspace/api-client-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Search, BookOpen, Users, Plus } from "lucide-react";
+import { Search, BookOpen, Users, Plus, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -33,12 +34,55 @@ const EMPTY_FORM = {
   description: "",
 };
 
+const PAGE_LIMIT = 50;
+
 export default function Courses() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
-  const { data: courses, isLoading } = useListCourses();
   const { data: me } = useGetMe();
+
+  // ── Pagination state ─────────────────────────────────────────────────────────
+  const [cursor, setCursor] = useState<string | undefined>(undefined);
+  const [allCourses, setAllCourses] = useState<Course[]>([]);
+  const appendModeRef = useRef(false);
+
+  const { data: pageData, isLoading, isFetching } = useListCourses({ cursor, limit: PAGE_LIMIT });
+
+  useEffect(() => {
+    if (!pageData?.items) return;
+    if (appendModeRef.current) {
+      setAllCourses((prev) => [...prev, ...pageData.items]);
+    } else {
+      setAllCourses(pageData.items);
+    }
+    appendModeRef.current = false;
+  }, [pageData]);
+
+  function handleLoadMore() {
+    const next = pageData?.pagination?.nextCursor;
+    if (!next) return;
+    appendModeRef.current = true;
+    setCursor(next);
+  }
+
+  function resetPagination() {
+    appendModeRef.current = false;
+    setCursor(undefined);
+  }
+
+  const hasMore = pageData?.pagination?.hasMore ?? false;
+
+  // ── Search ───────────────────────────────────────────────────────────────────
   const [search, setSearch] = useState("");
+
+  const filteredCourses = allCourses.filter(
+    (course) =>
+      course.name.toLowerCase().includes(search.toLowerCase()) ||
+      course.subject.toLowerCase().includes(search.toLowerCase()) ||
+      course.teacherName.toLowerCase().includes(search.toLowerCase()),
+  );
+
+  // ── Create dialog ────────────────────────────────────────────────────────────
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState(EMPTY_FORM);
   const [formError, setFormError] = useState<string | null>(null);
@@ -46,6 +90,7 @@ export default function Courses() {
   const { mutate: createCourse, isPending } = useCreateCourse({
     mutation: {
       onSuccess: () => {
+        resetPagination();
         queryClient.invalidateQueries({ queryKey: getListCoursesQueryKey() });
         setOpen(false);
         setForm(EMPTY_FORM);
@@ -96,12 +141,6 @@ export default function Courses() {
       },
     });
   }
-
-  const filteredCourses = courses?.filter(course =>
-    course.name.toLowerCase().includes(search.toLowerCase()) ||
-    course.subject.toLowerCase().includes(search.toLowerCase()) ||
-    course.teacherName.toLowerCase().includes(search.toLowerCase())
-  ) || [];
 
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -229,42 +268,70 @@ export default function Courses() {
         </div>
       </div>
 
-      {isLoading ? (
+      {isLoading && allCourses.length === 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {[1, 2, 3, 4, 5, 6].map(i => <Skeleton key={i} className="h-48 rounded-xl" />)}
         </div>
       ) : filteredCourses.length > 0 ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {filteredCourses.map(course => (
-            <Link key={course.id} href={`/courses/${course.id}`}>
-              <Card className="hover:bg-muted/50 transition-colors cursor-pointer h-full hover-elevate">
-                <CardHeader>
-                  <div className="flex items-center justify-between">
-                    <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
-                      <BookOpen className="w-5 h-5 text-primary" />
+        <>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {filteredCourses.map(course => (
+              <Link key={course.id} href={`/courses/${course.id}`}>
+                <Card className="hover:bg-muted/50 transition-colors cursor-pointer h-full hover-elevate">
+                  <CardHeader>
+                    <div className="flex items-center justify-between">
+                      <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                        <BookOpen className="w-5 h-5 text-primary" />
+                      </div>
+                      <span className="text-xs font-semibold bg-secondary text-secondary-foreground px-2 py-1 rounded-md">
+                        {course.subject}
+                      </span>
                     </div>
-                    <span className="text-xs font-semibold bg-secondary text-secondary-foreground px-2 py-1 rounded-md">
-                      {course.subject}
-                    </span>
-                  </div>
-                  <CardTitle className="mt-4 text-xl">{course.name}</CardTitle>
-                  <CardDescription className="line-clamp-2">{course.description}</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="flex items-center justify-between mt-auto">
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                      <Users className="w-4 h-4" />
-                      <span>{course.studentCount} Students</span>
+                    <CardTitle className="mt-4 text-xl">{course.name}</CardTitle>
+                    <CardDescription className="line-clamp-2">{course.description}</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="flex items-center justify-between mt-auto">
+                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                        <Users className="w-4 h-4" />
+                        <span>{course.studentCount} Students</span>
+                      </div>
+                      <div className="text-sm font-medium text-foreground">
+                        {course.teacherName}
+                      </div>
                     </div>
-                    <div className="text-sm font-medium text-foreground">
-                      {course.teacherName}
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </Link>
-          ))}
-        </div>
+                  </CardContent>
+                </Card>
+              </Link>
+            ))}
+          </div>
+
+          <div className="flex items-center justify-center pt-2">
+            {hasMore ? (
+              <Button
+                variant="outline"
+                onClick={handleLoadMore}
+                disabled={isFetching}
+                className="min-w-[160px]"
+              >
+                {isFetching ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Loading…
+                  </>
+                ) : (
+                  "Load More"
+                )}
+              </Button>
+            ) : (
+              allCourses.length > PAGE_LIMIT && (
+                <p className="text-sm text-muted-foreground">
+                  All {allCourses.length} course{allCourses.length !== 1 ? "s" : ""} loaded
+                </p>
+              )
+            )}
+          </div>
+        </>
       ) : (
         <Card className="border-dashed">
           <CardContent className="flex flex-col items-center justify-center h-64 space-y-4">

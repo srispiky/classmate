@@ -1,8 +1,25 @@
-import { eq, and, isNull } from "drizzle-orm";
+/**
+ * Course list query with cursor-based pagination.
+ *
+ * Layer 2 scope filtering is applied by the caller-supplied scopeCondition
+ * (built from coursePolicy.getScopeCondition(scope)) before the cursor
+ * condition is appended — the cursor never widens or bypasses the scope.
+ *
+ * Sort order: (name ASC, id ASC) — id is the primary-key tiebreaker for
+ * duplicate names, guaranteeing a stable and deterministic page boundary.
+ */
+
+import { eq, and, or, gt, isNull } from "drizzle-orm";
 import type { SQL } from "drizzle-orm";
 import { db, coursesTable } from "@workspace/db";
 import type { ScopeContext } from "./scope-context";
 import { coursePolicy } from "../shared/auth/policies/course-scope-policy";
+import {
+  encodeCursor,
+  decodeStudentCursor,
+  DEFAULT_LIMIT,
+  type PaginatedResult,
+} from "./pagination";
 
 export type CourseRow = typeof coursesTable.$inferSelect;
 
@@ -46,22 +63,66 @@ export function buildCourseListConditions(
   return conditions;
 }
 
+export interface ListCoursesOptions {
+  limit?: number;
+  cursor?: string;
+  scope: ScopeContext;
+  filters?: Partial<CourseFilters>;
+}
+
 /**
- * Layer 2 — scope-filtered course list.
+ * Layer 2 — scope-filtered, cursor-paginated course list.
  *
  * Applies CourseScopePolicy at the database level — no in-memory filtering.
- * Ordered by course name for stable, predictable output.
+ * Sorted by (name ASC, id ASC) for a stable, deterministic page boundary.
+ *
+ * The cursor payload reuses the StudentCursorPayload shape {name, id}
+ * because the sort key is identical: (name ASC, id ASC).
  */
 export async function listCourses(
   scope: ScopeContext,
   filters: Partial<CourseFilters> = {},
-): Promise<CourseRow[]> {
-  const conditions = buildCourseListConditions(scope, filters);
-  return db
+  options: { limit?: number; cursor?: string } = {},
+): Promise<PaginatedResult<CourseRow>> {
+  const limit = Math.min(options.limit ?? DEFAULT_LIMIT, 100);
+  const baseConditions = buildCourseListConditions(scope, filters);
+
+  const conditions: (SQL | undefined)[] = [...baseConditions];
+
+  if (options.cursor) {
+    const decoded = decodeStudentCursor(options.cursor);
+    if (!decoded) {
+      return { items: [], pagination: { nextCursor: null, hasMore: false, limit } };
+    }
+    const cursorCond = or(
+      gt(coursesTable.name, decoded.name),
+      and(eq(coursesTable.name, decoded.name), gt(coursesTable.id, decoded.id)),
+    );
+    conditions.push(cursorCond);
+  }
+
+  const validConditions = conditions.filter((c): c is SQL => c !== undefined);
+
+  const rawRows = await db
     .select()
     .from(coursesTable)
-    .where(conditions.length > 0 ? and(...conditions) : undefined)
-    .orderBy(coursesTable.name);
+    .where(validConditions.length > 0 ? and(...validConditions) : undefined)
+    .orderBy(coursesTable.name, coursesTable.id)
+    .limit(limit + 1);
+
+  const hasMore = rawRows.length > limit;
+  const pageRows = hasMore ? rawRows.slice(0, limit) : rawRows;
+  const lastRow = pageRows.at(-1);
+
+  const nextCursor =
+    hasMore && lastRow
+      ? encodeCursor({ name: lastRow.name, id: lastRow.id })
+      : null;
+
+  return {
+    items: pageRows,
+    pagination: { nextCursor, hasMore, limit },
+  };
 }
 
 /**

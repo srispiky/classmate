@@ -107,7 +107,8 @@ function AssessmentDialog({
   isPending,
   error,
 }: AssessmentDialogProps) {
-  const { data: courses } = useListCourses();
+  const { data: coursesData } = useListCourses({ limit: 100 });
+  const courses = coursesData?.items ?? [];
   const { data: studentsData } = useListStudents();
   const [form, setForm] = useState<AssessmentFormState>(initial);
 
@@ -152,7 +153,7 @@ function AssessmentDialog({
                     <SelectValue placeholder="Select course" />
                   </SelectTrigger>
                   <SelectContent>
-                    {courses?.map((c) => (
+                    {courses.map((c) => (
                       <SelectItem key={c.id} value={String(c.id)}>
                         {c.name}
                       </SelectItem>

@@ -1,8 +1,24 @@
-import { eq, and, isNull } from "drizzle-orm";
+/**
+ * Announcement list query with cursor-based pagination.
+ *
+ * Layer 2 scope filtering is applied via AnnouncementScopePolicy before the
+ * cursor condition is appended — the cursor never widens or bypasses the scope.
+ *
+ * Sort order: (createdAt ASC, id ASC) — id is the primary-key tiebreaker
+ * for ties on the same timestamp, guaranteeing a stable page boundary.
+ */
+
+import { eq, and, or, gt, isNull } from "drizzle-orm";
 import type { SQL } from "drizzle-orm";
 import { db, announcementsTable, coursesTable } from "@workspace/db";
 import type { ScopeContext } from "./scope-context";
 import { announcementPolicy } from "./policies/announcement-scope-policy";
+import {
+  encodeCursor,
+  decodeDateIdCursor,
+  DEFAULT_LIMIT,
+  type PaginatedResult,
+} from "./pagination";
 
 export interface AnnouncementFilters {
   courseId?: number;
@@ -104,26 +120,60 @@ export function buildAnnouncementListConditions(
 }
 
 /**
- * Layer 2 — scope-filtered announcement list.
+ * Layer 2 — scope-filtered, cursor-paginated announcement list.
  *
  * Uses a LEFT JOIN to resolve course name in a single query (no N+1).
  * Scope filter applied at the database level via AnnouncementScopePolicy.
- * Results ordered by createdAt descending (newest first for announcements).
+ * Sorted by (createdAt ASC, id ASC) for a stable page boundary.
  */
 export async function listAnnouncements(
   scope: ScopeContext,
   filters: Partial<AnnouncementFilters> = {},
-): Promise<AnnouncementRow[]> {
-  const conditions = buildAnnouncementListConditions(scope, filters);
+  options: { limit?: number; cursor?: string } = {},
+): Promise<PaginatedResult<AnnouncementRow>> {
+  const limit = Math.min(options.limit ?? DEFAULT_LIMIT, 100);
+  const baseConditions = buildAnnouncementListConditions(scope, filters);
 
-  const rows = await db
+  const conditions: (SQL | undefined)[] = [...baseConditions];
+
+  if (options.cursor) {
+    const decoded = decodeDateIdCursor(options.cursor);
+    if (!decoded) {
+      return { items: [], pagination: { nextCursor: null, hasMore: false, limit } };
+    }
+    const cursorCond = or(
+      gt(announcementsTable.createdAt, new Date(decoded.ts)),
+      and(
+        eq(announcementsTable.createdAt, new Date(decoded.ts)),
+        gt(announcementsTable.id, decoded.id),
+      ),
+    );
+    conditions.push(cursorCond);
+  }
+
+  const validConditions = conditions.filter((c): c is SQL => c !== undefined);
+
+  const rawRows = await db
     .select(JOIN_SELECT)
     .from(announcementsTable)
     .leftJoin(coursesTable, eq(announcementsTable.courseId, coursesTable.id))
-    .where(conditions.length > 0 ? and(...conditions) : undefined)
-    .orderBy(announcementsTable.createdAt);
+    .where(validConditions.length > 0 ? and(...validConditions) : undefined)
+    .orderBy(announcementsTable.createdAt, announcementsTable.id)
+    .limit(limit + 1);
 
-  return rows.map(toAnnouncementRow);
+  const hasMore = rawRows.length > limit;
+  const pageRows = hasMore ? rawRows.slice(0, limit) : rawRows;
+  const lastRow = pageRows.at(-1);
+
+  const nextCursor =
+    hasMore && lastRow
+      ? encodeCursor({ ts: lastRow.createdAt.toISOString(), id: lastRow.id })
+      : null;
+
+  return {
+    items: pageRows.map(toAnnouncementRow),
+    pagination: { nextCursor, hasMore, limit },
+  };
 }
 
 /**

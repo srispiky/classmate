@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Link } from "wouter";
 import {
   useListNotes,
@@ -9,6 +9,7 @@ import {
   getListNotesQueryKey,
   getGetNoteQueryKey,
 } from "@workspace/api-client-react";
+import type { Note } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   Card,
@@ -47,7 +48,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Search, FileText, PlayCircle, BookOpen, Plus, Pencil, Trash2 } from "lucide-react";
+import { Search, FileText, PlayCircle, BookOpen, Plus, Pencil, Trash2, Loader2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { formatDate } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
@@ -71,18 +72,6 @@ type NoteFormState = {
   videoUrl: string;
 };
 
-type NoteItem = {
-  id: number;
-  title: string;
-  content: string;
-  courseId: number;
-  courseName: string;
-  topic: string;
-  videoUrl?: string | null;
-  createdAt: string;
-  updatedAt: string;
-};
-
 const EMPTY_FORM: NoteFormState = {
   title: "",
   content: "",
@@ -90,6 +79,8 @@ const EMPTY_FORM: NoteFormState = {
   topic: "",
   videoUrl: "",
 };
+
+const PAGE_LIMIT = 50;
 
 // ── Form ──────────────────────────────────────────────────────────────────────
 
@@ -176,28 +167,46 @@ export default function Notes() {
   const { toast } = useToast();
   const qc = useQueryClient();
 
-  const { data: notes, isLoading } = useListNotes();
-  const { data: courses = [] } = useListCourses();
+  // ── Pagination state ─────────────────────────────────────────────────────────
+  const [cursor, setCursor] = useState<string | undefined>(undefined);
+  const [allNotes, setAllNotes] = useState<Note[]>([]);
+  const appendModeRef = useRef(false);
 
+  const { data: pageData, isLoading, isFetching } = useListNotes({ cursor, limit: PAGE_LIMIT });
+
+  useEffect(() => {
+    if (!pageData?.items) return;
+    if (appendModeRef.current) {
+      setAllNotes((prev) => [...prev, ...pageData.items]);
+    } else {
+      setAllNotes(pageData.items);
+    }
+    appendModeRef.current = false;
+  }, [pageData]);
+
+  function handleLoadMore() {
+    const next = pageData?.pagination?.nextCursor;
+    if (!next) return;
+    appendModeRef.current = true;
+    setCursor(next);
+  }
+
+  function resetPagination() {
+    appendModeRef.current = false;
+    setCursor(undefined);
+  }
+
+  const hasMore = pageData?.pagination?.hasMore ?? false;
+
+  // ── Courses for dropdown (large first page — teachers rarely have 50+ courses) ──
+  const { data: coursesData } = useListCourses({ limit: 100 });
+  const courses = coursesData?.items ?? [];
+
+  // ── Filters ───────────────────────────────────────────────────────────────────
   const [search, setSearch] = useState("");
   const [courseFilter, setCourseFilter] = useState("all");
 
-  // Create dialog
-  const [createOpen, setCreateOpen] = useState(false);
-  const [createForm, setCreateForm] = useState<NoteFormState>(EMPTY_FORM);
-  const [createError, setCreateError] = useState("");
-
-  // Edit dialog
-  const [editNote, setEditNote] = useState<NoteItem | null>(null);
-  const [editForm, setEditForm] = useState<NoteFormState>(EMPTY_FORM);
-  const [editError, setEditError] = useState("");
-
-  // Delete dialog
-  const [deleteNote, setDeleteNote] = useState<NoteItem | null>(null);
-
-  // ── Derived list ─────────────────────────────────────────────────────────────
-
-  const filtered = (notes ?? []).filter((n) => {
+  const filtered = allNotes.filter((n) => {
     const q = search.toLowerCase();
     const matchesSearch =
       !q ||
@@ -209,11 +218,25 @@ export default function Notes() {
     return matchesSearch && matchesCourse;
   });
 
+  // ── Create dialog ─────────────────────────────────────────────────────────────
+  const [createOpen, setCreateOpen] = useState(false);
+  const [createForm, setCreateForm] = useState<NoteFormState>(EMPTY_FORM);
+  const [createError, setCreateError] = useState("");
+
+  // ── Edit dialog ───────────────────────────────────────────────────────────────
+  const [editNote, setEditNote] = useState<Note | null>(null);
+  const [editForm, setEditForm] = useState<NoteFormState>(EMPTY_FORM);
+  const [editError, setEditError] = useState("");
+
+  // ── Delete dialog ─────────────────────────────────────────────────────────────
+  const [deleteNote, setDeleteNote] = useState<Note | null>(null);
+
   // ── Mutations ─────────────────────────────────────────────────────────────────
 
   const { mutate: createMutate, isPending: isCreating } = useCreateNote({
     mutation: {
-      onSuccess: (created) => {
+      onSuccess: () => {
+        resetPagination();
         qc.invalidateQueries({ queryKey: getListNotesQueryKey() });
         toast({ title: "Note created" });
         setCreateOpen(false);
@@ -230,9 +253,7 @@ export default function Notes() {
     mutation: {
       onSuccess: (updated) => {
         qc.setQueryData(getGetNoteQueryKey(updated.id), updated);
-        qc.setQueryData(getListNotesQueryKey(), (old: NoteItem[] | undefined) =>
-          old?.map((n) => (n.id === updated.id ? updated : n)),
-        );
+        setAllNotes((prev) => prev.map((n) => (n.id === updated.id ? updated : n)));
         toast({ title: "Note updated" });
         setEditNote(null);
         setEditError("");
@@ -246,9 +267,7 @@ export default function Notes() {
   const { mutate: deleteMutate, isPending: isDeleting } = useDeleteNote({
     mutation: {
       onSuccess: (_data, vars) => {
-        qc.setQueryData(getListNotesQueryKey(), (old: NoteItem[] | undefined) =>
-          old?.filter((n) => n.id !== vars.id),
-        );
+        setAllNotes((prev) => prev.filter((n) => n.id !== vars.id));
         toast({ title: "Note deleted" });
         setDeleteNote(null);
       },
@@ -299,7 +318,7 @@ export default function Notes() {
     });
   }
 
-  function openEdit(note: NoteItem) {
+  function openEdit(note: Note) {
     setEditNote(note);
     setEditForm({
       title: note.title,
@@ -355,72 +374,100 @@ export default function Notes() {
       </div>
 
       {/* List */}
-      {isLoading ? (
+      {isLoading && allNotes.length === 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {[1, 2, 3, 4, 5, 6].map((i) => (
             <Skeleton key={i} className="h-48 rounded-xl" />
           ))}
         </div>
       ) : filtered.length > 0 ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {filtered.map((note) => (
-            <Card
-              key={note.id}
-              className="hover:bg-muted/50 transition-colors overflow-hidden flex flex-col group relative"
-            >
-              <div className="absolute top-3 right-3 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity z-10">
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-7 w-7"
-                  aria-label="Edit note"
-                  onClick={(e) => { e.preventDefault(); openEdit(note as NoteItem); }}
-                >
-                  <Pencil className="h-3.5 w-3.5" />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-7 w-7 text-destructive hover:text-destructive"
-                  aria-label="Delete note"
-                  onClick={(e) => { e.preventDefault(); setDeleteNote(note as NoteItem); }}
-                >
-                  <Trash2 className="h-3.5 w-3.5" />
-                </Button>
-              </div>
-              <Link href={`/notes/${note.id}`} className="flex flex-col h-full">
-                <CardHeader className="pb-4">
-                  <div className="flex items-start justify-between pr-14">
-                    <div className="min-w-0">
-                      <Badge variant="secondary" className="mb-2">{note.topic}</Badge>
-                      <CardTitle className="text-xl line-clamp-1">{note.title}</CardTitle>
-                    </div>
-                    {note.videoUrl && (
-                      <div
-                        className="w-10 h-10 shrink-0 rounded-full bg-primary/10 flex items-center justify-center text-primary ml-2"
-                        aria-label="Video available"
-                      >
-                        <PlayCircle className="w-5 h-5 fill-primary/20" />
+        <>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {filtered.map((note) => (
+              <Card
+                key={note.id}
+                className="hover:bg-muted/50 transition-colors overflow-hidden flex flex-col group relative"
+              >
+                <div className="absolute top-3 right-3 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity z-10">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-7 w-7"
+                    aria-label="Edit note"
+                    onClick={(e) => { e.preventDefault(); openEdit(note); }}
+                  >
+                    <Pencil className="h-3.5 w-3.5" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-7 w-7 text-destructive hover:text-destructive"
+                    aria-label="Delete note"
+                    onClick={(e) => { e.preventDefault(); setDeleteNote(note); }}
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </Button>
+                </div>
+                <Link href={`/notes/${note.id}`} className="flex flex-col h-full">
+                  <CardHeader className="pb-4">
+                    <div className="flex items-start justify-between pr-14">
+                      <div className="min-w-0">
+                        <Badge variant="secondary" className="mb-2">{note.topic}</Badge>
+                        <CardTitle className="text-xl line-clamp-1">{note.title}</CardTitle>
                       </div>
-                    )}
-                  </div>
-                  <CardDescription className="flex items-center gap-2 mt-2">
-                    <BookOpen className="w-3.5 h-3.5" />
-                    <span>{note.courseName}</span>
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="flex-1 flex flex-col justify-end">
-                  <div className="text-sm text-muted-foreground/80 line-clamp-2 mb-4">
-                    {note.content}
-                  </div>
-                  <div className="text-xs text-muted-foreground font-medium uppercase tracking-wider mt-auto">
-                    Added {formatDate(note.createdAt)}
-                  </div>
-                </CardContent>
-              </Link>
-            </Card>
-          ))}
-        </div>
+                      {note.videoUrl && (
+                        <div
+                          className="w-10 h-10 shrink-0 rounded-full bg-primary/10 flex items-center justify-center text-primary ml-2"
+                          aria-label="Video available"
+                        >
+                          <PlayCircle className="w-5 h-5 fill-primary/20" />
+                        </div>
+                      )}
+                    </div>
+                    <CardDescription className="flex items-center gap-2 mt-2">
+                      <BookOpen className="w-3.5 h-3.5" />
+                      <span>{note.courseName}</span>
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="flex-1 flex flex-col justify-end">
+                    <div className="text-sm text-muted-foreground/80 line-clamp-2 mb-4">
+                      {note.content}
+                    </div>
+                    <div className="text-xs text-muted-foreground font-medium uppercase tracking-wider mt-auto">
+                      Added {formatDate(note.createdAt)}
+                    </div>
+                  </CardContent>
+                </Link>
+              </Card>
+            ))}
+          </div>
+
+          <div className="flex items-center justify-center pt-2">
+            {hasMore ? (
+              <Button
+                variant="outline"
+                onClick={handleLoadMore}
+                disabled={isFetching}
+                className="min-w-[160px]"
+              >
+                {isFetching ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Loading…
+                  </>
+                ) : (
+                  "Load More"
+                )}
+              </Button>
+            ) : (
+              allNotes.length > PAGE_LIMIT && (
+                <p className="text-sm text-muted-foreground">
+                  All {allNotes.length} note{allNotes.length !== 1 ? "s" : ""} loaded
+                </p>
+              )
+            )}
+          </div>
+        </>
       ) : (
         <Card className="border-dashed">
           <CardContent className="flex flex-col items-center justify-center h-64 space-y-4">

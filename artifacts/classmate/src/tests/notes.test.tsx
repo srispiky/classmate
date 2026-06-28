@@ -106,14 +106,21 @@ const mockState: {
   detail: { ...NOTES[0] },
 };
 
+// ── Stable paginated stubs ────────────────────────────────────────────────────
+// Getter-based: wrapper object is always the same reference (prevents infinite
+// useEffect loops), while items dynamically reflects the current mockState.
+const NOTES_PAGINATION = { nextCursor: null as null, hasMore: false, limit: 50 };
+const notesPageStub = { get items() { return mockState.notes; }, pagination: NOTES_PAGINATION };
+const coursesPageStub = { items: COURSES as unknown[], pagination: NOTES_PAGINATION };
+
 vi.mock("@workspace/api-client-react", () => ({
-  useListNotes: () => ({ data: mockState.notes, isLoading: false }),
+  useListNotes: () => ({ data: notesPageStub, isLoading: false, isFetching: false }),
   useGetNote: (id: number) => ({
     data: mockState.detail.id === id ? mockState.detail : undefined,
     isLoading: false,
     isError: false,
   }),
-  useListCourses: () => ({ data: COURSES }),
+  useListCourses: () => ({ data: coursesPageStub, isFetching: false }),
   useCreateNote: ({
     mutation,
   }: {
@@ -376,11 +383,11 @@ describe("Notes list page", () => {
     expect((payload as { data: { title: string } }).data.title).toBe("Updated Title");
   });
 
-  it("updates list cache on edit success", async () => {
+  it("updates detail cache and local list on edit success", async () => {
     const updated = { ...NOTES[0], title: "Updated Title" };
     mockUpdate.mockImplementationOnce(
-      (_args: unknown, m: { onSuccess?: (d: unknown) => void }) => {
-        m.onSuccess?.(updated);
+      (_args: unknown, m: { onSuccess?: (d: unknown, v: { id: number }) => void }) => {
+        m.onSuccess?.(updated, { id: updated.id });
       },
     );
     renderNotes();
@@ -388,10 +395,12 @@ describe("Notes list page", () => {
     await screen.findByRole("dialog");
     await userEvent.click(screen.getByRole("button", { name: /save changes/i }));
 
+    // Detail cache updated, dialog closed
     expect(mockSetQueryData).toHaveBeenCalledWith(
-      ["/api/notes"],
-      expect.any(Function),
+      ["/api/notes/1"],
+      updated,
     );
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   });
 
   it("shows validation error in edit dialog when title is cleared", async () => {
@@ -431,7 +440,7 @@ describe("Notes list page", () => {
     expect(within(alertDialog).getByRole("heading", { name: "Delete Note" })).toBeInTheDocument();
   });
 
-  it("calls useDeleteNote and filters list cache on confirm", async () => {
+  it("calls useDeleteNote and removes item from local list on confirm", async () => {
     mockDelete.mockImplementationOnce(
       (args: unknown, m: { onSuccess?: (d: unknown, v: { id: number }) => void }) => {
         m.onSuccess?.({}, args as { id: number });
@@ -444,7 +453,10 @@ describe("Notes list page", () => {
 
     expect(mockDelete).toHaveBeenCalledOnce();
     expect((mockDelete.mock.calls[0][0] as { id: number }).id).toBe(1);
-    expect(mockSetQueryData).toHaveBeenCalledWith(["/api/notes"], expect.any(Function));
+    // Local state updated — no setQueryData needed for list (detail cache untouched)
+    expect(mockSetQueryData).not.toHaveBeenCalledWith(["/api/notes"], expect.any(Function));
+    // Dialog dismissed
+    expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument();
   });
 });
 

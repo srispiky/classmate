@@ -1,0 +1,228 @@
+# Sprint 10 Chunk 4 — Platform-Wide Pagination Expansion
+
+Before making changes:
+
+1. Review:
+   - Sprint 10 Chunk 1 Architecture Review
+   - Sprint 10 Chunk 2 Backend Pagination Foundation
+   - Sprint 10 Chunk 3 Frontend Pagination Migration
+   - OpenAPI pagination contracts
+   - generated hooks
+
+2. Review modules:
+
+   - courses
+   - notes
+   - announcements
+   - reporting endpoints
+
+3. Follow established architecture:
+
+   - OpenAPI-first
+   - generated clients
+   - React Query
+   - Layer 1 authorization
+   - Layer 2 scoping
+   - Layer 3 ownership validation
+   - soft-delete filtering
+
+4. Keep changes focused on pagination only.
+
+--------------------------------------------------
+OBJECTIVE
+--------------------------------------------------
+
+Complete platform-wide pagination.
+
+Current status:
+
+Paginated:
+- students
+- assignments
+- assessments
+
+Remaining:
+
+- courses
+- notes
+- announcements
+- reporting result sets
+
+--------------------------------------------------
+PART 1 — ARCHITECTURE REVIEW
+--------------------------------------------------
+
+Review existing list endpoints.
+
+Determine whether current pagination
+foundation can be reused without changes.
+
+Avoid introducing new pagination models.
+
+Maintain a single pagination standard.
+
+--------------------------------------------------
+PART 2 — COURSES PAGINATION
+--------------------------------------------------
+
+Implement pagination for:
+
+GET /courses
+
+Requirements:
+
+- preserve teacher scoping
+- preserve admin visibility
+- preserve search/filtering
+
+Verify:
+
+Teacher A never sees Teacher B courses.
+
+--------------------------------------------------
+PART 3 — NOTES PAGINATION
+--------------------------------------------------
+
+Implement pagination for:
+
+GET /notes
+
+Requirements:
+
+- preserve ownership validation
+- preserve search
+- preserve course filtering
+
+Verify:
+
+scope filtering remains intact.
+
+--------------------------------------------------
+PART 4 — ANNOUNCEMENTS PAGINATION
+--------------------------------------------------
+
+Implement pagination for:
+
+GET /announcements
+
+Requirements:
+
+- preserve teacher/admin behavior
+- preserve filtering
+
+Verify:
+
+no authorization regressions.
+
+--------------------------------------------------
+PART 5 — REPORTING SCALE REVIEW
+--------------------------------------------------
+
+Review:
+
+- student summary reports
+- course summary reports
+
+Determine:
+
+whether large result sets require pagination.
+
+If yes:
+
+implement paginated reporting responses
+using existing pagination contracts.
+
+If not:
+
+document rationale.
+
+--------------------------------------------------
+PART 6 — FRONTEND MIGRATION
+--------------------------------------------------
+
+Update:
+
+- course list page
+- notes page
+- announcements page
+
+Requirements:
+
+- use generated hooks
+- preserve existing UX
+- implement same pagination pattern
+  selected in Chunk 3
+
+--------------------------------------------------
+PART 7 — PERFORMANCE VALIDATION
+--------------------------------------------------
+
+Create test dataset:
+
+- 500 courses
+- 5,000 notes
+- 5,000 announcements
+
+Measure:
+
+- query behavior
+- response size reduction
+- page load improvements
+
+Document findings.
+
+--------------------------------------------------
+PART 8 — SECURITY VALIDATION
+--------------------------------------------------
+
+Verify:
+
+Pagination never bypasses:
+
+- Layer 1
+- Layer 2
+- Layer 3
+
+Add tests proving:
+
+Teacher A cannot paginate into
+Teacher B data.
+
+--------------------------------------------------
+PART 9 — REGRESSION TESTING
+--------------------------------------------------
+
+Run:
+
+- authorization suite
+- pagination suite
+- reporting suite
+- frontend tests
+
+Verify:
+
+no regressions.
+
+--------------------------------------------------
+PART 10 — DELIVERABLE
+--------------------------------------------------
+
+Provide:
+
+1. Files modified
+2. Endpoints paginated
+3. Frontend pages updated
+4. Security validation results
+5. Performance findings
+6. Test results
+7. Remaining scale-readiness gaps
+
+--------------------------------------------------
+GIT REQUIREMENT
+--------------------------------------------------
+
+git add .
+git commit -m "feat(sprint10): expand pagination across platform modules"
+git push origin main
+
+Include commit hash in report.

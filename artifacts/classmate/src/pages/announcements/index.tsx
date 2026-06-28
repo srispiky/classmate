@@ -1,7 +1,7 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Link } from "wouter";
 import { useQueryClient } from "@tanstack/react-query";
-import { Megaphone, Search, Pencil, Trash2, Plus, Bell } from "lucide-react";
+import { Megaphone, Search, Pencil, Trash2, Plus, Bell, Loader2 } from "lucide-react";
 import {
   useListAnnouncements,
   useCreateAnnouncement,
@@ -73,6 +73,8 @@ const EMPTY_FORM: AnnouncementFormState = {
   courseId: "none",
   priority: "normal",
 };
+
+const PAGE_LIMIT = 50;
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -240,25 +242,52 @@ function AnnouncementDialog({
 export default function Announcements() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
-
-  const { data: announcements, isLoading } = useListAnnouncements();
-  const { data: courses } = useListCourses();
   const { data: me } = useGetMe();
+
+  // ── Pagination state ─────────────────────────────────────────────────────────
+  const [cursor, setCursor] = useState<string | undefined>(undefined);
+  const [allAnnouncements, setAllAnnouncements] = useState<Announcement[]>([]);
+  const appendModeRef = useRef(false);
+
+  const { data: pageData, isLoading, isFetching } = useListAnnouncements({
+    cursor,
+    limit: PAGE_LIMIT,
+  });
+
+  useEffect(() => {
+    if (!pageData?.items) return;
+    if (appendModeRef.current) {
+      setAllAnnouncements((prev) => [...prev, ...pageData.items]);
+    } else {
+      setAllAnnouncements(pageData.items);
+    }
+    appendModeRef.current = false;
+  }, [pageData]);
+
+  function handleLoadMore() {
+    const next = pageData?.pagination?.nextCursor;
+    if (!next) return;
+    appendModeRef.current = true;
+    setCursor(next);
+  }
+
+  function resetPagination() {
+    appendModeRef.current = false;
+    setCursor(undefined);
+  }
+
+  const hasMore = pageData?.pagination?.hasMore ?? false;
+
+  // ── Courses for dropdown (large first page — teachers rarely have 50+ courses) ──
+  const { data: coursesData } = useListCourses({ limit: 100 });
+  const courses = coursesData?.items ?? [];
 
   // ── Filters ──────────────────────────────────────────────────────────────────
   const [search, setSearch] = useState("");
   const [priorityFilter, setPriorityFilter] = useState<"all" | "normal" | "urgent">("all");
   const [courseFilter, setCourseFilter] = useState("all");
 
-  // ── Dialog state ─────────────────────────────────────────────────────────────
-  const [createOpen, setCreateOpen] = useState(false);
-  const [createError, setCreateError] = useState("");
-  const [editAnnouncement, setEditAnnouncement] = useState<Announcement | null>(null);
-  const [editError, setEditError] = useState("");
-  const [deleteAnnouncement, setDeleteAnnouncement] = useState<Announcement | null>(null);
-
-  // ── Filtered list ────────────────────────────────────────────────────────────
-  const filtered = (announcements ?? []).filter((a) => {
+  const filtered = allAnnouncements.filter((a) => {
     const q = search.toLowerCase();
     const matchSearch =
       !search ||
@@ -270,10 +299,18 @@ export default function Announcements() {
     return matchSearch && matchPriority && matchCourse;
   });
 
+  // ── Dialog state ─────────────────────────────────────────────────────────────
+  const [createOpen, setCreateOpen] = useState(false);
+  const [createError, setCreateError] = useState("");
+  const [editAnnouncement, setEditAnnouncement] = useState<Announcement | null>(null);
+  const [editError, setEditError] = useState("");
+  const [deleteAnnouncement, setDeleteAnnouncement] = useState<Announcement | null>(null);
+
   // ── Create ───────────────────────────────────────────────────────────────────
   const { mutate: doCreate, isPending: isCreating } = useCreateAnnouncement({
     mutation: {
       onSuccess: () => {
+        resetPagination();
         queryClient.invalidateQueries({ queryKey: getListAnnouncementsQueryKey() });
         toast({ title: "Announcement created" });
         setCreateOpen(false);
@@ -302,10 +339,8 @@ export default function Announcements() {
     mutation: {
       onSuccess: (updated, vars) => {
         queryClient.setQueryData(getGetAnnouncementQueryKey(vars.id), updated);
-        queryClient.setQueryData(
-          getListAnnouncementsQueryKey(),
-          (prev: Announcement[] | undefined) =>
-            prev?.map((a) => (a.id === vars.id ? updated : a)) ?? prev,
+        setAllAnnouncements((prev) =>
+          prev.map((a) => (a.id === vars.id ? updated : a)),
         );
         toast({ title: "Announcement updated" });
         setEditAnnouncement(null);
@@ -333,11 +368,7 @@ export default function Announcements() {
   const { mutate: doDelete, isPending: isDeleting } = useDeleteAnnouncement({
     mutation: {
       onSuccess: (_data, vars) => {
-        queryClient.setQueryData(
-          getListAnnouncementsQueryKey(),
-          (prev: Announcement[] | undefined) =>
-            prev?.filter((a) => a.id !== vars.id) ?? prev,
-        );
+        setAllAnnouncements((prev) => prev.filter((a) => a.id !== vars.id));
         toast({ title: "Announcement deleted" });
         setDeleteAnnouncement(null);
       },
@@ -405,7 +436,7 @@ export default function Announcements() {
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All Courses</SelectItem>
-            {(courses ?? []).map((c) => (
+            {courses.map((c) => (
               <SelectItem key={c.id} value={String(c.id)}>
                 {c.name}
               </SelectItem>
@@ -415,76 +446,104 @@ export default function Announcements() {
       </div>
 
       {/* List */}
-      {isLoading ? (
+      {isLoading && allAnnouncements.length === 0 ? (
         <div className="space-y-3">
           {[1, 2, 3].map((i) => (
             <Skeleton key={i} className="h-28 rounded-xl" />
           ))}
         </div>
       ) : filtered.length > 0 ? (
-        <div className="space-y-3">
-          {filtered.map((ann) => (
-            <Link key={ann.id} href={`/announcements/${ann.id}`}>
-              <Card className="hover:bg-muted/50 transition-colors cursor-pointer hover-elevate group">
-                <CardHeader className="pb-2">
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      {priorityBadge(ann.priority)}
-                      <CardTitle className="text-base leading-tight line-clamp-1">
-                        {ann.title}
-                      </CardTitle>
-                    </div>
-                    {/* Action buttons revealed on hover */}
-                    <div
-                      className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
-                      onClick={(e) => e.preventDefault()}
-                    >
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-7 w-7"
-                        title="Edit announcement"
-                        aria-label="Edit announcement"
-                        onClick={(e) => {
-                          e.preventDefault();
-                          setEditError("");
-                          setEditAnnouncement(ann);
-                        }}
+        <>
+          <div className="space-y-3">
+            {filtered.map((ann) => (
+              <Link key={ann.id} href={`/announcements/${ann.id}`}>
+                <Card className="hover:bg-muted/50 transition-colors cursor-pointer hover-elevate group">
+                  <CardHeader className="pb-2">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        {priorityBadge(ann.priority)}
+                        <CardTitle className="text-base leading-tight line-clamp-1">
+                          {ann.title}
+                        </CardTitle>
+                      </div>
+                      {/* Action buttons revealed on hover */}
+                      <div
+                        className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
+                        onClick={(e) => e.preventDefault()}
                       >
-                        <Pencil className="w-3.5 h-3.5" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-7 w-7 text-destructive hover:text-destructive"
-                        title="Delete announcement"
-                        aria-label="Delete announcement"
-                        disabled={isDeleting}
-                        onClick={(e) => {
-                          e.preventDefault();
-                          setDeleteAnnouncement(ann);
-                        }}
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7"
+                          title="Edit announcement"
+                          aria-label="Edit announcement"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            setEditError("");
+                            setEditAnnouncement(ann);
+                          }}
+                        >
+                          <Pencil className="w-3.5 h-3.5" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7 text-destructive hover:text-destructive"
+                          title="Delete announcement"
+                          aria-label="Delete announcement"
+                          disabled={isDeleting}
+                          onClick={(e) => {
+                            e.preventDefault();
+                            setDeleteAnnouncement(ann);
+                          }}
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </Button>
+                      </div>
                     </div>
-                  </div>
-                  <CardDescription className="text-xs">
-                    {ann.courseName} · {ann.authorName}
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="pt-0">
-                  <p className="text-sm text-muted-foreground line-clamp-2 mb-3">
-                    {ann.content}
-                  </p>
-                  <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">
-                    {formatDate(ann.createdAt)}
-                  </p>
-                </CardContent>
-              </Card>
-            </Link>
-          ))}
-        </div>
+                    <CardDescription className="text-xs">
+                      {ann.courseName} · {ann.authorName}
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="pt-0">
+                    <p className="text-sm text-muted-foreground line-clamp-2 mb-3">
+                      {ann.content}
+                    </p>
+                    <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">
+                      {formatDate(ann.createdAt)}
+                    </p>
+                  </CardContent>
+                </Card>
+              </Link>
+            ))}
+          </div>
+
+          <div className="flex items-center justify-center pt-2">
+            {hasMore ? (
+              <Button
+                variant="outline"
+                onClick={handleLoadMore}
+                disabled={isFetching}
+                className="min-w-[160px]"
+              >
+                {isFetching ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Loading…
+                  </>
+                ) : (
+                  "Load More"
+                )}
+              </Button>
+            ) : (
+              allAnnouncements.length > PAGE_LIMIT && (
+                <p className="text-sm text-muted-foreground">
+                  All {allAnnouncements.length} announcement{allAnnouncements.length !== 1 ? "s" : ""} loaded
+                </p>
+              )
+            )}
+          </div>
+        </>
       ) : (
         <Card className="border-dashed">
           <CardContent className="flex flex-col items-center justify-center h-64 space-y-4">
@@ -520,7 +579,7 @@ export default function Announcements() {
         open={createOpen}
         onClose={() => setCreateOpen(false)}
         initial={EMPTY_FORM}
-        courses={courses ?? []}
+        courses={courses}
         onSubmit={handleCreate}
         isPending={isCreating}
         error={createError}
@@ -542,7 +601,7 @@ export default function Announcements() {
               }
             : EMPTY_FORM
         }
-        courses={courses ?? []}
+        courses={courses}
         onSubmit={handleEdit}
         isPending={isUpdating}
         error={editError}

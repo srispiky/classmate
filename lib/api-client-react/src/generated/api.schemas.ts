@@ -89,6 +89,81 @@ export interface PaginatedAssessmentList {
   pagination: PaginationMetadata;
 }
 
+export type CourseStatus = (typeof CourseStatus)[keyof typeof CourseStatus];
+
+export const CourseStatus = {
+  active: "active",
+  archived: "archived",
+} as const;
+
+export interface Course {
+  id: number;
+  name: string;
+  description: string;
+  teacherName: string;
+  teacherId?: number | null;
+  subject: string;
+  grade?: string | null;
+  academicYear?: string | null;
+  studentCount: number;
+  status: CourseStatus;
+  createdAt: string;
+  updatedAt: string;
+  createdBy?: number | null;
+  updatedBy?: number | null;
+}
+
+export interface PaginatedCourseList {
+  items: Course[];
+  pagination: PaginationMetadata;
+}
+
+export interface Note {
+  id: number;
+  title: string;
+  content: string;
+  courseId: number;
+  courseName: string;
+  topic: string;
+  videoUrl?: string | null;
+  createdAt: string;
+  updatedAt?: string;
+  createdBy?: number | null;
+  updatedBy?: number | null;
+}
+
+export interface PaginatedNoteList {
+  items: Note[];
+  pagination: PaginationMetadata;
+}
+
+export type AnnouncementPriority =
+  (typeof AnnouncementPriority)[keyof typeof AnnouncementPriority];
+
+export const AnnouncementPriority = {
+  normal: "normal",
+  urgent: "urgent",
+} as const;
+
+export interface Announcement {
+  id: number;
+  title: string;
+  content: string;
+  courseId: number;
+  courseName: string;
+  authorName: string;
+  priority: AnnouncementPriority;
+  createdAt: string;
+  updatedAt?: string;
+  createdBy?: number | null;
+  updatedBy?: number | null;
+}
+
+export interface PaginatedAnnouncementList {
+  items: Announcement[];
+  pagination: PaginationMetadata;
+}
+
 export interface Enrollment {
   id: number;
   courseId: number;
@@ -195,30 +270,6 @@ export interface StudentProgress {
   trend?: StudentProgressTrend;
 }
 
-export type CourseStatus = (typeof CourseStatus)[keyof typeof CourseStatus];
-
-export const CourseStatus = {
-  active: "active",
-  archived: "archived",
-} as const;
-
-export interface Course {
-  id: number;
-  name: string;
-  description: string;
-  teacherName: string;
-  teacherId?: number | null;
-  subject: string;
-  grade?: string | null;
-  academicYear?: string | null;
-  studentCount: number;
-  status: CourseStatus;
-  createdAt: string;
-  updatedAt: string;
-  createdBy?: number | null;
-  updatedBy?: number | null;
-}
-
 export type CreateCourseBodyStatus =
   (typeof CreateCourseBodyStatus)[keyof typeof CreateCourseBodyStatus];
 
@@ -280,28 +331,6 @@ export interface UpdateAssignmentBody {
   feedback?: string;
 }
 
-export type AnnouncementPriority =
-  (typeof AnnouncementPriority)[keyof typeof AnnouncementPriority];
-
-export const AnnouncementPriority = {
-  normal: "normal",
-  urgent: "urgent",
-} as const;
-
-export interface Announcement {
-  id: number;
-  title: string;
-  content: string;
-  courseId: number;
-  courseName: string;
-  authorName: string;
-  priority: AnnouncementPriority;
-  createdAt: string;
-  updatedAt?: string;
-  createdBy?: number | null;
-  updatedBy?: number | null;
-}
-
 export type AnnouncementInputPriority =
   (typeof AnnouncementInputPriority)[keyof typeof AnnouncementInputPriority];
 
@@ -331,20 +360,6 @@ export interface AnnouncementUpdate {
   content?: string;
   authorName?: string;
   priority?: AnnouncementUpdatePriority;
-}
-
-export interface Note {
-  id: number;
-  title: string;
-  content: string;
-  courseId: number;
-  courseName: string;
-  topic: string;
-  videoUrl?: string | null;
-  createdAt: string;
-  updatedAt?: string;
-  createdBy?: number | null;
-  updatedBy?: number | null;
 }
 
 export interface CreateNoteBody {
@@ -828,6 +843,17 @@ export type ListStudentsParams = {
   cursor?: string;
 };
 
+export type ListCoursesParams = {
+  /**
+   * Page size (default 50, max 100).
+   */
+  limit?: number;
+  /**
+   * Opaque cursor from a previous response's pagination.nextCursor. Omit for the first page.
+   */
+  cursor?: string;
+};
+
 export type ListAssignmentsParams = {
   courseId?: number;
   studentId?: number;
@@ -845,10 +871,26 @@ export type ListAssignmentsParams = {
 
 export type ListNotesParams = {
   courseId?: number;
+  /**
+   * Page size (default 50, max 100).
+   */
+  limit?: number;
+  /**
+   * Opaque cursor from a previous response's pagination.nextCursor. Omit for the first page.
+   */
+  cursor?: string;
 };
 
 export type ListAnnouncementsParams = {
   courseId?: number;
+  /**
+   * Page size (default 50, max 100).
+   */
+  limit?: number;
+  /**
+   * Opaque cursor from a previous response's pagination.nextCursor. Omit for the first page.
+   */
+  cursor?: string;
 };
 
 export type ListAssessmentsParams = {

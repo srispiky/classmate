@@ -15,7 +15,8 @@ export type { CourseRow };
  * (empty enrolledCourseIds), the DB returns zero rows.
  */
 export async function listStudentCourses(scope: ScopeContext): Promise<CourseRow[]> {
-  return listCourses(scope);
+  const result = await listCourses(scope, {}, { limit: 200 });
+  return result.items;
 }
 
 /**

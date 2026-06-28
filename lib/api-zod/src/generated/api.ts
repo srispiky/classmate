@@ -334,23 +334,51 @@ export const GetStudentProgressTimelineResponse = zod.object({
 /**
  * @summary List all courses
  */
-export const ListCoursesResponseItem = zod.object({
-  id: zod.number(),
-  name: zod.string(),
-  description: zod.string(),
-  teacherName: zod.string(),
-  teacherId: zod.number().nullish(),
-  subject: zod.string(),
-  grade: zod.string().nullish(),
-  academicYear: zod.string().nullish(),
-  studentCount: zod.number(),
-  status: zod.enum(["active", "archived"]),
-  createdAt: zod.string(),
-  updatedAt: zod.string(),
-  createdBy: zod.number().nullish(),
-  updatedBy: zod.number().nullish(),
+export const ListCoursesQueryParams = zod.object({
+  limit: zod.coerce
+    .number()
+    .optional()
+    .describe("Page size (default 50, max 100)."),
+  cursor: zod.coerce
+    .string()
+    .optional()
+    .describe(
+      "Opaque cursor from a previous response's pagination.nextCursor. Omit for the first page.",
+    ),
 });
-export const ListCoursesResponse = zod.array(ListCoursesResponseItem);
+
+export const ListCoursesResponse = zod.object({
+  items: zod.array(
+    zod.object({
+      id: zod.number(),
+      name: zod.string(),
+      description: zod.string(),
+      teacherName: zod.string(),
+      teacherId: zod.number().nullish(),
+      subject: zod.string(),
+      grade: zod.string().nullish(),
+      academicYear: zod.string().nullish(),
+      studentCount: zod.number(),
+      status: zod.enum(["active", "archived"]),
+      createdAt: zod.string(),
+      updatedAt: zod.string(),
+      createdBy: zod.number().nullish(),
+      updatedBy: zod.number().nullish(),
+    }),
+  ),
+  pagination: zod.object({
+    nextCursor: zod
+      .string()
+      .nullable()
+      .describe(
+        "Opaque cursor for the next page. Null when no further pages exist.",
+      ),
+    hasMore: zod
+      .boolean()
+      .describe("True when additional records exist beyond this page."),
+    limit: zod.number().describe("Page size used for this response."),
+  }),
+});
 
 /**
  * @summary Create a course
@@ -589,22 +617,47 @@ export const DeleteAssignmentParams = zod.object({
  */
 export const ListNotesQueryParams = zod.object({
   courseId: zod.coerce.number().optional(),
+  limit: zod.coerce
+    .number()
+    .optional()
+    .describe("Page size (default 50, max 100)."),
+  cursor: zod.coerce
+    .string()
+    .optional()
+    .describe(
+      "Opaque cursor from a previous response's pagination.nextCursor. Omit for the first page.",
+    ),
 });
 
-export const ListNotesResponseItem = zod.object({
-  id: zod.number(),
-  title: zod.string(),
-  content: zod.string(),
-  courseId: zod.number(),
-  courseName: zod.string(),
-  topic: zod.string(),
-  videoUrl: zod.string().nullish(),
-  createdAt: zod.string(),
-  updatedAt: zod.string().optional(),
-  createdBy: zod.number().nullish(),
-  updatedBy: zod.number().nullish(),
+export const ListNotesResponse = zod.object({
+  items: zod.array(
+    zod.object({
+      id: zod.number(),
+      title: zod.string(),
+      content: zod.string(),
+      courseId: zod.number(),
+      courseName: zod.string(),
+      topic: zod.string(),
+      videoUrl: zod.string().nullish(),
+      createdAt: zod.string(),
+      updatedAt: zod.string().optional(),
+      createdBy: zod.number().nullish(),
+      updatedBy: zod.number().nullish(),
+    }),
+  ),
+  pagination: zod.object({
+    nextCursor: zod
+      .string()
+      .nullable()
+      .describe(
+        "Opaque cursor for the next page. Null when no further pages exist.",
+      ),
+    hasMore: zod
+      .boolean()
+      .describe("True when additional records exist beyond this page."),
+    limit: zod.number().describe("Page size used for this response."),
+  }),
 });
-export const ListNotesResponse = zod.array(ListNotesResponseItem);
 
 /**
  * @summary Create a lesson note
@@ -678,24 +731,47 @@ export const DeleteNoteParams = zod.object({
  */
 export const ListAnnouncementsQueryParams = zod.object({
   courseId: zod.coerce.number().optional(),
+  limit: zod.coerce
+    .number()
+    .optional()
+    .describe("Page size (default 50, max 100)."),
+  cursor: zod.coerce
+    .string()
+    .optional()
+    .describe(
+      "Opaque cursor from a previous response's pagination.nextCursor. Omit for the first page.",
+    ),
 });
 
-export const ListAnnouncementsResponseItem = zod.object({
-  id: zod.number(),
-  title: zod.string(),
-  content: zod.string(),
-  courseId: zod.number(),
-  courseName: zod.string(),
-  authorName: zod.string(),
-  priority: zod.enum(["normal", "urgent"]),
-  createdAt: zod.string(),
-  updatedAt: zod.string().optional(),
-  createdBy: zod.number().nullish(),
-  updatedBy: zod.number().nullish(),
+export const ListAnnouncementsResponse = zod.object({
+  items: zod.array(
+    zod.object({
+      id: zod.number(),
+      title: zod.string(),
+      content: zod.string(),
+      courseId: zod.number(),
+      courseName: zod.string(),
+      authorName: zod.string(),
+      priority: zod.enum(["normal", "urgent"]),
+      createdAt: zod.string(),
+      updatedAt: zod.string().optional(),
+      createdBy: zod.number().nullish(),
+      updatedBy: zod.number().nullish(),
+    }),
+  ),
+  pagination: zod.object({
+    nextCursor: zod
+      .string()
+      .nullable()
+      .describe(
+        "Opaque cursor for the next page. Null when no further pages exist.",
+      ),
+    hasMore: zod
+      .boolean()
+      .describe("True when additional records exist beyond this page."),
+    limit: zod.number().describe("Page size used for this response."),
+  }),
 });
-export const ListAnnouncementsResponse = zod.array(
-  ListAnnouncementsResponseItem,
-);
 
 /**
  * @summary Create a course announcement

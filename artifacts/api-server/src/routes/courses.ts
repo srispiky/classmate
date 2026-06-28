@@ -1,7 +1,11 @@
 import { Router, type IRouter } from "express";
 import { eq } from "drizzle-orm";
 import { db, coursesTable, createCourseInputSchema, updateCourseInputSchema } from "@workspace/db";
-import { GetCourseParams } from "@workspace/api-zod";
+import {
+  GetCourseParams,
+  ListCoursesQueryParams,
+  ListCoursesResponse,
+} from "@workspace/api-zod";
 import { buildScopeContext, type ClassmateSession } from "../lib/scope-context";
 import { ownershipDenied } from "../lib/query-contracts";
 import { PolicyAuthorizationError } from "../lib/policies";
@@ -34,13 +38,29 @@ function serializeCourse(c: CourseRow) {
 
 // Layer 1: only admin and teacher may access the teacher-facing course list.
 // Student/parent course access is served by /student/courses instead.
+// Pagination: cursor-based, (name ASC, id ASC). Returns paginated envelope.
 router.get("/courses", requireRole("admin", "teacher"), async (req, res): Promise<void> => {
   const scope = buildScopeContext(req.session as ClassmateSession);
 
+  const queryParams = ListCoursesQueryParams.safeParse(req.query);
+  if (!queryParams.success) {
+    res.status(400).json({ error: queryParams.error.message });
+    return;
+  }
+
   // Layer 2 applied inside listCourses() via CourseScopePolicy.getScopeCondition().
   // Admin sees all; teacher filtered to ownedCourseIds. No in-memory filtering.
-  const courses = await listCourses(scope);
-  res.json(courses.map(serializeCourse));
+  const result = await listCourses(scope, {}, {
+    limit: queryParams.data.limit,
+    cursor: queryParams.data.cursor,
+  });
+
+  res.json(
+    ListCoursesResponse.parse({
+      items: result.items.map(serializeCourse),
+      pagination: result.pagination,
+    }),
+  );
 });
 
 // ── GET /api/courses/:id ──────────────────────────────────────────────────────

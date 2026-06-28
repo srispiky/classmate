@@ -42,6 +42,7 @@ function serializeAnnouncement(a: AnnouncementRow) {
 
 // Layer 1: only admin and teacher may access the teacher-facing announcement list.
 // Student/parent access is served by /student/announcements instead.
+// Pagination: cursor-based, (createdAt ASC, id ASC). Returns paginated envelope.
 router.get(
   "/announcements",
   requireRole("admin", "teacher"),
@@ -55,11 +56,18 @@ router.get(
     }
 
     // Layer 2: announcementPolicy.getScopeCondition() applied inside listAnnouncements().
-    const announcements = await listAnnouncements(scope, {
-      courseId: queryParams.data.courseId,
-    });
+    const result = await listAnnouncements(
+      scope,
+      { courseId: queryParams.data.courseId },
+      { limit: queryParams.data.limit, cursor: queryParams.data.cursor },
+    );
 
-    res.json(ListAnnouncementsResponse.parse(announcements.map(serializeAnnouncement)));
+    res.json(
+      ListAnnouncementsResponse.parse({
+        items: result.items.map(serializeAnnouncement),
+        pagination: result.pagination,
+      }),
+    );
   },
 );
 

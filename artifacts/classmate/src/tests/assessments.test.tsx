@@ -71,6 +71,9 @@ const STUDENTS = [
   { id: 21, name: "Bob", email: "bob@school.edu", grade: "10", enrolledCourseIds: [11], avatarUrl: null, createdAt: "", updatedAt: "", createdBy: null, updatedBy: null },
 ];
 
+// Stable paginated wrapper (prevents infinite useEffect loops via new-reference on every call)
+const COURSES_PAGE = { items: COURSES, pagination: PAGINATION_DONE };
+
 vi.mock("@workspace/api-client-react", () => ({
   useListAssessments: () => ({
     data: { items: ASSESSMENTS, pagination: PAGINATION_DONE },
@@ -82,7 +85,7 @@ vi.mock("@workspace/api-client-react", () => ({
     isLoading: false,
     isError: false,
   }),
-  useListCourses: () => ({ data: COURSES }),
+  useListCourses: () => ({ data: COURSES_PAGE, isFetching: false }),
   useListStudents: () => ({
     data: { items: STUDENTS, pagination: PAGINATION_DONE },
     isFetching: false,

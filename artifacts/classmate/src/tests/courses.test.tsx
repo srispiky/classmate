@@ -25,27 +25,36 @@ const mockDeleteCourse = vi.fn();
 const mockEnrollStudent = vi.fn();
 const mockUnenrollStudent = vi.fn();
 
+// ── Stable paginated mock data (module-level = same reference every render) ──
+// Without these, the mock factory creates new array references on every call,
+// causing an infinite render loop via useEffect([pageData]).
+const MOCK_PAGINATION = { nextCursor: null as null, hasMore: false, limit: 50 };
+const MOCK_COURSES_ITEMS = [
+  {
+    id: 1,
+    name: "Existing Course",
+    subject: "Science",
+    teacherName: "Ms. Smith",
+    description: "A science course",
+    studentCount: 2,
+    status: "active",
+    grade: "Grade 10",
+    academicYear: "2024-2025",
+    createdAt: "2024-01-01T00:00:00.000Z",
+    updatedAt: "2024-01-01T00:00:00.000Z",
+    createdBy: null as null,
+    updatedBy: null as null,
+    teacherId: 1,
+  },
+];
+const MOCK_COURSES_PAGE = { items: MOCK_COURSES_ITEMS, pagination: MOCK_PAGINATION };
+const MOCK_EMPTY_NOTES_PAGE = { items: [] as unknown[], pagination: MOCK_PAGINATION };
+
 vi.mock("@workspace/api-client-react", () => ({
   useListCourses: () => ({
-    data: [
-      {
-        id: 1,
-        name: "Existing Course",
-        subject: "Science",
-        teacherName: "Ms. Smith",
-        description: "A science course",
-        studentCount: 2,
-        status: "active",
-        grade: "Grade 10",
-        academicYear: "2024-2025",
-        createdAt: "2024-01-01T00:00:00.000Z",
-        updatedAt: "2024-01-01T00:00:00.000Z",
-        createdBy: null,
-        updatedBy: null,
-        teacherId: 1,
-      },
-    ],
+    data: MOCK_COURSES_PAGE,
     isLoading: false,
+    isFetching: false,
   }),
   useGetCourse: (_id: number) => ({
     data: {
@@ -77,7 +86,7 @@ vi.mock("@workspace/api-client-react", () => ({
     isLoading: false,
   }),
   useListAssignments: () => ({ data: { items: [], pagination: { nextCursor: null, hasMore: false, limit: 50 } }, isLoading: false }),
-  useListNotes: () => ({ data: [], isLoading: false }),
+  useListNotes: () => ({ data: MOCK_EMPTY_NOTES_PAGE, isLoading: false, isFetching: false }),
   useGetMe: () => ({ data: { id: 1, username: "teacher1", role: "teacher", displayName: "Teacher" } }),
   useCreateCourse: ({ mutation }: { mutation: { onSuccess?: () => void; onError?: (e: unknown) => void } }) => ({
     mutate: (args: unknown) => mockCreateCourse(args, mutation),

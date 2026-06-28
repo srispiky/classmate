@@ -8,4 +8,12 @@
 
 export type ListNotesParams = {
   courseId?: number;
+  /**
+   * Page size (default 50, max 100).
+   */
+  limit?: number;
+  /**
+   * Opaque cursor from a previous response's pagination.nextCursor. Omit for the first page.
+   */
+  cursor?: string;
 };
