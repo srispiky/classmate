@@ -9,8 +9,6 @@ import {
 } from "@workspace/db";
 import { buildScopeContext, type ClassmateSession } from "../lib/scope-context";
 import { requireRole } from "../middleware/require-role";
-import { parentScopePolicy } from "../lib/policies/parent-scope-policy";
-import { PolicyAuthorizationError } from "../lib/policies/resource-scope-policy";
 import { computeRiskLevel, computeTrend } from "../services/progress-analytics.service";
 import {
   GetParentDashboardResponse,
@@ -30,33 +28,42 @@ const router: IRouter = Router();
  * Returns `true` if access was denied (caller must return early).
  * Maps denials to 404 (IDOR-safe — parent must not learn whether a student
  * exists at all if they are not linked to them).
+ *
+ * Re-validates the guardian link against the DB on every request so that a
+ * removed guardian link or a soft-deleted student is rejected immediately,
+ * even within an active parent session whose childStudentIds may be stale.
  */
 async function applyParentGuard(
   scope: ReturnType<typeof buildScopeContext>,
   studentId: number,
   res: import("express").Response,
 ): Promise<boolean> {
-  const [student] = await db
-    .select({ id: studentsTable.id })
-    .from(studentsTable)
-    .where(and(eq(studentsTable.id, studentId), isNull(studentsTable.deletedAt)))
-    .limit(1);
+  // Run both checks in parallel — student existence and live guardian link.
+  const [studentRows, guardianRows] = await Promise.all([
+    db
+      .select({ id: studentsTable.id })
+      .from(studentsTable)
+      .where(and(eq(studentsTable.id, studentId), isNull(studentsTable.deletedAt)))
+      .limit(1),
+    db
+      .select({ studentId: studentGuardiansTable.studentId })
+      .from(studentGuardiansTable)
+      .where(
+        and(
+          eq(studentGuardiansTable.userId, scope.userId),
+          eq(studentGuardiansTable.studentId, studentId),
+        ),
+      )
+      .limit(1),
+  ]);
 
-  if (!student) {
+  // Both conditions must hold: student is active AND guardian link still exists.
+  if (studentRows.length === 0 || guardianRows.length === 0) {
     res.status(404).json({ error: "Student not found" });
     return true;
   }
 
-  try {
-    parentScopePolicy.validateAccess(scope, { id: studentId });
-    return false;
-  } catch (err) {
-    if (err instanceof PolicyAuthorizationError) {
-      res.status(404).json({ error: "Student not found" });
-      return true;
-    }
-    throw err;
-  }
+  return false;
 }
 
 /**
@@ -64,34 +71,38 @@ async function applyParentGuard(
  *
  * Returns an analytics summary card for every student linked to the parent.
  *
- * Performance: 4 parallel queries (students, guardian rows, all assignments,
- * all assessments) — no N+1. Analytics computed in-process using
- * ProgressAnalyticsService helpers.
+ * Guardian links are re-validated on each request against the live
+ * student_guardians table so that a removed link or soft-deleted student
+ * is excluded immediately, even within an active parent session.
  *
  * Layer 1: requireRole("parent").
- * Layer 2: scope condition restricts the student query to childStudentIds;
- *          inArray() restricts assignment/assessment batch fetches.
+ * Layer 2: live guardian query replaces cached childStudentIds for the
+ *          student filter and all downstream inArray() restrictions.
  */
 router.get("/parent/dashboard", requireRole("parent"), async (req, res): Promise<void> => {
   const scope = buildScopeContext(req.session as ClassmateSession);
 
-  if (scope.childStudentIds.length === 0) {
+  // Fetch live guardian rows — do not trust cached session childStudentIds.
+  const guardianRows = await db
+    .select({
+      studentId: studentGuardiansTable.studentId,
+      relationship: studentGuardiansTable.relationship,
+    })
+    .from(studentGuardiansTable)
+    .where(eq(studentGuardiansTable.userId, scope.userId));
+
+  const liveChildStudentIds = guardianRows.map((r) => r.studentId);
+
+  if (liveChildStudentIds.length === 0) {
     res.json(GetParentDashboardResponse.parse({ items: [] }));
     return;
   }
 
-  const [students, guardianRows, allAssignments, allAssessments] = await Promise.all([
+  const [students, allAssignments, allAssessments] = await Promise.all([
     db
       .select({ id: studentsTable.id, name: studentsTable.name, grade: studentsTable.grade })
       .from(studentsTable)
-      .where(and(parentScopePolicy.getScopeCondition(scope), isNull(studentsTable.deletedAt))),
-    db
-      .select({
-        studentId: studentGuardiansTable.studentId,
-        relationship: studentGuardiansTable.relationship,
-      })
-      .from(studentGuardiansTable)
-      .where(eq(studentGuardiansTable.userId, scope.userId)),
+      .where(and(inArray(studentsTable.id, liveChildStudentIds), isNull(studentsTable.deletedAt))),
     db
       .select({
         studentId: assignmentsTable.studentId,
@@ -103,7 +114,7 @@ router.get("/parent/dashboard", requireRole("parent"), async (req, res): Promise
       .from(assignmentsTable)
       .where(
         and(
-          inArray(assignmentsTable.studentId, scope.childStudentIds),
+          inArray(assignmentsTable.studentId, liveChildStudentIds),
           isNull(assignmentsTable.deletedAt),
         ),
       ),
@@ -117,7 +128,7 @@ router.get("/parent/dashboard", requireRole("parent"), async (req, res): Promise
       .from(assessmentsTable)
       .where(
         and(
-          inArray(assessmentsTable.studentId, scope.childStudentIds),
+          inArray(assessmentsTable.studentId, liveChildStudentIds),
           isNull(assessmentsTable.deletedAt),
         ),
       ),
@@ -200,18 +211,18 @@ router.get("/parent/dashboard", requireRole("parent"), async (req, res): Promise
  *
  * Returns all students linked to the authenticated parent through student_guardians.
  *
+ * Guardian links are re-validated on each request against the live
+ * student_guardians table so that a removed link or soft-deleted student
+ * is excluded immediately, even within an active parent session.
+ *
  * Layer 1: requireRole("parent") — all other roles receive 403.
- * Layer 2: session.childStudentIds pre-computed at login — no per-request JOIN.
- * Layer 3: N/A — list is already scoped to the parent's own children.
+ * Layer 2: live guardian query replaces cached childStudentIds.
+ * Layer 3: N/A — list is already scoped to the parent's own live children.
  */
 router.get("/parent/students", requireRole("parent"), async (req, res): Promise<void> => {
   const scope = buildScopeContext(req.session as ClassmateSession);
 
-  if (scope.childStudentIds.length === 0) {
-    res.json(ListParentStudentsResponse.parse({ items: [] }));
-    return;
-  }
-
+  // Fetch live guardian rows — do not trust cached session childStudentIds.
   const guardianRows = await db
     .select({
       studentId: studentGuardiansTable.studentId,
@@ -220,6 +231,13 @@ router.get("/parent/students", requireRole("parent"), async (req, res): Promise<
     .from(studentGuardiansTable)
     .where(eq(studentGuardiansTable.userId, scope.userId));
 
+  const liveChildStudentIds = guardianRows.map((r) => r.studentId);
+
+  if (liveChildStudentIds.length === 0) {
+    res.json(ListParentStudentsResponse.parse({ items: [] }));
+    return;
+  }
+
   const relationshipMap = new Map(guardianRows.map((r) => [r.studentId, r.relationship]));
 
   const students = await db
@@ -227,7 +245,7 @@ router.get("/parent/students", requireRole("parent"), async (req, res): Promise<
     .from(studentsTable)
     .where(
       and(
-        parentScopePolicy.getScopeCondition(scope),
+        inArray(studentsTable.id, liveChildStudentIds),
         isNull(studentsTable.deletedAt),
       ),
     );
