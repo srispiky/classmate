@@ -298,12 +298,14 @@ Verified during Sprint 9 (1,863 tests passing as of Chunk 5).
 | Cookies redacted from logs | ✅ Active | `lib/logger.ts` pino redact config |
 | Query strings stripped from request logs | ✅ Active | `app.ts` req serializer |
 
-### Known gap: Course catalog open to unauthenticated users
+### ~~Known gap: Course catalog open to unauthenticated users~~ — RESOLVED (Sprint 9 Chunk 8)
 
-`GET /api/courses` and `GET /api/courses/:id` do not have `requireRole` middleware. Any unauthenticated request can read the full course catalog.
+`GET /api/courses` and `GET /api/courses/:id` are protected by:
+1. `requireAuth` — applied globally in `routes/index.ts` before `coursesRouter` is mounted
+2. `requireRole("admin", "teacher")` — explicit Layer 1 gate on both GET handlers in `routes/courses.ts`
 
-- **Risk:** Low–Medium. Course names and descriptions are exposed; no student PII is in the courses table.
-- **Fix:** Add `requireRole("admin","teacher","student")` to the courses GET routes (scheduled for next sprint).
+Unauthenticated requests → 401. Student/parent/guest requests → 403. Full regression coverage in
+`tests/http/course-layer1-security.test.ts` (13 tests) and `tests/http/http-authorization.test.ts`.
 
 ---
 
@@ -346,11 +348,11 @@ Verified during Sprint 9 (1,863 tests passing as of Chunk 5).
 
 ## 7 — Remaining Launch Blockers
 
-| ID | Severity | Description | Recommended fix |
-|----|---------|-------------|----------------|
-| F1 | **High** | `GET /api/courses` and `GET /api/courses/:id` have no `requireRole` — unauthenticated access to course catalog | Add `requireRole("admin","teacher","student")` before handler |
-| M3 | Medium | No pagination on `/students`, `/assignments`, `/assessments` — full-table queries at scale | Implement cursor-based pagination (proposal in Sprint 9 Chunk 5) |
-| M4 | Low | `/dashboard/student-health` student cohort classification is linear in student count | Acceptable to 1K students; revisit at scale |
-| M8 | Low | No external process supervisor (PM2, systemd) — Replit restart on crash | Replit deployment restarts the process; mitigated in production deployment |
+| ID | Severity | Description | Status |
+|----|---------|-------------|--------|
+| ~~F1~~ | ~~High~~ | ~~`GET /api/courses` and `GET /api/courses/:id` have no `requireRole`~~ | **CLOSED** — Fixed Sprint 9 Chunk 8. `requireAuth` + `requireRole("admin","teacher")` applied. 13 regression tests in `course-layer1-security.test.ts`. |
+| M3 | Medium | No pagination on `/students`, `/assignments`, `/assessments` — full-table queries at scale | **CLOSED** — Cursor-based pagination implemented Sprint 10 Chunks 1–4. |
+| M4 | Low | `/dashboard/student-health` student cohort classification is linear in student count | Open — Acceptable to 1K students; revisit at scale. |
+| M8 | Low | No external process supervisor (PM2, systemd) — Replit restart on crash | Open — Replit deployment restarts the process; mitigated in production deployment. |
 
-F1 is the only blocker that represents an active security gap. M3, M4, M8 are operational risks acceptable for the current user scale.
+All original blockers (F1, M3) are closed. Only low-severity operational items remain open.

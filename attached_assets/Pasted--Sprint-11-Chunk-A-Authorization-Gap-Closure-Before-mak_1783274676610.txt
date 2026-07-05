@@ -1,0 +1,168 @@
+# Sprint 11 Chunk A — Authorization Gap Closure
+
+Before making changes:
+
+1. Read and understand:
+   - routes/courses.ts
+   - routes/index.ts
+   - requireAuth middleware
+   - requireRole middleware
+   - CourseScopePolicy
+   - existing course authorization tests
+   - Sprint 10 Gate Review findings
+
+2. Review Risk Register item:
+
+   R-H1
+   GET /api/courses
+   GET /api/courses/:id
+
+3. Follow existing authorization architecture:
+
+   Layer 1: requireAuth()
+   Layer 2: scope filtering
+   Layer 3: ownership validation
+
+4. Keep changes strictly scoped to the course read endpoints.
+
+--------------------------------------------------
+OBJECTIVE
+--------------------------------------------------
+
+Close the final open authorization finding.
+
+Current audit finding:
+
+GET /api/courses
+GET /api/courses/:id
+
+can be accessed without authentication.
+
+This violates the platform-wide authorization model.
+
+--------------------------------------------------
+PART 1 — ROUTE AUDIT
+--------------------------------------------------
+
+Review:
+
+GET /courses
+GET /courses/:id
+
+Verify:
+
+- middleware chain
+- route registration
+- auth behavior
+- current test coverage
+
+Document root cause.
+
+--------------------------------------------------
+PART 2 — AUTHORIZATION FIX
+--------------------------------------------------
+
+Implement:
+
+requireAuth()
+
+and
+
+requireRole("admin", "teacher")
+
+consistent with all other teacher resources.
+
+Do not introduce special-case logic.
+
+Reuse existing authorization patterns.
+
+--------------------------------------------------
+PART 3 — SCOPE VALIDATION
+--------------------------------------------------
+
+Verify:
+
+Teacher A
+
+cannot access
+
+Teacher B courses.
+
+Confirm:
+
+Layer 2 scope filtering remains active.
+
+Confirm:
+
+Layer 3 ownership validation remains active.
+
+--------------------------------------------------
+PART 4 — REGRESSION TESTS
+--------------------------------------------------
+
+Add tests proving:
+
+Unauthenticated:
+- GET /courses -> 401
+- GET /courses/:id -> 401
+
+Student:
+- GET /courses -> 403
+- GET /courses/:id -> 403
+
+Teacher:
+- own course -> 200
+- foreign course -> 403
+
+Admin:
+- all courses -> 200
+
+--------------------------------------------------
+PART 5 — SECURITY REVIEW
+--------------------------------------------------
+
+Verify:
+
+- no route bypass exists
+- no anonymous access remains
+- no OpenAPI drift introduced
+
+--------------------------------------------------
+PART 6 — E2E VALIDATION
+--------------------------------------------------
+
+Verify:
+
+Admin user
+Teacher A
+Teacher B
+Student user
+
+Confirm expected behavior for:
+
+GET /courses
+GET /courses/:id
+
+--------------------------------------------------
+PART 7 — DELIVERABLE
+--------------------------------------------------
+
+Provide:
+
+1. Files modified
+2. Root cause
+3. Authorization changes
+4. Test results
+5. E2E validation
+6. Security review
+7. Remaining open risks
+
+--------------------------------------------------
+GIT REQUIREMENT
+--------------------------------------------------
+
+git add .
+git commit -m "fix(security): protect course read endpoints"
+git push origin main
+
+Include commit hash in report.
