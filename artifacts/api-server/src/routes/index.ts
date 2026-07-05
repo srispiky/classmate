@@ -21,6 +21,7 @@ import studentAssignmentsRouter from "./student-assignments";
 import studentCoursesRouter from "./student-courses";
 import studentCourseWorkspaceRouter from "./student-course-workspace";
 import studentDashboardRouter from "./student-dashboard";
+import parentRouter from "./parent";
 import { requireAuth } from "../middleware/auth";
 
 const router: IRouter = Router();
@@ -47,6 +48,7 @@ router.use(studentAssignmentsRouter);
 router.use(studentCoursesRouter);
 router.use(studentCourseWorkspaceRouter);
 router.use(studentDashboardRouter);
+router.use(parentRouter);
 router.use(dashboardRouter);
 router.use(reportsRouter);
 // downloadsRouter is mounted after requireAuth so unauthenticated callers

@@ -1,0 +1,234 @@
+# Sprint 13 Chunk 1 — Parent Portal Foundation
+
+Before making changes:
+
+1. Read and understand:
+   - students domain
+   - assessments domain
+   - assignments domain
+   - progress analytics service
+   - student dashboard
+   - student routes
+   - authorization architecture
+   - student_guardians table
+   - OpenAPI specification
+
+2. Review all existing user roles.
+
+3. Review authorization patterns.
+
+4. Keep implementation strictly scoped to Parent Portal Foundation.
+
+--------------------------------------------------
+OBJECTIVE
+--------------------------------------------------
+
+Introduce Parent Portal support.
+
+Allow guardians to view:
+
+- linked students
+- student progress
+- assignments
+- assessments
+
+Parents must be read-only.
+
+No edit capabilities.
+
+--------------------------------------------------
+PART 1 — DOMAIN AUDIT
+--------------------------------------------------
+
+Review:
+
+- users
+- students
+- student_guardians
+
+Verify:
+
+guardian relationship model.
+
+Document findings.
+
+--------------------------------------------------
+PART 2 — ROLE MODEL
+--------------------------------------------------
+
+Introduce:
+
+parent
+
+role.
+
+Review impact on:
+
+- authentication
+- authorization
+- route protection
+- frontend navigation
+
+Reuse existing role architecture.
+
+--------------------------------------------------
+PART 3 — AUTHORIZATION DESIGN
+--------------------------------------------------
+
+Maintain:
+
+Layer 1
+Layer 2
+Layer 3
+
+Requirements:
+
+Parent may only access:
+
+students linked through student_guardians.
+
+Verify:
+
+Parent A cannot access Parent B student data.
+
+--------------------------------------------------
+PART 4 — OPENAPI CONTRACTS
+--------------------------------------------------
+
+Add:
+
+GET /parent/students
+
+GET /parent/students/{id}/progress
+
+GET /parent/students/{id}/assignments
+
+GET /parent/students/{id}/assessments
+
+Document schemas.
+
+Generate:
+
+- hooks
+- validators
+- types
+
+No manual fetch calls.
+
+--------------------------------------------------
+PART 5 — BACKEND IMPLEMENTATION
+--------------------------------------------------
+
+Create:
+
+ParentScopePolicy
+
+Implement:
+
+guardian ownership validation.
+
+Reuse:
+
+existing policy architecture.
+
+Do not duplicate authorization logic.
+
+--------------------------------------------------
+PART 6 — FRONTEND FOUNDATION
+--------------------------------------------------
+
+Create:
+
+Parent Portal area.
+
+Pages:
+
+- My Students
+- Student Overview
+- Progress
+- Assignments
+- Assessments
+
+Read-only.
+
+--------------------------------------------------
+PART 7 — SECURITY REVIEW
+--------------------------------------------------
+
+Verify:
+
+Parent A:
+
+cannot access Parent B students.
+
+Teacher:
+
+unchanged.
+
+Admin:
+
+unchanged.
+
+Student:
+
+unchanged.
+
+--------------------------------------------------
+PART 8 — TEST COVERAGE
+--------------------------------------------------
+
+Add tests covering:
+
+- parent authorization
+- guardian ownership
+- student isolation
+- route protection
+
+Verify:
+
+full suite passes.
+
+--------------------------------------------------
+PART 9 — E2E VERIFICATION
+--------------------------------------------------
+
+Create:
+
+Parent A
+Parent B
+
+Student A
+Student B
+
+Verify:
+
+Parent A sees only Student A.
+
+Parent B sees only Student B.
+
+Admin sees all.
+
+--------------------------------------------------
+DELIVERABLE
+--------------------------------------------------
+
+Provide:
+
+1. Files modified
+2. Parent authorization design
+3. OpenAPI additions
+4. Security review
+5. Test results
+6. E2E verification
+7. Remaining Parent Portal work
+
+--------------------------------------------------
+GIT REQUIREMENT
+--------------------------------------------------
+
+git add .
+git commit -m "feat(parent): add parent portal foundation"
+
+git push origin main
+
+Include commit hash in report.

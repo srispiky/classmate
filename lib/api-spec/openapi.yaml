@@ -1545,6 +1545,98 @@ paths:
         "403":
           description: Forbidden
 
+  /parent/students:
+    get:
+      operationId: listParentStudents
+      tags: [parent]
+      summary: List linked students (parent only)
+      responses:
+        "200":
+          description: Linked students for this parent/guardian
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ParentStudentListResponse"
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden
+
+  /parent/students/{studentId}/progress:
+    get:
+      operationId: getParentStudentProgress
+      tags: [parent]
+      summary: Progress summary for a linked student (parent only)
+      parameters:
+        - name: studentId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Student progress summary
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StudentProgress"
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden
+        "404":
+          description: Student not found
+
+  /parent/students/{studentId}/assignments:
+    get:
+      operationId: listParentStudentAssignments
+      tags: [parent]
+      summary: Assignments for a linked student (parent only)
+      parameters:
+        - name: studentId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Student assignments
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ParentStudentAssignmentsResponse"
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden
+        "404":
+          description: Student not found
+
+  /parent/students/{studentId}/assessments:
+    get:
+      operationId: listParentStudentAssessments
+      tags: [parent]
+      summary: Assessments for a linked student (parent only)
+      parameters:
+        - name: studentId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Student assessments
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ParentStudentAssessmentsResponse"
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden
+        "404":
+          description: Student not found
+
 components:
   securitySchemes:
     sessionCookie:
@@ -3323,3 +3415,44 @@ components:
         userId:
           type: integer
       required: [ok, userId]
+
+    ParentStudentItem:
+      type: object
+      description: A student linked to the authenticated parent/guardian
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        grade:
+          type: string
+        relationship:
+          type: string
+      required: [id, name, grade, relationship]
+
+    ParentStudentListResponse:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/ParentStudentItem"
+      required: [items]
+
+    ParentStudentAssignmentsResponse:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/StudentAssignmentSummary"
+      required: [items]
+
+    ParentStudentAssessmentsResponse:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/StudentAssessmentSummary"
+      required: [items]

@@ -62,6 +62,9 @@ import type {
   PaginatedCourseList,
   PaginatedNoteList,
   PaginatedStudentList,
+  ParentStudentAssessmentsResponse,
+  ParentStudentAssignmentsResponse,
+  ParentStudentListResponse,
   ResetPasswordInput,
   ResetPasswordResult,
   SloReport,
@@ -6122,6 +6125,368 @@ export function useGetMonitoringOperationsReport<
   request?: SecondParameter<typeof customFetch>;
 }): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
   const queryOptions = getGetMonitoringOperationsReportQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary List linked students (parent only)
+ */
+export const getListParentStudentsUrl = () => {
+  return `/api/parent/students`;
+};
+
+export const listParentStudents = async (
+  options?: RequestInit,
+): Promise<ParentStudentListResponse> => {
+  return customFetch<ParentStudentListResponse>(getListParentStudentsUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getListParentStudentsQueryKey = () => {
+  return [`/api/parent/students`] as const;
+};
+
+export const getListParentStudentsQueryOptions = <
+  TData = Awaited<ReturnType<typeof listParentStudents>>,
+  TError = ErrorType<void>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listParentStudents>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getListParentStudentsQueryKey();
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof listParentStudents>>
+  > = ({ signal }) => listParentStudents({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listParentStudents>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListParentStudentsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listParentStudents>>
+>;
+export type ListParentStudentsQueryError = ErrorType<void>;
+
+/**
+ * @summary List linked students (parent only)
+ */
+
+export function useListParentStudents<
+  TData = Awaited<ReturnType<typeof listParentStudents>>,
+  TError = ErrorType<void>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listParentStudents>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListParentStudentsQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Progress summary for a linked student (parent only)
+ */
+export const getGetParentStudentProgressUrl = (studentId: number) => {
+  return `/api/parent/students/${studentId}/progress`;
+};
+
+export const getParentStudentProgress = async (
+  studentId: number,
+  options?: RequestInit,
+): Promise<StudentProgress> => {
+  return customFetch<StudentProgress>(
+    getGetParentStudentProgressUrl(studentId),
+    {
+      ...options,
+      method: "GET",
+    },
+  );
+};
+
+export const getGetParentStudentProgressQueryKey = (studentId: number) => {
+  return [`/api/parent/students/${studentId}/progress`] as const;
+};
+
+export const getGetParentStudentProgressQueryOptions = <
+  TData = Awaited<ReturnType<typeof getParentStudentProgress>>,
+  TError = ErrorType<void>,
+>(
+  studentId: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getParentStudentProgress>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getGetParentStudentProgressQueryKey(studentId);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getParentStudentProgress>>
+  > = ({ signal }) =>
+    getParentStudentProgress(studentId, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!studentId,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof getParentStudentProgress>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetParentStudentProgressQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getParentStudentProgress>>
+>;
+export type GetParentStudentProgressQueryError = ErrorType<void>;
+
+/**
+ * @summary Progress summary for a linked student (parent only)
+ */
+
+export function useGetParentStudentProgress<
+  TData = Awaited<ReturnType<typeof getParentStudentProgress>>,
+  TError = ErrorType<void>,
+>(
+  studentId: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getParentStudentProgress>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetParentStudentProgressQueryOptions(
+    studentId,
+    options,
+  );
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Assignments for a linked student (parent only)
+ */
+export const getListParentStudentAssignmentsUrl = (studentId: number) => {
+  return `/api/parent/students/${studentId}/assignments`;
+};
+
+export const listParentStudentAssignments = async (
+  studentId: number,
+  options?: RequestInit,
+): Promise<ParentStudentAssignmentsResponse> => {
+  return customFetch<ParentStudentAssignmentsResponse>(
+    getListParentStudentAssignmentsUrl(studentId),
+    {
+      ...options,
+      method: "GET",
+    },
+  );
+};
+
+export const getListParentStudentAssignmentsQueryKey = (studentId: number) => {
+  return [`/api/parent/students/${studentId}/assignments`] as const;
+};
+
+export const getListParentStudentAssignmentsQueryOptions = <
+  TData = Awaited<ReturnType<typeof listParentStudentAssignments>>,
+  TError = ErrorType<void>,
+>(
+  studentId: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listParentStudentAssignments>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ??
+    getListParentStudentAssignmentsQueryKey(studentId);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof listParentStudentAssignments>>
+  > = ({ signal }) =>
+    listParentStudentAssignments(studentId, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!studentId,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof listParentStudentAssignments>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListParentStudentAssignmentsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listParentStudentAssignments>>
+>;
+export type ListParentStudentAssignmentsQueryError = ErrorType<void>;
+
+/**
+ * @summary Assignments for a linked student (parent only)
+ */
+
+export function useListParentStudentAssignments<
+  TData = Awaited<ReturnType<typeof listParentStudentAssignments>>,
+  TError = ErrorType<void>,
+>(
+  studentId: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listParentStudentAssignments>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListParentStudentAssignmentsQueryOptions(
+    studentId,
+    options,
+  );
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Assessments for a linked student (parent only)
+ */
+export const getListParentStudentAssessmentsUrl = (studentId: number) => {
+  return `/api/parent/students/${studentId}/assessments`;
+};
+
+export const listParentStudentAssessments = async (
+  studentId: number,
+  options?: RequestInit,
+): Promise<ParentStudentAssessmentsResponse> => {
+  return customFetch<ParentStudentAssessmentsResponse>(
+    getListParentStudentAssessmentsUrl(studentId),
+    {
+      ...options,
+      method: "GET",
+    },
+  );
+};
+
+export const getListParentStudentAssessmentsQueryKey = (studentId: number) => {
+  return [`/api/parent/students/${studentId}/assessments`] as const;
+};
+
+export const getListParentStudentAssessmentsQueryOptions = <
+  TData = Awaited<ReturnType<typeof listParentStudentAssessments>>,
+  TError = ErrorType<void>,
+>(
+  studentId: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listParentStudentAssessments>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ??
+    getListParentStudentAssessmentsQueryKey(studentId);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof listParentStudentAssessments>>
+  > = ({ signal }) =>
+    listParentStudentAssessments(studentId, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!studentId,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof listParentStudentAssessments>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListParentStudentAssessmentsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listParentStudentAssessments>>
+>;
+export type ListParentStudentAssessmentsQueryError = ErrorType<void>;
+
+/**
+ * @summary Assessments for a linked student (parent only)
+ */
+
+export function useListParentStudentAssessments<
+  TData = Awaited<ReturnType<typeof listParentStudentAssessments>>,
+  TError = ErrorType<void>,
+>(
+  studentId: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listParentStudentAssessments>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListParentStudentAssessmentsQueryOptions(
+    studentId,
+    options,
+  );
 
   const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
     queryKey: QueryKey;

@@ -1170,6 +1170,28 @@ export interface ResetPasswordResult {
   userId: number;
 }
 
+/**
+ * A student linked to the authenticated parent/guardian
+ */
+export interface ParentStudentItem {
+  id: number;
+  name: string;
+  grade: string;
+  relationship: string;
+}
+
+export interface ParentStudentListResponse {
+  items: ParentStudentItem[];
+}
+
+export interface ParentStudentAssignmentsResponse {
+  items: StudentAssignmentSummary[];
+}
+
+export interface ParentStudentAssessmentsResponse {
+  items: StudentAssessmentSummary[];
+}
+
 export type Logout200 = {
   ok: boolean;
 };

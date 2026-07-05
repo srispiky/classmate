@@ -1771,3 +1771,92 @@ export const GetMonitoringOperationsReportResponse = zod.object({
   }),
   recommendations: zod.array(zod.string()),
 });
+
+/**
+ * @summary List linked students (parent only)
+ */
+export const ListParentStudentsResponse = zod.object({
+  items: zod.array(
+    zod
+      .object({
+        id: zod.number(),
+        name: zod.string(),
+        grade: zod.string(),
+        relationship: zod.string(),
+      })
+      .describe("A student linked to the authenticated parent\/guardian"),
+  ),
+});
+
+/**
+ * @summary Progress summary for a linked student (parent only)
+ */
+export const GetParentStudentProgressParams = zod.object({
+  studentId: zod.coerce.number(),
+});
+
+export const GetParentStudentProgressResponse = zod.object({
+  studentId: zod.number(),
+  totalAssignments: zod.number(),
+  completedAssignments: zod.number(),
+  averageScore: zod.number(),
+  completionRate: zod.number(),
+  topicsMastered: zod.array(zod.string()),
+  topicsNeedingWork: zod.array(zod.string()),
+  riskLevel: zod
+    .enum(["LOW", "MEDIUM", "HIGH", "INSUFFICIENT_DATA"])
+    .optional()
+    .describe(
+      "Risk classification based on average score across all scored events. INSUFFICIENT_DATA when fewer than 3 events exist.\n",
+    ),
+  trend: zod
+    .enum(["IMPROVING", "STABLE", "DECLINING", "INSUFFICIENT_DATA"])
+    .optional()
+    .describe(
+      "Score direction based on the most recent 5 chronological scored events. Compares avg(last 3) vs avg(previous 2). INSUFFICIENT_DATA when fewer than 5 events exist.\n",
+    ),
+});
+
+/**
+ * @summary Assignments for a linked student (parent only)
+ */
+export const ListParentStudentAssignmentsParams = zod.object({
+  studentId: zod.coerce.number(),
+});
+
+export const ListParentStudentAssignmentsResponse = zod.object({
+  items: zod.array(
+    zod.object({
+      assignmentId: zod.number(),
+      courseId: zod.number(),
+      title: zod.string(),
+      status: zod.string(),
+      dueDate: zod.string(),
+      score: zod.number().nullish(),
+      maxScore: zod.number(),
+    }),
+  ),
+});
+
+/**
+ * @summary Assessments for a linked student (parent only)
+ */
+export const ListParentStudentAssessmentsParams = zod.object({
+  studentId: zod.coerce.number(),
+});
+
+export const ListParentStudentAssessmentsResponse = zod.object({
+  items: zod.array(
+    zod
+      .object({
+        assessmentId: zod.number(),
+        courseId: zod.number(),
+        title: zod.string(),
+        score: zod.number(),
+        maxScore: zod.number(),
+      })
+      .describe(
+        "Assessment summary. Note: the assessments table does not have assessmentType or dueDate columns. The available qualitative fields (strengths, weaknesses) are exposed in the detail response.\n",
+      ),
+  ),
+});

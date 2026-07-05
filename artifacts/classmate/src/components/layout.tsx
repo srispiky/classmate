@@ -1,5 +1,5 @@
 import { Link, useLocation } from "wouter";
-import { BookOpen, Users, LayoutDashboard, FileText, CheckSquare, BrainCircuit, Menu, Settings, LogOut, Megaphone, BarChart3, Monitor } from "lucide-react";
+import { BookOpen, Users, LayoutDashboard, FileText, CheckSquare, BrainCircuit, Menu, Settings, LogOut, Megaphone, BarChart3, Monitor, Heart } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
@@ -25,6 +25,10 @@ const adminNavItems = [
   { href: "/settings", label: "Settings", icon: Settings },
 ];
 
+const parentNavItems = [
+  { href: "/parent/students", label: "My Students", icon: Heart },
+];
+
 export function Layout({ children }: { children: React.ReactNode }) {
   const [location] = useLocation();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -32,11 +36,15 @@ export function Layout({ children }: { children: React.ReactNode }) {
 
   const isAdmin = user?.role === "admin";
   const isTeacherOrAdmin = isAdmin || user?.role === "teacher";
-  const navItems = [
-    ...baseNavItems,
-    ...(isTeacherOrAdmin ? teacherNavItems : []),
-    ...(isAdmin ? adminNavItems : []),
-  ];
+  const isParent = user?.role === "parent";
+
+  const navItems = isParent
+    ? parentNavItems
+    : [
+        ...baseNavItems,
+        ...(isTeacherOrAdmin ? teacherNavItems : []),
+        ...(isAdmin ? adminNavItems : []),
+      ];
 
   const initials = user?.displayName
     .split(" ")

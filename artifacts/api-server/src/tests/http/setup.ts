@@ -31,7 +31,7 @@ export type SupertestAgent = ReturnType<typeof supertest.agent>;
 export const req = () => supertest(app);
 
 /** Roles used across the HTTP test suite */
-export type HttpRole = "admin" | "teacher" | "student";
+export type HttpRole = "admin" | "teacher" | "student" | "parent";
 
 export interface TestHttpUser {
   id: number;
