@@ -203,6 +203,13 @@ router.get("/parent/dashboard", requireRole("parent"), async (req, res): Promise
     };
   });
 
+  const RISK_ORDER: Record<string, number> = { HIGH: 0, MEDIUM: 1, LOW: 2, INSUFFICIENT_DATA: 3 };
+  items.sort((a, b) => {
+    const riskDiff = (RISK_ORDER[a.riskLevel] ?? 3) - (RISK_ORDER[b.riskLevel] ?? 3);
+    if (riskDiff !== 0) return riskDiff;
+    return a.name.localeCompare(b.name);
+  });
+
   res.json(GetParentDashboardResponse.parse({ items }));
 });
 
