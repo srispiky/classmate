@@ -35,6 +35,8 @@ tags:
     description: Dashboard aggregations
   - name: reports
     description: Teacher and admin reporting endpoints
+  - name: monitoring
+    description: Operational monitoring endpoints (admin only)
   - name: authentication
     description: Authentication operations
 
@@ -1373,6 +1375,42 @@ paths:
               schema:
                 $ref: "#/components/schemas/StudentHealthSummary"
 
+  /monitoring/status:
+    get:
+      operationId: getMonitoringStatus
+      tags: [monitoring]
+      summary: System status (admin only)
+      description: Full system-status view including database, backup, replication, and process info. No secrets are exposed.
+      responses:
+        "200":
+          description: System status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MonitoringStatus"
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden
+
+  /monitoring/summary:
+    get:
+      operationId: getMonitoringSummary
+      tags: [monitoring]
+      summary: Operational summary (admin only)
+      description: Aggregated request metrics, latency percentiles, auth counters, and backup health.
+      responses:
+        "200":
+          description: Operational summary
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MonitoringSummary"
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden
+
 components:
   securitySchemes:
     sessionCookie:
@@ -1499,6 +1537,134 @@ components:
         status:
           type: string
       required: [status]
+
+    MonitoringStatus:
+      type: object
+      required: [status, version, uptime, database, backup, replication]
+      properties:
+        status:
+          type: string
+        version:
+          type: string
+        uptime:
+          type: integer
+        database:
+          type: object
+          required: [status, queryCount, queryFailures, avgQueryMs]
+          properties:
+            status:
+              type: string
+            detail:
+              type: string
+            queryCount:
+              type: integer
+            queryFailures:
+              type: integer
+            avgQueryMs:
+              type: integer
+        backup:
+          type: object
+          required: [configured, runs, failures]
+          properties:
+            configured:
+              type: boolean
+            runs:
+              type: integer
+            failures:
+              type: integer
+            lastRunAt:
+              type: string
+              nullable: true
+        replication:
+          type: object
+          required: [configured]
+          properties:
+            configured:
+              type: boolean
+
+    MonitoringSummary:
+      type: object
+      required: [requests, auth, latency, slowestEndpoints, database, backup, process]
+      properties:
+        requests:
+          type: object
+          required: [total, errors, avgDurationMs]
+          properties:
+            total:
+              type: integer
+            errors:
+              type: integer
+            byStatus:
+              type: object
+              additionalProperties:
+                type: integer
+            avgDurationMs:
+              type: integer
+        auth:
+          type: object
+          required: [loginAttempts, loginFailures, rateLimitHits]
+          properties:
+            loginAttempts:
+              type: integer
+            loginFailures:
+              type: integer
+            rateLimitHits:
+              type: integer
+        latency:
+          type: object
+          required: [p50, p95, p99, sampleSize]
+          properties:
+            p50:
+              type: integer
+            p95:
+              type: integer
+            p99:
+              type: integer
+            sampleSize:
+              type: integer
+        slowestEndpoints:
+          type: array
+          items:
+            type: object
+            required: [path, p95, p99, count]
+            properties:
+              path:
+                type: string
+              p95:
+                type: integer
+              p99:
+                type: integer
+              count:
+                type: integer
+        database:
+          type: object
+          required: [queryCount, queryFailures, avgQueryMs]
+          properties:
+            queryCount:
+              type: integer
+            queryFailures:
+              type: integer
+            avgQueryMs:
+              type: integer
+        backup:
+          type: object
+          required: [runs, failures]
+          properties:
+            runs:
+              type: integer
+            failures:
+              type: integer
+            lastRunAt:
+              type: string
+              nullable: true
+        process:
+          type: object
+          required: [startedAt, uptimeSeconds]
+          properties:
+            startedAt:
+              type: string
+            uptimeSeconds:
+              type: integer
 
     Student:
       type: object

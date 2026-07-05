@@ -183,6 +183,90 @@ export interface HealthStatus {
   status: string;
 }
 
+export type MonitoringStatusDatabase = {
+  status: string;
+  detail?: string;
+  queryCount: number;
+  queryFailures: number;
+  avgQueryMs: number;
+};
+
+export type MonitoringStatusBackup = {
+  configured: boolean;
+  runs: number;
+  failures: number;
+  lastRunAt?: string | null;
+};
+
+export type MonitoringStatusReplication = {
+  configured: boolean;
+};
+
+export interface MonitoringStatus {
+  status: string;
+  version: string;
+  uptime: number;
+  database: MonitoringStatusDatabase;
+  backup: MonitoringStatusBackup;
+  replication: MonitoringStatusReplication;
+}
+
+export type MonitoringSummaryRequestsByStatus = { [key: string]: number };
+
+export type MonitoringSummaryRequests = {
+  total: number;
+  errors: number;
+  byStatus?: MonitoringSummaryRequestsByStatus;
+  avgDurationMs: number;
+};
+
+export type MonitoringSummaryAuth = {
+  loginAttempts: number;
+  loginFailures: number;
+  rateLimitHits: number;
+};
+
+export type MonitoringSummaryLatency = {
+  p50: number;
+  p95: number;
+  p99: number;
+  sampleSize: number;
+};
+
+export type MonitoringSummarySlowestEndpointsItem = {
+  path: string;
+  p95: number;
+  p99: number;
+  count: number;
+};
+
+export type MonitoringSummaryDatabase = {
+  queryCount: number;
+  queryFailures: number;
+  avgQueryMs: number;
+};
+
+export type MonitoringSummaryBackup = {
+  runs: number;
+  failures: number;
+  lastRunAt?: string | null;
+};
+
+export type MonitoringSummaryProcess = {
+  startedAt: string;
+  uptimeSeconds: number;
+};
+
+export interface MonitoringSummary {
+  requests: MonitoringSummaryRequests;
+  auth: MonitoringSummaryAuth;
+  latency: MonitoringSummaryLatency;
+  slowestEndpoints: MonitoringSummarySlowestEndpointsItem[];
+  database: MonitoringSummaryDatabase;
+  backup: MonitoringSummaryBackup;
+  process: MonitoringSummaryProcess;
+}
+
 export interface CreateStudentBody {
   name: string;
   email: string;

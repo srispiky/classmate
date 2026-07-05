@@ -117,7 +117,7 @@ const mockState: {
 // useEffect loops), while items dynamically reflects the current mockState.
 const ANN_PAGINATION = { nextCursor: null as null, hasMore: false, limit: 50 };
 const announcementsPageStub = { get items() { return mockState.announcements; }, pagination: ANN_PAGINATION };
-const coursesPageStubAnn = { items: COURSES as unknown[], pagination: ANN_PAGINATION };
+const coursesPageStubAnn = { items: COURSES as unknown as unknown[], pagination: ANN_PAGINATION };
 
 vi.mock("@workspace/api-client-react", () => ({
   useListAnnouncements: () => ({ data: announcementsPageStub, isLoading: false, isFetching: false }),

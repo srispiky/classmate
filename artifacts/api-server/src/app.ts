@@ -51,7 +51,7 @@ app.use((req: Request, res: Response, next: NextFunction) => {
 app.use((req: Request, res: Response, next: NextFunction) => {
   const startMs = Date.now();
   res.on("finish", () => {
-    metrics.recordRequest(res.statusCode, Date.now() - startMs);
+    metrics.recordRequest(res.statusCode, Date.now() - startMs, req.path);
   });
   next();
 });

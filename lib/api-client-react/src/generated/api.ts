@@ -48,6 +48,8 @@ import type {
   ListStudentsParams,
   LoginBody,
   Logout200,
+  MonitoringStatus,
+  MonitoringSummary,
   Note,
   PaginatedAnnouncementList,
   PaginatedAssessmentList,
@@ -5468,6 +5470,158 @@ export function useGetDashboardStudentHealth<
   request?: SecondParameter<typeof customFetch>;
 }): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
   const queryOptions = getGetDashboardStudentHealthQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * Full system-status view including database, backup, replication, and process info. No secrets are exposed.
+ * @summary System status (admin only)
+ */
+export const getGetMonitoringStatusUrl = () => {
+  return `/api/monitoring/status`;
+};
+
+export const getMonitoringStatus = async (
+  options?: RequestInit,
+): Promise<MonitoringStatus> => {
+  return customFetch<MonitoringStatus>(getGetMonitoringStatusUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetMonitoringStatusQueryKey = () => {
+  return [`/api/monitoring/status`] as const;
+};
+
+export const getGetMonitoringStatusQueryOptions = <
+  TData = Awaited<ReturnType<typeof getMonitoringStatus>>,
+  TError = ErrorType<void>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getMonitoringStatus>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetMonitoringStatusQueryKey();
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getMonitoringStatus>>
+  > = ({ signal }) => getMonitoringStatus({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getMonitoringStatus>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetMonitoringStatusQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getMonitoringStatus>>
+>;
+export type GetMonitoringStatusQueryError = ErrorType<void>;
+
+/**
+ * @summary System status (admin only)
+ */
+
+export function useGetMonitoringStatus<
+  TData = Awaited<ReturnType<typeof getMonitoringStatus>>,
+  TError = ErrorType<void>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getMonitoringStatus>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetMonitoringStatusQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * Aggregated request metrics, latency percentiles, auth counters, and backup health.
+ * @summary Operational summary (admin only)
+ */
+export const getGetMonitoringSummaryUrl = () => {
+  return `/api/monitoring/summary`;
+};
+
+export const getMonitoringSummary = async (
+  options?: RequestInit,
+): Promise<MonitoringSummary> => {
+  return customFetch<MonitoringSummary>(getGetMonitoringSummaryUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetMonitoringSummaryQueryKey = () => {
+  return [`/api/monitoring/summary`] as const;
+};
+
+export const getGetMonitoringSummaryQueryOptions = <
+  TData = Awaited<ReturnType<typeof getMonitoringSummary>>,
+  TError = ErrorType<void>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getMonitoringSummary>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetMonitoringSummaryQueryKey();
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getMonitoringSummary>>
+  > = ({ signal }) => getMonitoringSummary({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getMonitoringSummary>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetMonitoringSummaryQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getMonitoringSummary>>
+>;
+export type GetMonitoringSummaryQueryError = ErrorType<void>;
+
+/**
+ * @summary Operational summary (admin only)
+ */
+
+export function useGetMonitoringSummary<
+  TData = Awaited<ReturnType<typeof getMonitoringSummary>>,
+  TError = ErrorType<void>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getMonitoringSummary>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetMonitoringSummaryQueryOptions(options);
 
   const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
     queryKey: QueryKey;

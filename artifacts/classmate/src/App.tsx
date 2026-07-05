@@ -23,6 +23,7 @@ import Reports from "@/pages/reports/index";
 import StudentReport from "@/pages/reports/student";
 import CourseReport from "@/pages/reports/course";
 import Settings from "@/pages/settings";
+import Monitoring from "@/pages/monitoring";
 import Login from "@/pages/login";
 import NotFound from "@/pages/not-found";
 
@@ -89,6 +90,7 @@ function ProtectedRouter() {
           </>
         )}
         {user.role === "admin" && <Route path="/settings" component={Settings} />}
+        {user.role === "admin" && <Route path="/monitoring" component={Monitoring} />}
         <Route component={NotFound} />
       </Switch>
     </Layout>

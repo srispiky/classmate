@@ -10,6 +10,7 @@ import dashboardRouter from "./dashboard";
 import reportsRouter from "./reports";
 import downloadsRouter from "./downloads";
 import adminRouter from "./admin";
+import monitoringRouter from "./monitoring";
 import usersRouter from "./users";
 import announcementsRouter from "./announcements";
 import enrollmentsRouter from "./enrollments";
@@ -51,6 +52,7 @@ router.use(reportsRouter);
 // downloadsRouter is mounted after requireAuth so unauthenticated callers
 // receive 401 here before the handler's own requireRole("admin") check.
 router.use(downloadsRouter);
+router.use(monitoringRouter);
 router.use(usersRouter);
 router.use(adminRouter);
 

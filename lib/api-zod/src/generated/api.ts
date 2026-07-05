@@ -1482,3 +1482,75 @@ export const GetDashboardStudentHealthResponse = zod.object({
     )
     .describe("Students with insufficient scored events for classification"),
 });
+
+/**
+ * Full system-status view including database, backup, replication, and process info. No secrets are exposed.
+ * @summary System status (admin only)
+ */
+export const GetMonitoringStatusResponse = zod.object({
+  status: zod.string(),
+  version: zod.string(),
+  uptime: zod.number(),
+  database: zod.object({
+    status: zod.string(),
+    detail: zod.string().optional(),
+    queryCount: zod.number(),
+    queryFailures: zod.number(),
+    avgQueryMs: zod.number(),
+  }),
+  backup: zod.object({
+    configured: zod.boolean(),
+    runs: zod.number(),
+    failures: zod.number(),
+    lastRunAt: zod.string().nullish(),
+  }),
+  replication: zod.object({
+    configured: zod.boolean(),
+  }),
+});
+
+/**
+ * Aggregated request metrics, latency percentiles, auth counters, and backup health.
+ * @summary Operational summary (admin only)
+ */
+export const GetMonitoringSummaryResponse = zod.object({
+  requests: zod.object({
+    total: zod.number(),
+    errors: zod.number(),
+    byStatus: zod.record(zod.string(), zod.number()).optional(),
+    avgDurationMs: zod.number(),
+  }),
+  auth: zod.object({
+    loginAttempts: zod.number(),
+    loginFailures: zod.number(),
+    rateLimitHits: zod.number(),
+  }),
+  latency: zod.object({
+    p50: zod.number(),
+    p95: zod.number(),
+    p99: zod.number(),
+    sampleSize: zod.number(),
+  }),
+  slowestEndpoints: zod.array(
+    zod.object({
+      path: zod.string(),
+      p95: zod.number(),
+      p99: zod.number(),
+      count: zod.number(),
+    }),
+  ),
+  database: zod.object({
+    queryCount: zod.number(),
+    queryFailures: zod.number(),
+    avgQueryMs: zod.number(),
+  }),
+  backup: zod.object({
+    runs: zod.number(),
+    failures: zod.number(),
+    lastRunAt: zod.string().nullish(),
+  }),
+  process: zod.object({
+    startedAt: zod.string(),
+    uptimeSeconds: zod.number(),
+  }),
+});
