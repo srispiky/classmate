@@ -1,0 +1,27 @@
+kind = "mobile"
+previewPath = "/parent-mobile/"
+title = "Classmate Parent"
+version = "1.0.0"
+id = "artifacts/parent-mobile"
+router = "expo-domain"
+
+[[integratedSkills]]
+name = "expo"
+version = "1.0.0"
+
+[[services]]
+ensurePreviewReachable = "/status"
+name = "expo"
+paths = [ "/parent-mobile/" ]
+localPort = 22330
+
+[services.development]
+run = "pnpm --filter @workspace/parent-mobile run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/parent-mobile", "run", "build" ]
+run = [ "pnpm", "--filter", "@workspace/parent-mobile", "run", "serve" ]
+
+[services.env]
+PORT = "22330"
+BASE_PATH = "/parent-mobile/"

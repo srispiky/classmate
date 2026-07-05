@@ -1,5 +1,10 @@
 uploads = []
-generated = []
+
+[[generated]]
+id = "McmsE_YXFoO4q3jV_903o"
+uri = "file://artifacts/parent-mobile/assets/images/icon.png"
+type = "image"
+title = "generated_image"
 
 [[outputs]]
 id = "XQWKIx1F3TBsi6Cd1zczF"

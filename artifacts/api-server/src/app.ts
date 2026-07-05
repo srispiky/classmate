@@ -80,7 +80,8 @@ app.use(
       }
       if (!allowedOrigins) {
         const isLocalhost = /^https?:\/\/localhost(:\d+)?$/.test(origin);
-        callback(null, isLocalhost);
+        const isReplitDev = /^https:\/\/.+\.replit\.dev$/.test(origin);
+        callback(null, isLocalhost || isReplitDev);
         return;
       }
       if (allowedOrigins.includes(origin)) {
