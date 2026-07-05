@@ -1192,6 +1192,25 @@ export interface ParentStudentAssessmentsResponse {
   items: StudentAssessmentSummary[];
 }
 
+/**
+ * Analytics summary card for a single linked student
+ */
+export interface ParentDashboardStudentSummary {
+  id: number;
+  name: string;
+  grade: string;
+  relationship: string;
+  averageScore: number;
+  completionRate: number;
+  riskLevel: string;
+  trend: string;
+  pendingAssignments: number;
+}
+
+export interface ParentDashboardResponse {
+  items: ParentDashboardStudentSummary[];
+}
+
 export type Logout200 = {
   ok: boolean;
 };

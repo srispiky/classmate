@@ -1773,6 +1773,27 @@ export const GetMonitoringOperationsReportResponse = zod.object({
 });
 
 /**
+ * @summary Dashboard summary for all linked students (parent only)
+ */
+export const GetParentDashboardResponse = zod.object({
+  items: zod.array(
+    zod
+      .object({
+        id: zod.number(),
+        name: zod.string(),
+        grade: zod.string(),
+        relationship: zod.string(),
+        averageScore: zod.number(),
+        completionRate: zod.number(),
+        riskLevel: zod.string(),
+        trend: zod.string(),
+        pendingAssignments: zod.number(),
+      })
+      .describe("Analytics summary card for a single linked student"),
+  ),
+});
+
+/**
  * @summary List linked students (parent only)
  */
 export const ListParentStudentsResponse = zod.object({

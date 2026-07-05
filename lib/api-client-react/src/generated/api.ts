@@ -62,6 +62,7 @@ import type {
   PaginatedCourseList,
   PaginatedNoteList,
   PaginatedStudentList,
+  ParentDashboardResponse,
   ParentStudentAssessmentsResponse,
   ParentStudentAssignmentsResponse,
   ParentStudentListResponse,
@@ -6125,6 +6126,81 @@ export function useGetMonitoringOperationsReport<
   request?: SecondParameter<typeof customFetch>;
 }): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
   const queryOptions = getGetMonitoringOperationsReportQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Dashboard summary for all linked students (parent only)
+ */
+export const getGetParentDashboardUrl = () => {
+  return `/api/parent/dashboard`;
+};
+
+export const getParentDashboard = async (
+  options?: RequestInit,
+): Promise<ParentDashboardResponse> => {
+  return customFetch<ParentDashboardResponse>(getGetParentDashboardUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetParentDashboardQueryKey = () => {
+  return [`/api/parent/dashboard`] as const;
+};
+
+export const getGetParentDashboardQueryOptions = <
+  TData = Awaited<ReturnType<typeof getParentDashboard>>,
+  TError = ErrorType<void>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getParentDashboard>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetParentDashboardQueryKey();
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getParentDashboard>>
+  > = ({ signal }) => getParentDashboard({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getParentDashboard>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetParentDashboardQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getParentDashboard>>
+>;
+export type GetParentDashboardQueryError = ErrorType<void>;
+
+/**
+ * @summary Dashboard summary for all linked students (parent only)
+ */
+
+export function useGetParentDashboard<
+  TData = Awaited<ReturnType<typeof getParentDashboard>>,
+  TError = ErrorType<void>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getParentDashboard>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetParentDashboardQueryOptions(options);
 
   const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
     queryKey: QueryKey;

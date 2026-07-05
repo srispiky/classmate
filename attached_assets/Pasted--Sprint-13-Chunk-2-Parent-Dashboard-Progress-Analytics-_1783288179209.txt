@@ -1,0 +1,250 @@
+# Sprint 13 Chunk 2 — Parent Dashboard & Progress Analytics
+
+Before making changes:
+
+1. Read and understand:
+   - Parent Portal Foundation implementation
+   - ParentScopePolicy
+   - student_guardians relationships
+   - ProgressAnalyticsService
+   - Student Progress endpoints
+   - Dashboard architecture
+   - Reporting architecture
+   - OpenAPI specification
+
+2. Review parent authorization implementation.
+
+3. Verify guardian ownership enforcement.
+
+4. Keep implementation strictly scoped to Parent Dashboard functionality.
+
+--------------------------------------------------
+OBJECTIVE
+--------------------------------------------------
+
+Provide parents with a consolidated dashboard
+for linked students.
+
+Parents should be able to quickly see:
+
+- student progress
+- completion status
+- assignment activity
+- assessment performance
+- risk indicators
+- trend indicators
+
+Parents remain read-only.
+
+--------------------------------------------------
+PART 1 — DASHBOARD REQUIREMENTS
+--------------------------------------------------
+
+Create:
+
+Parent Dashboard
+
+Display:
+
+- linked students
+- average score
+- completion rate
+- risk level
+- trend
+- pending assignments
+- recent assessments
+
+Reuse existing analytics.
+
+Do not duplicate calculations.
+
+--------------------------------------------------
+PART 2 — BACKEND API
+--------------------------------------------------
+
+Add:
+
+GET /parent/dashboard
+
+Response:
+
+linked students summary
+
+For each student:
+
+- id
+- name
+- averageScore
+- completionRate
+- riskLevel
+- trend
+- pendingAssignments
+
+Reuse:
+
+ProgressAnalyticsService
+
+--------------------------------------------------
+PART 3 — OPENAPI COMPLIANCE
+--------------------------------------------------
+
+Document:
+
+GET /parent/dashboard
+
+Create:
+
+ParentDashboardResponse schema
+
+Generate:
+
+- hooks
+- validators
+- client types
+
+No manual fetch calls.
+
+--------------------------------------------------
+PART 4 — ANALYTICS REUSE
+--------------------------------------------------
+
+Reuse:
+
+- computeRiskLevel()
+- computeTrend()
+- existing progress calculations
+
+Avoid:
+
+duplicate analytics logic.
+
+Single source of truth remains:
+
+ProgressAnalyticsService
+
+--------------------------------------------------
+PART 5 — FRONTEND DASHBOARD
+--------------------------------------------------
+
+Create:
+
+Parent Dashboard page.
+
+Display:
+
+Student Cards
+
+Each card shows:
+
+- student name
+- score
+- completion rate
+- risk badge
+- trend indicator
+- pending assignments
+
+Support:
+
+multiple linked students.
+
+--------------------------------------------------
+PART 6 — PERFORMANCE REVIEW
+--------------------------------------------------
+
+Verify:
+
+Dashboard loads efficiently.
+
+Avoid:
+
+N+1 query patterns.
+
+Batch student analytics retrieval.
+
+--------------------------------------------------
+PART 7 — SECURITY REVIEW
+--------------------------------------------------
+
+Verify:
+
+Parent A:
+
+cannot view Parent B students.
+
+Teacher:
+
+unchanged.
+
+Admin:
+
+unchanged.
+
+Student:
+
+unchanged.
+
+--------------------------------------------------
+PART 8 — TEST COVERAGE
+--------------------------------------------------
+
+Add tests covering:
+
+- parent dashboard authorization
+- multi-student guardians
+- analytics correctness
+- ownership validation
+
+Verify:
+
+full suite passes.
+
+--------------------------------------------------
+PART 9 — E2E VERIFICATION
+--------------------------------------------------
+
+Create:
+
+Parent A
+
+Linked:
+Student A
+Student B
+
+Parent B
+
+Linked:
+Student C
+
+Verify:
+
+Parent A sees:
+- Student A
+- Student B
+
+Parent B sees:
+- Student C only
+
+--------------------------------------------------
+PART 10 — DELIVERABLE
+--------------------------------------------------
+
+Provide:
+
+1. Files modified
+2. Dashboard architecture
+3. Analytics reuse strategy
+4. Security review
+5. Test results
+6. E2E verification
+7. Remaining Parent Portal work
+
+--------------------------------------------------
+GIT REQUIREMENT
+--------------------------------------------------
+
+git add .
+git commit -m "feat(parent): add parent dashboard and analytics"
+
+git push origin main
+
+Include commit hash in report.

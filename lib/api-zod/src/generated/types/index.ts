@@ -95,6 +95,8 @@ export * from "./paginatedCourseList";
 export * from "./paginatedNoteList";
 export * from "./paginatedStudentList";
 export * from "./paginationMetadata";
+export * from "./parentDashboardResponse";
+export * from "./parentDashboardStudentSummary";
 export * from "./parentStudentAssessmentsResponse";
 export * from "./parentStudentAssignmentsResponse";
 export * from "./parentStudentItem";

@@ -26,6 +26,7 @@ import Settings from "@/pages/settings";
 import Monitoring from "@/pages/monitoring";
 import AlertCenter from "@/pages/monitoring/alerts";
 import SloDashboard from "@/pages/monitoring/slo";
+import ParentDashboard from "@/pages/parent/dashboard";
 import ParentStudents from "@/pages/parent/index";
 import ParentStudentDetail from "@/pages/parent/student";
 import Login from "@/pages/login";
@@ -49,7 +50,7 @@ function ProtectedRouter() {
       setLocation("/login");
     }
     if (!loading && user && location === "/login") {
-      setLocation(user.role === "parent" ? "/parent/students" : "/");
+      setLocation(user.role === "parent" ? "/parent/dashboard" : "/");
     }
     // Redirect non-admins away from /settings to dashboard.
     if (!loading && user && user.role !== "admin" && location.startsWith("/settings")) {
@@ -57,7 +58,7 @@ function ProtectedRouter() {
     }
     // Redirect parents away from teacher/admin-only areas.
     if (!loading && user && user.role === "parent" && !location.startsWith("/parent")) {
-      setLocation("/parent/students");
+      setLocation("/parent/dashboard");
     }
   }, [loading, user, location, setLocation]);
 
@@ -103,6 +104,7 @@ function ProtectedRouter() {
         {user.role === "admin" && <Route path="/monitoring" component={Monitoring} />}
         {user.role === "parent" && (
           <>
+            <Route path="/parent/dashboard" component={ParentDashboard} />
             <Route path="/parent/students" component={ParentStudents} />
             <Route path="/parent/students/:studentId" component={ParentStudentDetail} />
           </>

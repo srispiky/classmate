@@ -26,6 +26,7 @@ const adminNavItems = [
 ];
 
 const parentNavItems = [
+  { href: "/parent/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/parent/students", label: "My Students", icon: Heart },
 ];
 

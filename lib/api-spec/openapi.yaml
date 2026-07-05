@@ -1545,6 +1545,23 @@ paths:
         "403":
           description: Forbidden
 
+  /parent/dashboard:
+    get:
+      operationId: getParentDashboard
+      tags: [parent]
+      summary: Dashboard summary for all linked students (parent only)
+      responses:
+        "200":
+          description: Analytics summary cards for every linked student
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ParentDashboardResponse"
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden
+
   /parent/students:
     get:
       operationId: listParentStudents
@@ -3455,4 +3472,37 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/StudentAssessmentSummary"
+      required: [items]
+
+    ParentDashboardStudentSummary:
+      type: object
+      description: Analytics summary card for a single linked student
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        grade:
+          type: string
+        relationship:
+          type: string
+        averageScore:
+          type: number
+        completionRate:
+          type: number
+        riskLevel:
+          type: string
+        trend:
+          type: string
+        pendingAssignments:
+          type: integer
+      required: [id, name, grade, relationship, averageScore, completionRate, riskLevel, trend, pendingAssignments]
+
+    ParentDashboardResponse:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/ParentDashboardStudentSummary"
       required: [items]

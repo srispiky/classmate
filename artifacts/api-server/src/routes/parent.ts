@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { eq, and, isNull } from "drizzle-orm";
+import { eq, and, isNull, inArray } from "drizzle-orm";
 import {
   db,
   studentsTable,
@@ -13,6 +13,7 @@ import { parentScopePolicy } from "../lib/policies/parent-scope-policy";
 import { PolicyAuthorizationError } from "../lib/policies/resource-scope-policy";
 import { computeRiskLevel, computeTrend } from "../services/progress-analytics.service";
 import {
+  GetParentDashboardResponse,
   ListParentStudentsResponse,
   GetParentStudentProgressParams,
   GetParentStudentProgressResponse,
@@ -57,6 +58,142 @@ async function applyParentGuard(
     throw err;
   }
 }
+
+/**
+ * GET /parent/dashboard
+ *
+ * Returns an analytics summary card for every student linked to the parent.
+ *
+ * Performance: 4 parallel queries (students, guardian rows, all assignments,
+ * all assessments) — no N+1. Analytics computed in-process using
+ * ProgressAnalyticsService helpers.
+ *
+ * Layer 1: requireRole("parent").
+ * Layer 2: scope condition restricts the student query to childStudentIds;
+ *          inArray() restricts assignment/assessment batch fetches.
+ */
+router.get("/parent/dashboard", requireRole("parent"), async (req, res): Promise<void> => {
+  const scope = buildScopeContext(req.session as ClassmateSession);
+
+  if (scope.childStudentIds.length === 0) {
+    res.json(GetParentDashboardResponse.parse({ items: [] }));
+    return;
+  }
+
+  const [students, guardianRows, allAssignments, allAssessments] = await Promise.all([
+    db
+      .select({ id: studentsTable.id, name: studentsTable.name, grade: studentsTable.grade })
+      .from(studentsTable)
+      .where(and(parentScopePolicy.getScopeCondition(scope), isNull(studentsTable.deletedAt))),
+    db
+      .select({
+        studentId: studentGuardiansTable.studentId,
+        relationship: studentGuardiansTable.relationship,
+      })
+      .from(studentGuardiansTable)
+      .where(eq(studentGuardiansTable.userId, scope.userId)),
+    db
+      .select({
+        studentId: assignmentsTable.studentId,
+        status: assignmentsTable.status,
+        score: assignmentsTable.score,
+        maxScore: assignmentsTable.maxScore,
+        updatedAt: assignmentsTable.updatedAt,
+      })
+      .from(assignmentsTable)
+      .where(
+        and(
+          inArray(assignmentsTable.studentId, scope.childStudentIds),
+          isNull(assignmentsTable.deletedAt),
+        ),
+      ),
+    db
+      .select({
+        studentId: assessmentsTable.studentId,
+        score: assessmentsTable.score,
+        maxScore: assessmentsTable.maxScore,
+        createdAt: assessmentsTable.createdAt,
+      })
+      .from(assessmentsTable)
+      .where(
+        and(
+          inArray(assessmentsTable.studentId, scope.childStudentIds),
+          isNull(assessmentsTable.deletedAt),
+        ),
+      ),
+  ]);
+
+  const relationshipMap = new Map(guardianRows.map((r) => [r.studentId, r.relationship]));
+
+  // Group assignments and assessments by studentId (single pass each)
+  type AssignmentRow = (typeof allAssignments)[number];
+  type AssessmentRow = (typeof allAssessments)[number];
+  const assignmentsByStudent = new Map<number, AssignmentRow[]>();
+  const assessmentsByStudent = new Map<number, AssessmentRow[]>();
+  for (const a of allAssignments) {
+    const list = assignmentsByStudent.get(a.studentId) ?? [];
+    list.push(a);
+    assignmentsByStudent.set(a.studentId, list);
+  }
+  for (const a of allAssessments) {
+    const list = assessmentsByStudent.get(a.studentId) ?? [];
+    list.push(a);
+    assessmentsByStudent.set(a.studentId, list);
+  }
+
+  const items = students.map((student) => {
+    const assignments = assignmentsByStudent.get(student.id) ?? [];
+    const assessments = assessmentsByStudent.get(student.id) ?? [];
+
+    const completed = assignments.filter(
+      (a) => a.status === "graded" || a.status === "submitted",
+    ).length;
+
+    const gradedAssignments = assignments.filter(
+      (a) => a.status === "graded" && a.score != null,
+    );
+
+    const avgScore =
+      gradedAssignments.length > 0
+        ? gradedAssignments.reduce(
+            (sum, a) => sum + ((a.score ?? 0) / a.maxScore) * 100,
+            0,
+          ) / gradedAssignments.length
+        : 0;
+
+    const scoredEvents = [
+      ...gradedAssignments.map((a) => ({
+        timestamp: a.updatedAt,
+        scorePercent: ((a.score ?? 0) / a.maxScore) * 100,
+      })),
+      ...assessments.map((a) => ({
+        timestamp: a.createdAt,
+        scorePercent: (a.score / a.maxScore) * 100,
+      })),
+    ].sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
+
+    const pendingAssignments = assignments.filter(
+      (a) => a.status === "pending" || a.status === "overdue",
+    ).length;
+
+    return {
+      id: student.id,
+      name: student.name,
+      grade: student.grade,
+      relationship: relationshipMap.get(student.id) ?? "guardian",
+      averageScore: Math.round(avgScore * 10) / 10,
+      completionRate:
+        assignments.length > 0
+          ? Math.round((completed / assignments.length) * 100) / 100
+          : 0,
+      riskLevel: computeRiskLevel(scoredEvents.map((e) => e.scorePercent)),
+      trend: computeTrend(scoredEvents.map((e) => e.scorePercent)),
+      pendingAssignments,
+    };
+  });
+
+  res.json(GetParentDashboardResponse.parse({ items }));
+});
 
 /**
  * GET /parent/students
