@@ -25,6 +25,7 @@ import CourseReport from "@/pages/reports/course";
 import Settings from "@/pages/settings";
 import Monitoring from "@/pages/monitoring";
 import AlertCenter from "@/pages/monitoring/alerts";
+import SloDashboard from "@/pages/monitoring/slo";
 import Login from "@/pages/login";
 import NotFound from "@/pages/not-found";
 
@@ -92,6 +93,7 @@ function ProtectedRouter() {
         )}
         {user.role === "admin" && <Route path="/settings" component={Settings} />}
         {user.role === "admin" && <Route path="/monitoring/alerts" component={AlertCenter} />}
+        {user.role === "admin" && <Route path="/monitoring/slo" component={SloDashboard} />}
         {user.role === "admin" && <Route path="/monitoring" component={Monitoring} />}
         <Route component={NotFound} />
       </Switch>

@@ -1630,3 +1630,144 @@ export const UpdateAlertResponse = zod.object({
   acknowledgedAt: zod.string().nullable(),
   resolvedAt: zod.string().nullable(),
 });
+
+/**
+ * @summary SLO compliance and error budget report (admin only)
+ */
+export const GetMonitoringSloResponse = zod.object({
+  evaluatedAt: zod.string(),
+  windowSeconds: zod.number(),
+  elapsedSeconds: zod.number(),
+  slos: zod.array(
+    zod.object({
+      id: zod.string(),
+      name: zod.string(),
+      description: zod.string(),
+      target: zod.number(),
+      targetLabel: zod.string(),
+      current: zod.number(),
+      currentLabel: zod.string(),
+      compliant: zod.boolean(),
+      errorBudget: zod.object({
+        totalSeconds: zod.number(),
+        consumedSeconds: zod.number(),
+        remainingSeconds: zod.number(),
+        consumedPercent: zod.number(),
+        burnRate: zod.number(),
+        status: zod.enum(["healthy", "at_risk", "exhausted"]),
+      }),
+      sampleBasis: zod.string(),
+    }),
+  ),
+  summary: zod.object({
+    total: zod.number(),
+    compliant: zod.number(),
+    atRisk: zod.number(),
+    breached: zod.number(),
+  }),
+});
+
+/**
+ * @summary Availability and capacity indicators (admin only)
+ */
+export const GetMonitoringAvailabilityResponse = zod.object({
+  sessionStartedAt: zod.string(),
+  sessionUptimeSeconds: zod.number(),
+  database: zod.object({
+    uptimeSeconds: zod.number(),
+    downtimeSeconds: zod.number(),
+    availabilityPct: zod.number(),
+    status: zod.enum(["healthy", "degraded", "down"]),
+  }),
+  overall: zod.object({
+    uptimeSeconds: zod.number(),
+    downtimeSeconds: zod.number(),
+    availabilityPct: zod.number(),
+    status: zod.enum(["healthy", "degraded", "down"]),
+  }),
+  outages: zod.array(
+    zod.object({
+      id: zod.string(),
+      service: zod.string(),
+      startedAt: zod.string(),
+      endedAt: zod.string().nullable(),
+      durationSeconds: zod.number().nullable(),
+      resolved: zod.boolean(),
+    }),
+  ),
+  outageCount: zod.number(),
+  longestOutageSeconds: zod.number(),
+  capacityIndicators: zod.object({
+    requestsPerMinute: zod.number(),
+    requestGrowthTrend: zod.enum(["stable", "growing", "unknown"]),
+    estimatedDailyRequests: zod.number(),
+    backupStorageIndicator: zod.enum(["none", "active", "failing"]),
+    dbQueryLoad: zod.enum(["low", "medium", "high"]),
+    sessionUptimeHours: zod.number(),
+  }),
+});
+
+/**
+ * @summary Monthly operational report (admin only)
+ */
+export const GetMonitoringOperationsReportResponse = zod.object({
+  generatedAt: zod.string(),
+  reportPeriod: zod.object({
+    startedAt: zod.string(),
+    durationSeconds: zod.number(),
+    durationLabel: zod.string(),
+  }),
+  uptime: zod.object({
+    availabilityPct: zod.number(),
+    uptimeSeconds: zod.number(),
+    downtimeSeconds: zod.number(),
+  }),
+  requests: zod.object({
+    total: zod.number(),
+    errors: zod.number(),
+    errorRatePct: zod.number(),
+    avgDurationMs: zod.number(),
+    requestsPerMinute: zod.number(),
+  }),
+  authentication: zod.object({
+    totalAttempts: zod.number(),
+    failures: zod.number(),
+    failureRatePct: zod.number(),
+    rateLimitHits: zod.number(),
+  }),
+  database: zod.object({
+    queryCount: zod.number(),
+    queryFailures: zod.number(),
+    failureRatePct: zod.number(),
+    avgQueryMs: zod.number(),
+  }),
+  backup: zod.object({
+    runs: zod.number(),
+    failures: zod.number(),
+    successRatePct: zod.number(),
+    lastRunAt: zod.string().nullable(),
+  }),
+  alerts: zod.object({
+    total: zod.number(),
+    active: zod.number(),
+    acknowledged: zod.number(),
+    resolved: zod.number(),
+    criticalCount: zod.number(),
+    highCount: zod.number(),
+    mediumCount: zod.number(),
+    lowCount: zod.number(),
+  }),
+  slo: zod.object({
+    compliant: zod.number(),
+    total: zod.number(),
+    breached: zod.array(zod.string()),
+    overallHealthLabel: zod.enum(["excellent", "good", "at_risk", "critical"]),
+  }),
+  capacity: zod.object({
+    requestsPerMinute: zod.number(),
+    estimatedDailyRequests: zod.number(),
+    dbQueryLoad: zod.string(),
+    backupStorageIndicator: zod.string(),
+  }),
+  recommendations: zod.array(zod.string()),
+});

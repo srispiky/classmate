@@ -3,6 +3,9 @@ import { z } from "zod/v4";
 import { requireRole } from "../middleware/require-role";
 import { metrics } from "../lib/metrics";
 import { alertService } from "../lib/alerts";
+import { sloService } from "../lib/slo";
+import { availabilityService } from "../lib/availability";
+import { operationalReportService } from "../lib/operations-report";
 import { pool } from "@workspace/db";
 
 const router: IRouter = Router();
@@ -132,5 +135,46 @@ router.patch("/monitoring/alerts/:id", requireRole("admin"), (req, res): void =>
   }
   res.json(result);
 });
+
+// ── GET /monitoring/slo ───────────────────────────────────────────────────────
+
+router.get("/monitoring/slo", requireRole("admin"), async (_req, res): Promise<void> => {
+  const [db, snap] = await Promise.all([checkDbOk(), Promise.resolve(metrics.snapshot())]);
+  availabilityService.recordDbHealth(db.ok);
+  const replicationConfigured = Boolean(process.env["S3_BUCKET"]);
+  const report = sloService.evaluate(snap, db.ok, replicationConfigured);
+  res.json(report);
+});
+
+// ── GET /monitoring/availability ──────────────────────────────────────────────
+
+router.get("/monitoring/availability", requireRole("admin"), async (_req, res): Promise<void> => {
+  const [db, snap] = await Promise.all([checkDbOk(), Promise.resolve(metrics.snapshot())]);
+  availabilityService.recordDbHealth(db.ok);
+  const avail = availabilityService.snapshot(snap.process.uptimeSeconds, snap);
+  res.json(avail);
+});
+
+// ── GET /monitoring/operations-report ─────────────────────────────────────────
+
+router.get(
+  "/monitoring/operations-report",
+  requireRole("admin"),
+  async (_req, res): Promise<void> => {
+    const [db, snap] = await Promise.all([checkDbOk(), Promise.resolve(metrics.snapshot())]);
+    availabilityService.recordDbHealth(db.ok);
+
+    const replicationConfigured = Boolean(process.env["S3_BUCKET"]);
+    const sloSnapshot = sloService.evaluate(snap, db.ok, replicationConfigured);
+    const availSnap = availabilityService.snapshot(snap.process.uptimeSeconds, snap);
+
+    // Evaluate alerts so the report reflects current state.
+    alertService.evaluate(snap, db.ok);
+    const allAlerts = alertService.list();
+
+    const report = operationalReportService.generate(snap, allAlerts, sloSnapshot, availSnap);
+    res.json(report);
+  },
+);
 
 export default router;

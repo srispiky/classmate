@@ -4,16 +4,20 @@
 
 1. [Overview](#overview)
 2. [Monitoring](#monitoring)
-3. [Alert Types](#alert-types)
-4. [Incident Response](#incident-response)
-5. [Backup Procedures](#backup-procedures)
-6. [Thresholds Reference](#thresholds-reference)
+3. [SLO Definitions](#slo-definitions)
+4. [Error Budget Policy](#error-budget-policy)
+5. [Alert Types](#alert-types)
+6. [Incident Response](#incident-response)
+7. [Backup Procedures](#backup-procedures)
+8. [Reporting Workflow](#reporting-workflow)
+9. [Thresholds Reference](#thresholds-reference)
+10. [Escalation Guidance](#escalation-guidance)
 
 ---
 
 ## Overview
 
-Classmate Connect is a Node.js/Express API server backed by PostgreSQL. The platform exposes a real-time operations dashboard at `/monitoring` (admin only) and an alert center at `/monitoring/alerts` (admin only).
+Classmate Connect is a Node.js/Express API server backed by PostgreSQL. The platform exposes a real-time operations dashboard at `/monitoring` (admin only), alert center at `/monitoring/alerts`, and SLO/availability reporting at `/monitoring/slo`.
 
 All incidents surface as alerts in the Alert Center. Alerts follow a three-state lifecycle:
 
@@ -31,24 +35,84 @@ Alerts auto-resolve when the underlying condition clears. Acknowledge an alert t
 
 | Endpoint | Description |
 |---|---|
-| `GET /api/monitoring/status` | System status: DB, backup, replication |
+| `GET /api/monitoring/status` | System status: DB, backup, replication, alert counts |
 | `GET /api/monitoring/summary` | Metrics: requests, latency, auth, DB, backup |
 | `GET /api/monitoring/alerts` | All alerts (filter by `?status=active`) |
 | `GET /api/monitoring/alerts/:id` | Single alert detail |
 | `PATCH /api/monitoring/alerts/:id` | Acknowledge or resolve an alert |
+| `GET /api/monitoring/slo` | SLO compliance and error budget report |
+| `GET /api/monitoring/availability` | Availability and capacity indicators |
+| `GET /api/monitoring/operations-report` | Aggregated operational report |
 
-### Dashboard
+### Dashboard Pages (admin only)
 
-Navigate to `/monitoring` in the Classmate app (admin login required).
+| Path | Description |
+|---|---|
+| `/monitoring` | Operations dashboard: status, metrics, SLO quicklink, alert summary |
+| `/monitoring/alerts` | Alert Center: active/acknowledged/resolved alerts |
+| `/monitoring/slo` | SLO dashboard: compliance, error budgets, availability, capacity |
 
-The Operations page shows:
+---
 
-- System health status (application, database, backup, replication)
-- Request volume and error rate
-- Latency percentiles (p50/p95/p99)
-- Slowest endpoints
-- Auth counters
-- Active alert summary with link to Alert Center
+## SLO Definitions
+
+All SLOs are evaluated over a **30-day rolling window**. Data is session-scoped and resets on server restart. For persistent SLO tracking, integrate Prometheus + Grafana.
+
+### API Availability
+- **Target**: 99.9% (budget: ~43.2 minutes/month)
+- **Measurement**: Non-5xx responses / total responses
+- **Breach trigger**: More than 0.1% of requests return 5xx errors
+
+### Authentication Availability
+- **Target**: 99.9% (budget: ~43.2 minutes/month)
+- **Measurement**: Non-rate-limited auth requests / total auth requests
+- **Breach trigger**: More than 0.1% of login attempts are rate-limited
+
+### Backup Success Rate
+- **Target**: 100% (zero tolerance for failures)
+- **Measurement**: Successful backup runs / total backup runs
+- **Breach trigger**: Any backup run failure
+
+### Replication Success Rate
+- **Target**: 100%
+- **Measurement**: S3 replication active (S3_BUCKET configured) = 100%, not configured = 0%
+- **Breach trigger**: S3_BUCKET environment variable not set
+
+### Health Endpoint Availability
+- **Target**: 99.99% (budget: ~4.3 minutes/month)
+- **Measurement**: Server process uptime (proxy for health endpoint availability)
+- **Breach trigger**: Database unavailability (causes degraded health response)
+
+---
+
+## Error Budget Policy
+
+Error budgets express how much unavailability is allowed before an SLO is breached.
+
+### Burn Rate Interpretation
+
+| Burn Rate | Meaning | Action |
+|---|---|---|
+| < 1x | Consuming slower than allowed | Normal operation |
+| 1x | Exactly on pace to exhaust budget at month end | Monitor |
+| > 2x | Elevated — budget exhausted in < 2 weeks | Investigate |
+| > 10x | Critical — budget exhausted in < 3 days | Incident response |
+
+### Budget Status
+
+| Status | Threshold | Response |
+|---|---|---|
+| Healthy | < 50% consumed | No action needed |
+| At Risk | 50–99% consumed | Review and monitor closely |
+| Exhausted | 100% consumed | SLO breached — file incident |
+
+### Monthly Reporting
+
+1. Visit `/monitoring/slo` on the last day of each month.
+2. Export the error budget table for each SLO.
+3. Review recommendations from `/monitoring/operations-report`.
+4. File a post-incident review for any SLO breach.
+5. Update thresholds if sustained false-positive alerting is observed.
 
 ---
 
@@ -58,171 +122,155 @@ The Operations page shows:
 
 | Alert | Severity | Condition |
 |---|---|---|
-| `auth.excessive_login_failures` | HIGH | > 10 failed logins in session |
-| `auth.rate_limit_violations` | MEDIUM | > 5 rate-limit hits in session |
+| `auth.excessive_login_failures` | HIGH | > 10 login failures this session |
+| `auth.rate_limit_violations` | MEDIUM | > 5 rate-limit hits this session |
 
 ### Database Alerts
 
 | Alert | Severity | Condition |
 |---|---|---|
-| `db.unavailable` | CRITICAL | Cannot connect to PostgreSQL |
-| `db.repeated_query_failures` | HIGH | > 5 query failures in session |
+| `db.unavailable` | CRITICAL | DB health check failed |
+| `db.repeated_query_failures` | HIGH | > 5 query failures this session |
 
 ### Backup Alerts
 
 | Alert | Severity | Condition |
 |---|---|---|
-| `backup.failure` | HIGH | Any backup run has failed |
+| `backup.failure` | HIGH | Any backup run failure |
 
 ### Application Health Alerts
 
 | Alert | Severity | Condition |
 |---|---|---|
-| `app.elevated_error_rate` | HIGH | 5xx rate > 5% (min 50 requests) |
+| `app.elevated_error_rate` | HIGH | > 5% 5xx rate with ≥ 50 requests |
 
 ### Performance Alerts
 
 | Alert | Severity | Condition |
 |---|---|---|
-| `perf.high_p95_latency` | MEDIUM | Global p95 > 500 ms (min 20 samples) |
-| `perf.high_p99_latency` | HIGH | Global p99 > 1000 ms (min 20 samples) |
-| `perf.slow_endpoint` | MEDIUM | Any endpoint p95 > 1000 ms |
+| `perf.high_p95_latency` | MEDIUM | Global p95 > 500ms (≥ 20 samples) |
+| `perf.high_p99_latency` | HIGH | Global p99 > 1000ms (≥ 20 samples) |
+| `perf.slow_endpoint` | MEDIUM | Endpoint p95 > 1000ms |
 
 ---
 
 ## Incident Response
 
-### Database Outage (`db.unavailable` — CRITICAL)
+### P0 — Critical (CRITICAL severity alerts)
 
-**Symptoms:** Alert Center shows CRITICAL `db.unavailable`. All API calls returning 500/503. Health endpoint shows `status: degraded`.
+Immediate action required. SLA: respond within 5 minutes.
 
-**Steps:**
+**Triggers**: `db.unavailable`
 
-1. Check PostgreSQL process: `systemctl status postgresql` (or check managed DB console).
-2. Verify `DATABASE_URL` environment variable is set and correct.
-3. Check disk space on the database host (`df -h`).
-4. Check PostgreSQL logs for OOM, max_connections, or disk errors.
-5. If managed DB (e.g. Neon, RDS): check provider status page.
-6. Restart PostgreSQL if process crashed: `systemctl restart postgresql`.
-7. Verify with health endpoint: `curl /api/healthz`.
-8. Once resolved, alert auto-resolves. Resolve manually if needed via Alert Center.
+**Steps**:
+1. Acknowledge the alert in the Alert Center.
+2. Check DB connectivity: `psql $DATABASE_URL -c "SELECT 1"`.
+3. Review DB server logs for OOM, disk full, connection exhaustion.
+4. If connection pool exhausted: restart the API server.
+5. If disk full: extend volume or purge old logs.
+6. Resolve the alert once DB is confirmed healthy.
+7. File post-incident review.
 
-**Escalation:** If DB cannot be restored within 15 minutes, initiate restore from most recent backup (see [Backup Procedures](#backup-procedures)).
+### P1 — High (HIGH severity alerts)
 
----
+Respond within 30 minutes.
 
-### Repeated DB Query Failures (`db.repeated_query_failures` — HIGH)
+**Triggers**: `auth.excessive_login_failures`, `db.repeated_query_failures`, `backup.failure`, `app.elevated_error_rate`, `perf.high_p99_latency`
 
-**Symptoms:** Query failure counter rising but DB is reachable.
+**Steps**:
+1. Acknowledge the alert.
+2. Identify the triggering condition from the alert metadata.
+3. Investigate root cause (error logs, DB slow query log, auth logs).
+4. Apply fix or mitigation.
+5. Monitor until condition clears (auto-resolves) or manually resolve.
 
-**Steps:**
+### P2 — Medium (MEDIUM severity alerts)
 
-1. Check API server logs for specific query error messages (filter by `requestId`).
-2. Look for: schema mismatch, missing columns, connection pool exhaustion.
-3. Check for long-running transactions blocking writes: `SELECT * FROM pg_stat_activity WHERE state = 'idle in transaction';`
-4. Run `VACUUM ANALYZE` if table bloat suspected.
-5. Restart API server if pool is exhausted and cannot recover.
+Respond within 2 hours during business hours.
 
----
+**Triggers**: `auth.rate_limit_violations`, `perf.high_p95_latency`, `perf.slow_endpoint`
 
-### Backup Failure (`backup.failure` — HIGH)
-
-**Symptoms:** Alert Center shows HIGH `backup.failure`.
-
-**Steps:**
-
-1. Check backup run logs (in structured log output, filter `component: backup`).
-2. Verify storage connectivity (local disk or S3 bucket).
-3. If S3 replication: verify `S3_BUCKET`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY` are set.
-4. Manually trigger a backup and observe logs.
-5. Verify checksums are valid after re-run.
-6. Update `backup.lastRunAt` will reflect the successful run.
-7. Alert auto-resolves once `backup.failures` returns to 0 (after server restart or manual reset).
-
----
-
-### Authentication Attack (`auth.excessive_login_failures` — HIGH)
-
-**Symptoms:** HIGH `auth.excessive_login_failures` alert, login failure count rising rapidly.
-
-**Steps:**
-
-1. Navigate to Alert Center → note the `loginFailures` count in alert metadata.
-2. Check server logs filtered by `POST /api/auth/login` — look for repeating IPs or usernames.
-3. If a specific IP is identified, apply rate limiting or block at the reverse proxy / firewall.
-4. Verify no admin accounts have been locked or compromised.
-5. If a credential-stuffing pattern is confirmed, rotate any potentially exposed passwords.
-6. Acknowledge the alert → continue monitoring. Alert auto-resolves when failures drop below threshold (after restart).
-
----
-
-### Elevated Error Rate (`app.elevated_error_rate` — HIGH)
-
-**Symptoms:** HIGH alert with 5xx error rate > 5%.
-
-**Steps:**
-
-1. Check which status codes are spiking: `GET /api/monitoring/summary` → `requests.byStatus`.
-2. Grep server logs for `error` level entries within the affected time window.
-3. Use request IDs from error responses to trace specific failures.
-4. If a recent deploy is suspected: check git log and roll back if necessary.
-5. Verify downstream dependencies (DB, S3, external APIs).
-6. Resolve root cause — alert auto-resolves when error rate drops below threshold.
-
----
-
-### High p95/p99 Latency (`perf.high_p95_latency` / `perf.high_p99_latency`)
-
-**Symptoms:** MEDIUM/HIGH latency alert. Operations dashboard shows elevated percentiles.
-
-**Steps:**
-
-1. Review `slowestEndpoints` in Operations dashboard to identify offending routes.
-2. Check database: look for slow queries in `pg_stat_statements`.
-3. Check for N+1 query patterns, missing indexes, or full table scans.
-4. Inspect memory: if the Node.js process is GC-stressed, heap usage will be high.
-5. If external API calls are involved, check third-party latency.
-6. Apply appropriate fix: add index, cache result, or optimize query.
-7. Alert auto-resolves when latency returns below threshold.
-
----
-
-### Slow Endpoint (`perf.slow_endpoint`)
-
-**Symptoms:** MEDIUM alert naming one or more slow routes.
-
-**Steps:**
-
-1. Note the endpoint path(s) from alert metadata.
-2. Add timing instrumentation or check query explain plans for those routes.
-3. Verify the endpoint is not waiting on external I/O.
-4. Optimize or cache as needed.
+**Steps**:
+1. Review the alert detail for affected endpoints or patterns.
+2. Investigate during next business day if outside hours.
+3. Consider query optimisation, index review, or load balancing.
 
 ---
 
 ## Backup Procedures
 
-See `RUNBOOK-BACKUP.md` for full backup and restore procedures.
+### Configuration
 
-**Quick reference:**
+Backup is active when `DATABASE_URL` is set (always true in production). S3 replication requires `S3_BUCKET`.
 
-- Backups are tracked via `MetricsStore.recordBackupRun(success)`.
-- Backup status is visible in `GET /api/monitoring/status` → `backup` field.
-- Alert fires on any backup failure.
+### Verification
+
+1. Check backup status: `GET /api/monitoring/status` → `backup.configured`.
+2. Verify last run: `backup.lastRunAt` should be recent.
+3. Check failure count: `backup.failures` should be 0.
+
+### Recovery
+
+If backup has failures:
+1. Inspect server logs for backup error messages.
+2. Verify `DATABASE_URL` is valid and DB is reachable.
+3. If S3 replication is enabled, verify `S3_BUCKET` and IAM permissions.
+4. Re-run backup manually and monitor.
+
+---
+
+## Reporting Workflow
+
+### Weekly Check (every Monday)
+
+1. Review `/monitoring/slo` — check compliance and burn rates.
+2. Review `/monitoring/alerts` for any unresolved alerts.
+3. Check capacity indicators — flag if request rate is growing unexpectedly.
+
+### Monthly Operations Report
+
+1. Navigate to `/monitoring/slo` as admin.
+2. Click through to the full Operations Report.
+3. Check SLO compliance table and recommendations.
+4. For any breached SLO: document root cause and remediation.
+5. Archive the report summary (copy from the dashboard or use `GET /api/monitoring/operations-report`).
 
 ---
 
 ## Thresholds Reference
 
-All thresholds are defined in `artifacts/api-server/src/lib/alerts.ts` under `ALERT_THRESHOLDS`.
-
-| Constant | Default | Alert |
+| Metric | Threshold | Alert Type |
 |---|---|---|
-| `AUTH_LOGIN_FAILURES` | 10 | excessive login failures |
-| `AUTH_RATE_LIMIT_HITS` | 5 | rate limit violations |
-| `DB_QUERY_FAILURES` | 5 | repeated query failures |
-| `ERROR_RATE_PERCENT` | 5% | elevated error rate |
-| `MIN_REQUESTS_FOR_RATE` | 50 | (minimum traffic before error rate fires) |
-| `P95_LATENCY_MS` | 500 | high p95 latency |
-| `P99_LATENCY_MS` | 1000 | high p99 latency |
-| `SLOW_ENDPOINT_P95_MS` | 1000 | slow endpoint |
+| Login failures | > 10 | auth.excessive_login_failures |
+| Rate limit hits | > 5 | auth.rate_limit_violations |
+| DB query failures | > 5 | db.repeated_query_failures |
+| 5xx error rate | > 5% (min 50 req) | app.elevated_error_rate |
+| Global p95 latency | > 500ms | perf.high_p95_latency |
+| Global p99 latency | > 1000ms | perf.high_p99_latency |
+| Endpoint p95 latency | > 1000ms | perf.slow_endpoint |
+
+---
+
+## Escalation Guidance
+
+| Condition | Escalate To | Channel |
+|---|---|---|
+| DB unavailable > 5 min | On-call engineer | PagerDuty / phone |
+| SLO exhausted | Engineering lead | Slack #incidents |
+| Multiple SLOs breached | CTO | Email + Slack |
+| Backup failure > 24h | DevOps lead | Email |
+| Security alert (auth storms) | Security team | Slack #security |
+
+### SLO Breach Escalation
+
+When an SLO breach is detected:
+
+1. **Immediately**: Acknowledge the breach in the Alert Center.
+2. **Within 1 hour**: Open an incident document.
+3. **Within 4 hours**: Root cause identified and mitigation in place.
+4. **Within 24 hours**: Post-incident review completed.
+5. **Next sprint**: Preventive measures implemented and tested.
+
+---
+
+*All monitoring data is session-scoped and resets on server restart. For production-grade persistent SLO tracking, integrate a time-series database (Prometheus, Datadog, or similar).*

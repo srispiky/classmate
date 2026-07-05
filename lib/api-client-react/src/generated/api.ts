@@ -28,6 +28,7 @@ import type {
   AssessmentUpdate,
   Assignment,
   AuthUser,
+  AvailabilityReport,
   Course,
   CourseReportSummary,
   CreateAssessmentBody,
@@ -54,6 +55,7 @@ import type {
   MonitoringStatus,
   MonitoringSummary,
   Note,
+  OperationsReport,
   PaginatedAnnouncementList,
   PaginatedAssessmentList,
   PaginatedAssignmentList,
@@ -62,6 +64,7 @@ import type {
   PaginatedStudentList,
   ResetPasswordInput,
   ResetPasswordResult,
+  SloReport,
   Student,
   StudentAnnouncementDetail,
   StudentAnnouncementSummary,
@@ -5898,3 +5901,231 @@ export const useUpdateAlert = <
 > => {
   return useMutation(getUpdateAlertMutationOptions(options));
 };
+
+/**
+ * @summary SLO compliance and error budget report (admin only)
+ */
+export const getGetMonitoringSloUrl = () => {
+  return `/api/monitoring/slo`;
+};
+
+export const getMonitoringSlo = async (
+  options?: RequestInit,
+): Promise<SloReport> => {
+  return customFetch<SloReport>(getGetMonitoringSloUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetMonitoringSloQueryKey = () => {
+  return [`/api/monitoring/slo`] as const;
+};
+
+export const getGetMonitoringSloQueryOptions = <
+  TData = Awaited<ReturnType<typeof getMonitoringSlo>>,
+  TError = ErrorType<void>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getMonitoringSlo>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetMonitoringSloQueryKey();
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getMonitoringSlo>>
+  > = ({ signal }) => getMonitoringSlo({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getMonitoringSlo>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetMonitoringSloQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getMonitoringSlo>>
+>;
+export type GetMonitoringSloQueryError = ErrorType<void>;
+
+/**
+ * @summary SLO compliance and error budget report (admin only)
+ */
+
+export function useGetMonitoringSlo<
+  TData = Awaited<ReturnType<typeof getMonitoringSlo>>,
+  TError = ErrorType<void>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getMonitoringSlo>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetMonitoringSloQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Availability and capacity indicators (admin only)
+ */
+export const getGetMonitoringAvailabilityUrl = () => {
+  return `/api/monitoring/availability`;
+};
+
+export const getMonitoringAvailability = async (
+  options?: RequestInit,
+): Promise<AvailabilityReport> => {
+  return customFetch<AvailabilityReport>(getGetMonitoringAvailabilityUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetMonitoringAvailabilityQueryKey = () => {
+  return [`/api/monitoring/availability`] as const;
+};
+
+export const getGetMonitoringAvailabilityQueryOptions = <
+  TData = Awaited<ReturnType<typeof getMonitoringAvailability>>,
+  TError = ErrorType<void>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getMonitoringAvailability>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getGetMonitoringAvailabilityQueryKey();
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getMonitoringAvailability>>
+  > = ({ signal }) => getMonitoringAvailability({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getMonitoringAvailability>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetMonitoringAvailabilityQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getMonitoringAvailability>>
+>;
+export type GetMonitoringAvailabilityQueryError = ErrorType<void>;
+
+/**
+ * @summary Availability and capacity indicators (admin only)
+ */
+
+export function useGetMonitoringAvailability<
+  TData = Awaited<ReturnType<typeof getMonitoringAvailability>>,
+  TError = ErrorType<void>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getMonitoringAvailability>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetMonitoringAvailabilityQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Monthly operational report (admin only)
+ */
+export const getGetMonitoringOperationsReportUrl = () => {
+  return `/api/monitoring/operations-report`;
+};
+
+export const getMonitoringOperationsReport = async (
+  options?: RequestInit,
+): Promise<OperationsReport> => {
+  return customFetch<OperationsReport>(getGetMonitoringOperationsReportUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetMonitoringOperationsReportQueryKey = () => {
+  return [`/api/monitoring/operations-report`] as const;
+};
+
+export const getGetMonitoringOperationsReportQueryOptions = <
+  TData = Awaited<ReturnType<typeof getMonitoringOperationsReport>>,
+  TError = ErrorType<void>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getMonitoringOperationsReport>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getGetMonitoringOperationsReportQueryKey();
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getMonitoringOperationsReport>>
+  > = ({ signal }) =>
+    getMonitoringOperationsReport({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getMonitoringOperationsReport>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetMonitoringOperationsReportQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getMonitoringOperationsReport>>
+>;
+export type GetMonitoringOperationsReportQueryError = ErrorType<void>;
+
+/**
+ * @summary Monthly operational report (admin only)
+ */
+
+export function useGetMonitoringOperationsReport<
+  TData = Awaited<ReturnType<typeof getMonitoringOperationsReport>>,
+  TError = ErrorType<void>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getMonitoringOperationsReport>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetMonitoringOperationsReportQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}

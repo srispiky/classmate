@@ -274,6 +274,214 @@ export interface MonitoringSummary {
   process: MonitoringSummaryProcess;
 }
 
+export type SloErrorBudgetStatus =
+  (typeof SloErrorBudgetStatus)[keyof typeof SloErrorBudgetStatus];
+
+export const SloErrorBudgetStatus = {
+  healthy: "healthy",
+  at_risk: "at_risk",
+  exhausted: "exhausted",
+} as const;
+
+export interface SloErrorBudget {
+  totalSeconds: number;
+  consumedSeconds: number;
+  remainingSeconds: number;
+  consumedPercent: number;
+  burnRate: number;
+  status: SloErrorBudgetStatus;
+}
+
+export interface SloResult {
+  id: string;
+  name: string;
+  description: string;
+  target: number;
+  targetLabel: string;
+  current: number;
+  currentLabel: string;
+  compliant: boolean;
+  errorBudget: SloErrorBudget;
+  sampleBasis: string;
+}
+
+export type SloReportSummary = {
+  total: number;
+  compliant: number;
+  atRisk: number;
+  breached: number;
+};
+
+export interface SloReport {
+  evaluatedAt: string;
+  windowSeconds: number;
+  elapsedSeconds: number;
+  slos: SloResult[];
+  summary: SloReportSummary;
+}
+
+export type ServiceAvailabilityStatus =
+  (typeof ServiceAvailabilityStatus)[keyof typeof ServiceAvailabilityStatus];
+
+export const ServiceAvailabilityStatus = {
+  healthy: "healthy",
+  degraded: "degraded",
+  down: "down",
+} as const;
+
+export interface ServiceAvailability {
+  uptimeSeconds: number;
+  downtimeSeconds: number;
+  availabilityPct: number;
+  status: ServiceAvailabilityStatus;
+}
+
+export interface OutageEvent {
+  id: string;
+  service: string;
+  startedAt: string;
+  endedAt: string | null;
+  durationSeconds: number | null;
+  resolved: boolean;
+}
+
+export type AvailabilityReportCapacityIndicatorsRequestGrowthTrend =
+  (typeof AvailabilityReportCapacityIndicatorsRequestGrowthTrend)[keyof typeof AvailabilityReportCapacityIndicatorsRequestGrowthTrend];
+
+export const AvailabilityReportCapacityIndicatorsRequestGrowthTrend = {
+  stable: "stable",
+  growing: "growing",
+  unknown: "unknown",
+} as const;
+
+export type AvailabilityReportCapacityIndicatorsBackupStorageIndicator =
+  (typeof AvailabilityReportCapacityIndicatorsBackupStorageIndicator)[keyof typeof AvailabilityReportCapacityIndicatorsBackupStorageIndicator];
+
+export const AvailabilityReportCapacityIndicatorsBackupStorageIndicator = {
+  none: "none",
+  active: "active",
+  failing: "failing",
+} as const;
+
+export type AvailabilityReportCapacityIndicatorsDbQueryLoad =
+  (typeof AvailabilityReportCapacityIndicatorsDbQueryLoad)[keyof typeof AvailabilityReportCapacityIndicatorsDbQueryLoad];
+
+export const AvailabilityReportCapacityIndicatorsDbQueryLoad = {
+  low: "low",
+  medium: "medium",
+  high: "high",
+} as const;
+
+export type AvailabilityReportCapacityIndicators = {
+  requestsPerMinute: number;
+  requestGrowthTrend: AvailabilityReportCapacityIndicatorsRequestGrowthTrend;
+  estimatedDailyRequests: number;
+  backupStorageIndicator: AvailabilityReportCapacityIndicatorsBackupStorageIndicator;
+  dbQueryLoad: AvailabilityReportCapacityIndicatorsDbQueryLoad;
+  sessionUptimeHours: number;
+};
+
+export interface AvailabilityReport {
+  sessionStartedAt: string;
+  sessionUptimeSeconds: number;
+  database: ServiceAvailability;
+  overall: ServiceAvailability;
+  outages: OutageEvent[];
+  outageCount: number;
+  longestOutageSeconds: number;
+  capacityIndicators: AvailabilityReportCapacityIndicators;
+}
+
+export type OperationsReportReportPeriod = {
+  startedAt: string;
+  durationSeconds: number;
+  durationLabel: string;
+};
+
+export type OperationsReportUptime = {
+  availabilityPct: number;
+  uptimeSeconds: number;
+  downtimeSeconds: number;
+};
+
+export type OperationsReportRequests = {
+  total: number;
+  errors: number;
+  errorRatePct: number;
+  avgDurationMs: number;
+  requestsPerMinute: number;
+};
+
+export type OperationsReportAuthentication = {
+  totalAttempts: number;
+  failures: number;
+  failureRatePct: number;
+  rateLimitHits: number;
+};
+
+export type OperationsReportDatabase = {
+  queryCount: number;
+  queryFailures: number;
+  failureRatePct: number;
+  avgQueryMs: number;
+};
+
+export type OperationsReportBackup = {
+  runs: number;
+  failures: number;
+  successRatePct: number;
+  lastRunAt: string | null;
+};
+
+export type OperationsReportAlerts = {
+  total: number;
+  active: number;
+  acknowledged: number;
+  resolved: number;
+  criticalCount: number;
+  highCount: number;
+  mediumCount: number;
+  lowCount: number;
+};
+
+export type OperationsReportSloOverallHealthLabel =
+  (typeof OperationsReportSloOverallHealthLabel)[keyof typeof OperationsReportSloOverallHealthLabel];
+
+export const OperationsReportSloOverallHealthLabel = {
+  excellent: "excellent",
+  good: "good",
+  at_risk: "at_risk",
+  critical: "critical",
+} as const;
+
+export type OperationsReportSlo = {
+  compliant: number;
+  total: number;
+  breached: string[];
+  overallHealthLabel: OperationsReportSloOverallHealthLabel;
+};
+
+export type OperationsReportCapacity = {
+  requestsPerMinute: number;
+  estimatedDailyRequests: number;
+  dbQueryLoad: string;
+  backupStorageIndicator: string;
+};
+
+export interface OperationsReport {
+  generatedAt: string;
+  reportPeriod: OperationsReportReportPeriod;
+  uptime: OperationsReportUptime;
+  requests: OperationsReportRequests;
+  authentication: OperationsReportAuthentication;
+  database: OperationsReportDatabase;
+  backup: OperationsReportBackup;
+  alerts: OperationsReportAlerts;
+  slo: OperationsReportSlo;
+  capacity: OperationsReportCapacity;
+  recommendations: string[];
+}
+
 export type AlertSeverity = (typeof AlertSeverity)[keyof typeof AlertSeverity];
 
 export const AlertSeverity = {

@@ -2,8 +2,10 @@ import { Link } from "wouter";
 import {
   useGetMonitoringStatus,
   useGetMonitoringSummary,
+  useGetMonitoringSlo,
   getGetMonitoringStatusQueryKey,
   getGetMonitoringSummaryQueryKey,
+  getGetMonitoringSloQueryKey,
 } from "@workspace/api-client-react";
 import type { MonitoringSummarySlowestEndpointsItem } from "@workspace/api-client-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -23,6 +25,7 @@ import {
   RefreshCw,
   Server,
   ShieldAlert,
+  Target,
   TrendingUp,
   XCircle,
   Cloud,
@@ -81,6 +84,10 @@ export default function Monitoring() {
     refetch: refetchSummary,
   } = useGetMonitoringSummary({
     query: { queryKey: getGetMonitoringSummaryQueryKey(), refetchInterval: 30_000 },
+  });
+
+  const { data: sloData } = useGetMonitoringSlo({
+    query: { queryKey: getGetMonitoringSloQueryKey(), refetchInterval: 60_000 },
   });
 
   const loading = statusLoading || summaryLoading;
@@ -216,6 +223,36 @@ export default function Monitoring() {
           </CardContent>
         </Card>
       </div>
+
+      {/* SLO Summary quicklink */}
+      {sloData && (
+        <Link href="/monitoring/slo">
+          <div className="rounded-lg border border-border bg-card p-4 flex items-center justify-between cursor-pointer transition-colors hover:bg-muted/50">
+            <div className="flex items-center gap-3">
+              <Target className="w-5 h-5 text-muted-foreground" />
+              <div>
+                <p className="text-sm font-medium">SLO &amp; Operations</p>
+                <p className="text-xs text-muted-foreground">
+                  {sloData.summary.compliant}/{sloData.summary.total} SLOs compliant ·{" "}
+                  {sloData.summary.breached > 0
+                    ? `${sloData.summary.breached} breached`
+                    : "all targets met"}
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-3 text-xs text-muted-foreground">
+              {sloData.summary.breached > 0 ? (
+                <span className="text-red-600 dark:text-red-400 font-medium">
+                  {sloData.summary.breached} SLO{sloData.summary.breached !== 1 ? "s" : ""} breached
+                </span>
+              ) : (
+                <span className="text-green-600 dark:text-green-400 font-medium">All compliant</span>
+              )}
+              <span className="text-muted-foreground/50">→</span>
+            </div>
+          </div>
+        </Link>
+      )}
 
       {/* Alert Summary */}
       {status && (

@@ -1494,6 +1494,57 @@ paths:
         "404":
           description: Alert not found
 
+  /monitoring/slo:
+    get:
+      operationId: getMonitoringSlo
+      tags: [monitoring]
+      summary: SLO compliance and error budget report (admin only)
+      responses:
+        "200":
+          description: SLO report
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SloReport"
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden
+
+  /monitoring/availability:
+    get:
+      operationId: getMonitoringAvailability
+      tags: [monitoring]
+      summary: Availability and capacity indicators (admin only)
+      responses:
+        "200":
+          description: Availability report
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AvailabilityReport"
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden
+
+  /monitoring/operations-report:
+    get:
+      operationId: getMonitoringOperationsReport
+      tags: [monitoring]
+      summary: Monthly operational report (admin only)
+      responses:
+        "200":
+          description: Operations report
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OperationsReport"
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden
+
 components:
   securitySchemes:
     sessionCookie:
@@ -1758,6 +1809,278 @@ components:
               type: string
             uptimeSeconds:
               type: integer
+
+    SloErrorBudget:
+      type: object
+      required: [totalSeconds, consumedSeconds, remainingSeconds, consumedPercent, burnRate, status]
+      properties:
+        totalSeconds:
+          type: integer
+        consumedSeconds:
+          type: integer
+        remainingSeconds:
+          type: integer
+        consumedPercent:
+          type: number
+        burnRate:
+          type: number
+        status:
+          type: string
+          enum: [healthy, at_risk, exhausted]
+
+    SloResult:
+      type: object
+      required: [id, name, description, target, targetLabel, current, currentLabel, compliant, errorBudget, sampleBasis]
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        description:
+          type: string
+        target:
+          type: number
+        targetLabel:
+          type: string
+        current:
+          type: number
+        currentLabel:
+          type: string
+        compliant:
+          type: boolean
+        errorBudget:
+          $ref: "#/components/schemas/SloErrorBudget"
+        sampleBasis:
+          type: string
+
+    SloReport:
+      type: object
+      required: [evaluatedAt, windowSeconds, elapsedSeconds, slos, summary]
+      properties:
+        evaluatedAt:
+          type: string
+        windowSeconds:
+          type: integer
+        elapsedSeconds:
+          type: integer
+        slos:
+          type: array
+          items:
+            $ref: "#/components/schemas/SloResult"
+        summary:
+          type: object
+          required: [total, compliant, atRisk, breached]
+          properties:
+            total:
+              type: integer
+            compliant:
+              type: integer
+            atRisk:
+              type: integer
+            breached:
+              type: integer
+
+    ServiceAvailability:
+      type: object
+      required: [uptimeSeconds, downtimeSeconds, availabilityPct, status]
+      properties:
+        uptimeSeconds:
+          type: integer
+        downtimeSeconds:
+          type: integer
+        availabilityPct:
+          type: number
+        status:
+          type: string
+          enum: [healthy, degraded, down]
+
+    OutageEvent:
+      type: object
+      required: [id, service, startedAt, endedAt, durationSeconds, resolved]
+      properties:
+        id:
+          type: string
+        service:
+          type: string
+        startedAt:
+          type: string
+        endedAt:
+          type: string
+          nullable: true
+        durationSeconds:
+          type: integer
+          nullable: true
+        resolved:
+          type: boolean
+
+    AvailabilityReport:
+      type: object
+      required: [sessionStartedAt, sessionUptimeSeconds, database, overall, outages, outageCount, longestOutageSeconds, capacityIndicators]
+      properties:
+        sessionStartedAt:
+          type: string
+        sessionUptimeSeconds:
+          type: integer
+        database:
+          $ref: "#/components/schemas/ServiceAvailability"
+        overall:
+          $ref: "#/components/schemas/ServiceAvailability"
+        outages:
+          type: array
+          items:
+            $ref: "#/components/schemas/OutageEvent"
+        outageCount:
+          type: integer
+        longestOutageSeconds:
+          type: integer
+        capacityIndicators:
+          type: object
+          required: [requestsPerMinute, requestGrowthTrend, estimatedDailyRequests, backupStorageIndicator, dbQueryLoad, sessionUptimeHours]
+          properties:
+            requestsPerMinute:
+              type: number
+            requestGrowthTrend:
+              type: string
+              enum: [stable, growing, unknown]
+            estimatedDailyRequests:
+              type: integer
+            backupStorageIndicator:
+              type: string
+              enum: [none, active, failing]
+            dbQueryLoad:
+              type: string
+              enum: [low, medium, high]
+            sessionUptimeHours:
+              type: number
+
+    OperationsReport:
+      type: object
+      required: [generatedAt, reportPeriod, uptime, requests, authentication, database, backup, alerts, slo, capacity, recommendations]
+      properties:
+        generatedAt:
+          type: string
+        reportPeriod:
+          type: object
+          required: [startedAt, durationSeconds, durationLabel]
+          properties:
+            startedAt:
+              type: string
+            durationSeconds:
+              type: integer
+            durationLabel:
+              type: string
+        uptime:
+          type: object
+          required: [availabilityPct, uptimeSeconds, downtimeSeconds]
+          properties:
+            availabilityPct:
+              type: number
+            uptimeSeconds:
+              type: integer
+            downtimeSeconds:
+              type: integer
+        requests:
+          type: object
+          required: [total, errors, errorRatePct, avgDurationMs, requestsPerMinute]
+          properties:
+            total:
+              type: integer
+            errors:
+              type: integer
+            errorRatePct:
+              type: number
+            avgDurationMs:
+              type: integer
+            requestsPerMinute:
+              type: number
+        authentication:
+          type: object
+          required: [totalAttempts, failures, failureRatePct, rateLimitHits]
+          properties:
+            totalAttempts:
+              type: integer
+            failures:
+              type: integer
+            failureRatePct:
+              type: number
+            rateLimitHits:
+              type: integer
+        database:
+          type: object
+          required: [queryCount, queryFailures, failureRatePct, avgQueryMs]
+          properties:
+            queryCount:
+              type: integer
+            queryFailures:
+              type: integer
+            failureRatePct:
+              type: number
+            avgQueryMs:
+              type: integer
+        backup:
+          type: object
+          required: [runs, failures, successRatePct, lastRunAt]
+          properties:
+            runs:
+              type: integer
+            failures:
+              type: integer
+            successRatePct:
+              type: number
+            lastRunAt:
+              type: string
+              nullable: true
+        alerts:
+          type: object
+          required: [total, active, acknowledged, resolved, criticalCount, highCount, mediumCount, lowCount]
+          properties:
+            total:
+              type: integer
+            active:
+              type: integer
+            acknowledged:
+              type: integer
+            resolved:
+              type: integer
+            criticalCount:
+              type: integer
+            highCount:
+              type: integer
+            mediumCount:
+              type: integer
+            lowCount:
+              type: integer
+        slo:
+          type: object
+          required: [compliant, total, breached, overallHealthLabel]
+          properties:
+            compliant:
+              type: integer
+            total:
+              type: integer
+            breached:
+              type: array
+              items:
+                type: string
+            overallHealthLabel:
+              type: string
+              enum: [excellent, good, at_risk, critical]
+        capacity:
+          type: object
+          required: [requestsPerMinute, estimatedDailyRequests, dbQueryLoad, backupStorageIndicator]
+          properties:
+            requestsPerMinute:
+              type: number
+            estimatedDailyRequests:
+              type: integer
+            dbQueryLoad:
+              type: string
+            backupStorageIndicator:
+              type: string
+        recommendations:
+          type: array
+          items:
+            type: string
 
     Alert:
       type: object

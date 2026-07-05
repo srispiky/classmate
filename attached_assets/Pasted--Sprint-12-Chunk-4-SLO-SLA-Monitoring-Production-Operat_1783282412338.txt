@@ -1,0 +1,296 @@
+# Sprint 12 Chunk 4 — SLO/SLA Monitoring & Production Operations Maturity
+
+Before making changes:
+
+1. Read and understand:
+   - Monitoring Dashboard implementation
+   - AlertService
+   - Monitoring endpoints
+   - Metrics service
+   - Health endpoints
+   - Incident runbooks
+   - OPERATIONS.md
+
+2. Review all observability work completed in Sprint 12.
+
+3. Review current production readiness status.
+
+4. Keep implementation strictly focused on operational maturity.
+
+--------------------------------------------------
+OBJECTIVE
+--------------------------------------------------
+
+Introduce production-grade operational governance.
+
+Current state:
+
+- monitoring exists
+- metrics exist
+- alerts exist
+- incident runbooks exist
+
+Missing:
+
+- SLOs
+- SLAs
+- error budgets
+- availability reporting
+- operational scorecards
+- capacity visibility
+
+Implement production operations maturity.
+
+--------------------------------------------------
+PART 1 — SERVICE INVENTORY
+--------------------------------------------------
+
+Review:
+
+- API services
+- authentication services
+- database dependency
+- backup subsystem
+- replication subsystem
+
+Identify:
+
+critical services.
+
+Document dependencies.
+
+--------------------------------------------------
+PART 2 — SLO FRAMEWORK
+--------------------------------------------------
+
+Create:
+
+SLO definitions.
+
+Track:
+
+API Availability
+
+Target:
+99.9%
+
+Authentication Availability
+
+Target:
+99.9%
+
+Backup Success Rate
+
+Target:
+100%
+
+Replication Success Rate
+
+Target:
+100%
+
+Health Endpoint Availability
+
+Target:
+99.99%
+
+--------------------------------------------------
+PART 3 — ERROR BUDGETS
+--------------------------------------------------
+
+Implement:
+
+Error budget calculations.
+
+Track:
+
+- consumed budget
+- remaining budget
+- burn rate
+
+Support:
+
+monthly reporting.
+
+--------------------------------------------------
+PART 4 — AVAILABILITY TRACKING
+--------------------------------------------------
+
+Create:
+
+AvailabilityService
+
+Track:
+
+- uptime
+- downtime
+- outage duration
+- outage count
+
+Generate:
+
+availability summaries.
+
+--------------------------------------------------
+PART 5 — CAPACITY METRICS
+--------------------------------------------------
+
+Track:
+
+- request growth
+- storage growth
+- backup growth
+- database growth
+
+Identify:
+
+capacity risks.
+
+--------------------------------------------------
+PART 6 — OPERATIONS DASHBOARD
+--------------------------------------------------
+
+Extend monitoring dashboard.
+
+Display:
+
+- SLO compliance
+- SLA compliance
+- availability
+- error budget
+- capacity indicators
+
+Admin-only.
+
+--------------------------------------------------
+PART 7 — MONTHLY OPERATIONS REPORT
+--------------------------------------------------
+
+Create:
+
+OperationalReportService
+
+Generate:
+
+- uptime
+- incidents
+- alerts
+- backup success
+- replication success
+- error budget consumption
+
+Provide summary metrics.
+
+--------------------------------------------------
+PART 8 — OPENAPI COMPLIANCE
+--------------------------------------------------
+
+Add:
+
+GET /monitoring/slo
+
+GET /monitoring/availability
+
+GET /monitoring/operations-report
+
+Document schemas.
+
+Generate:
+
+- hooks
+- validators
+- types
+
+No manual fetch calls.
+
+--------------------------------------------------
+PART 9 — SECURITY REVIEW
+--------------------------------------------------
+
+Verify:
+
+Admin-only access.
+
+Teachers denied.
+
+Students denied.
+
+No infrastructure secrets exposed.
+
+--------------------------------------------------
+PART 10 — TEST COVERAGE
+--------------------------------------------------
+
+Add tests covering:
+
+- SLO calculations
+- availability calculations
+- error budget calculations
+- operational reports
+- authorization
+
+Verify:
+
+full suite passes.
+
+--------------------------------------------------
+PART 11 — E2E VERIFICATION
+--------------------------------------------------
+
+Verify:
+
+Admin:
+
+- views SLO dashboard
+- views availability
+- views operations report
+
+Teacher:
+
+- denied
+
+Student:
+
+- denied
+
+--------------------------------------------------
+PART 12 — OPERATIONS DOCUMENTATION
+--------------------------------------------------
+
+Update:
+
+OPERATIONS.md
+
+Include:
+
+- SLO definitions
+- SLA targets
+- error budget policy
+- escalation guidance
+- reporting workflow
+
+--------------------------------------------------
+DELIVERABLE
+--------------------------------------------------
+
+Provide:
+
+1. Files modified
+2. SLO architecture
+3. Availability architecture
+4. Error budget strategy
+5. Security review
+6. Test results
+7. E2E verification
+8. Remaining operational risks
+
+--------------------------------------------------
+GIT REQUIREMENT
+--------------------------------------------------
+
+git add .
+git commit -m "feat(observability): add SLO monitoring and operations reporting"
+
+git push origin main
+
+Include commit hash in report.
