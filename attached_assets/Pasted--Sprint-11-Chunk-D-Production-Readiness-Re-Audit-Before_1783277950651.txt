@@ -1,0 +1,314 @@
+# Sprint 11 Chunk D — Production Readiness Re-Audit
+
+Before performing the audit:
+
+1. Read:
+   - Sprint 10 Gate Review
+   - Sprint 11 Chunk A report
+   - Sprint 11 Chunk B report
+   - Sprint 11 Chunk C report
+   - RUNBOOK-BACKUP.md
+   - OPERATIONS.md
+   - app.ts
+   - auth routes
+   - downloads routes
+   - backup workflows
+   - replication workflows
+
+2. Review all Sprint 10 findings.
+
+3. Verify actual implementation rather than trusting reports.
+
+--------------------------------------------------
+OBJECTIVE
+--------------------------------------------------
+
+Determine whether Classmate Connect is now ready
+for production deployment.
+
+Re-audit all previous findings.
+
+Provide:
+
+GO
+or
+NO-GO
+
+with evidence.
+
+--------------------------------------------------
+PART 1 — CRITICAL FINDINGS RECHECK
+--------------------------------------------------
+
+Verify:
+
+C1
+Downloads endpoint security
+
+Confirm:
+
+- requireAuth present
+- requireRole("admin") present
+- route registration correct
+- unauthenticated access blocked
+- teacher access blocked
+
+Test:
+
+401
+403
+200
+
+paths.
+
+--------------------------------------------------
+PART 2 — SESSION SECURITY
+--------------------------------------------------
+
+Verify:
+
+C2
+
+Confirm:
+
+cookie.secure
+
+cookie.sameSite
+
+production behavior
+
+staging behavior
+
+development behavior
+
+Review:
+
+session middleware
+
+app.ts
+
+--------------------------------------------------
+PART 3 — AUTH RATE LIMITING
+--------------------------------------------------
+
+Verify:
+
+C3
+
+Confirm:
+
+- login rate limiting active
+- lockout behavior correct
+- retry window documented
+- no bypass path exists
+
+Perform validation tests.
+
+--------------------------------------------------
+PART 4 — BACKUP STRATEGY
+--------------------------------------------------
+
+Verify:
+
+R-H2
+Automated backups
+
+Confirm:
+
+- workflow executes
+- retention works
+- artifacts generated
+
+Verify:
+
+R-H3
+Offsite replication
+
+Confirm:
+
+- uploads succeed
+- recovery succeeds
+- checksum validation works
+
+--------------------------------------------------
+PART 5 — SECURITY HEADERS
+--------------------------------------------------
+
+Verify:
+
+Helmet enabled
+
+Headers present:
+
+- CSP
+- HSTS
+- X-Frame-Options
+- Referrer-Policy
+- X-Content-Type-Options
+
+--------------------------------------------------
+PART 6 — CORS REVIEW
+--------------------------------------------------
+
+Verify:
+
+Production origins restricted.
+
+Confirm:
+
+- no wildcard
+- no reflection
+- credentials handled safely
+
+--------------------------------------------------
+PART 7 — DATABASE REVIEW
+--------------------------------------------------
+
+Verify:
+
+- FK declarations
+- indexes
+- migration strategy
+- rollback capability
+
+Review:
+
+assignments
+assessments
+notes
+announcements
+courses
+activity
+
+--------------------------------------------------
+PART 8 — OPENAPI COMPLIANCE
+--------------------------------------------------
+
+Verify:
+
+Every route is documented.
+
+Identify:
+
+- undocumented routes
+- orphan schemas
+- unused operationIds
+
+Confirm:
+
+generated hooks align with routes.
+
+--------------------------------------------------
+PART 9 — TEST SUITE REVIEW
+--------------------------------------------------
+
+Review:
+
+- authorization tests
+- integration tests
+- backup tests
+- reporting tests
+- dashboard tests
+
+Verify:
+
+full suite passes.
+
+Provide totals.
+
+--------------------------------------------------
+PART 10 — PERFORMANCE REVIEW
+--------------------------------------------------
+
+Review:
+
+- dashboard queries
+- reports
+- pagination
+- analytics
+
+Identify:
+
+remaining scalability concerns.
+
+--------------------------------------------------
+PART 11 — DISASTER RECOVERY REVIEW
+--------------------------------------------------
+
+Verify:
+
+1. backup exists
+2. offsite copy exists
+3. restore works
+4. runbooks exist
+
+Document:
+
+RTO
+RPO
+
+if measurable.
+
+--------------------------------------------------
+PART 12 — RELEASE SCORECARD
+--------------------------------------------------
+
+Provide scores:
+
+Security
+Authorization
+Database
+Performance
+Testing
+Operations
+Recovery
+OpenAPI Compliance
+
+Overall Score
+
+--------------------------------------------------
+PART 13 — GO / NO-GO DECISION
+--------------------------------------------------
+
+Provide:
+
+GO
+or
+NO-GO
+
+List every remaining blocker.
+
+--------------------------------------------------
+PART 14 — NEXT RECOMMENDED SPRINT
+--------------------------------------------------
+
+If GO:
+
+Recommend next sprint priority.
+
+If NO-GO:
+
+Recommend remediation sprint.
+
+--------------------------------------------------
+GIT REQUIREMENT
+--------------------------------------------------
+
+No code changes.
+
+No commits.
+
+Audit only.
+
+--------------------------------------------------
+DELIVERABLE
+--------------------------------------------------
+
+Provide:
+
+1. Findings
+2. Evidence
+3. Risk ranking
+4. Updated readiness score
+5. GO / NO-GO decision
+6. Recommended next sprint
