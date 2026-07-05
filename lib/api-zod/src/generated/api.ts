@@ -1507,6 +1507,11 @@ export const GetMonitoringStatusResponse = zod.object({
   replication: zod.object({
     configured: zod.boolean(),
   }),
+  alerts: zod.object({
+    active: zod.number(),
+    acknowledged: zod.number(),
+    resolved: zod.number(),
+  }),
 });
 
 /**
@@ -1553,4 +1558,75 @@ export const GetMonitoringSummaryResponse = zod.object({
     startedAt: zod.string(),
     uptimeSeconds: zod.number(),
   }),
+});
+
+/**
+ * @summary List alerts (admin only)
+ */
+export const ListAlertsQueryParams = zod.object({
+  status: zod
+    .enum(["active", "acknowledged", "resolved"])
+    .optional()
+    .describe("Filter by alert status"),
+});
+
+export const ListAlertsResponseItem = zod.object({
+  id: zod.string(),
+  type: zod.string(),
+  severity: zod.enum(["low", "medium", "high", "critical"]),
+  status: zod.enum(["active", "acknowledged", "resolved"]),
+  title: zod.string(),
+  description: zod.string(),
+  metadata: zod.record(zod.string(), zod.unknown()),
+  createdAt: zod.string(),
+  updatedAt: zod.string(),
+  acknowledgedAt: zod.string().nullable(),
+  resolvedAt: zod.string().nullable(),
+});
+export const ListAlertsResponse = zod.array(ListAlertsResponseItem);
+
+/**
+ * @summary Get a single alert (admin only)
+ */
+export const GetAlertParams = zod.object({
+  id: zod.coerce.string(),
+});
+
+export const GetAlertResponse = zod.object({
+  id: zod.string(),
+  type: zod.string(),
+  severity: zod.enum(["low", "medium", "high", "critical"]),
+  status: zod.enum(["active", "acknowledged", "resolved"]),
+  title: zod.string(),
+  description: zod.string(),
+  metadata: zod.record(zod.string(), zod.unknown()),
+  createdAt: zod.string(),
+  updatedAt: zod.string(),
+  acknowledgedAt: zod.string().nullable(),
+  resolvedAt: zod.string().nullable(),
+});
+
+/**
+ * @summary Acknowledge or resolve an alert (admin only)
+ */
+export const UpdateAlertParams = zod.object({
+  id: zod.coerce.string(),
+});
+
+export const UpdateAlertBody = zod.object({
+  action: zod.enum(["acknowledge", "resolve"]),
+});
+
+export const UpdateAlertResponse = zod.object({
+  id: zod.string(),
+  type: zod.string(),
+  severity: zod.enum(["low", "medium", "high", "critical"]),
+  status: zod.enum(["active", "acknowledged", "resolved"]),
+  title: zod.string(),
+  description: zod.string(),
+  metadata: zod.record(zod.string(), zod.unknown()),
+  createdAt: zod.string(),
+  updatedAt: zod.string(),
+  acknowledgedAt: zod.string().nullable(),
+  resolvedAt: zod.string().nullable(),
 });

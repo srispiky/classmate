@@ -1,3 +1,4 @@
+import { Link } from "wouter";
 import {
   useGetMonitoringStatus,
   useGetMonitoringSummary,
@@ -12,9 +13,11 @@ import { Separator } from "@/components/ui/separator";
 import {
   Activity,
   AlertTriangle,
+  Bell,
   CheckCircle2,
   Clock,
   Database,
+  Eye,
   HardDrive,
   Loader2,
   RefreshCw,
@@ -213,6 +216,53 @@ export default function Monitoring() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Alert Summary */}
+      {status && (
+        <Link href="/monitoring/alerts">
+          <div
+            className={`rounded-lg border p-4 flex items-center justify-between cursor-pointer transition-colors hover:bg-muted/50 ${
+              status.alerts.active > 0
+                ? "border-orange-300/60 bg-orange-50/30 dark:bg-orange-900/10"
+                : "border-border bg-card"
+            }`}
+          >
+            <div className="flex items-center gap-3">
+              <Bell
+                className={`w-5 h-5 ${status.alerts.active > 0 ? "text-orange-500" : "text-muted-foreground"}`}
+              />
+              <div>
+                <p className="text-sm font-medium">Alert Center</p>
+                <p className="text-xs text-muted-foreground">
+                  {status.alerts.active === 0
+                    ? "No active alerts — system healthy"
+                    : `${status.alerts.active} active alert${status.alerts.active !== 1 ? "s" : ""} require attention`}
+                </p>
+              </div>
+              {status.alerts.active > 0 && (
+                <span className="ml-1 px-2 py-0.5 rounded-full bg-orange-500 text-white text-xs font-bold">
+                  {status.alerts.active}
+                </span>
+              )}
+            </div>
+            <div className="flex items-center gap-4 text-xs text-muted-foreground">
+              <span className="flex items-center gap-1">
+                <AlertTriangle className="w-3 h-3 text-orange-400" />
+                {status.alerts.active} active
+              </span>
+              <span className="flex items-center gap-1">
+                <Eye className="w-3 h-3 text-blue-400" />
+                {status.alerts.acknowledged} ack
+              </span>
+              <span className="flex items-center gap-1">
+                <CheckCircle2 className="w-3 h-3 text-green-400" />
+                {status.alerts.resolved} resolved
+              </span>
+              <span className="text-muted-foreground/50">→</span>
+            </div>
+          </div>
+        </Link>
+      )}
 
       {/* Request Volume */}
       <Card>

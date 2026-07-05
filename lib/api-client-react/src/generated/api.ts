@@ -19,6 +19,8 @@ import type {
 import type {
   ActivityItem,
   AiSuggestions,
+  Alert,
+  AlertUpdate,
   Announcement,
   AnnouncementInput,
   AnnouncementUpdate,
@@ -40,6 +42,7 @@ import type {
   GetStudentReportSummaryParams,
   GradeBreakdown,
   HealthStatus,
+  ListAlertsParams,
   ListAnnouncementsParams,
   ListAssessmentsParams,
   ListAssignmentsParams,
@@ -5629,3 +5632,269 @@ export function useGetMonitoringSummary<
 
   return { ...query, queryKey: queryOptions.queryKey };
 }
+
+/**
+ * @summary List alerts (admin only)
+ */
+export const getListAlertsUrl = (params?: ListAlertsParams) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/monitoring/alerts?${stringifiedParams}`
+    : `/api/monitoring/alerts`;
+};
+
+export const listAlerts = async (
+  params?: ListAlertsParams,
+  options?: RequestInit,
+): Promise<Alert[]> => {
+  return customFetch<Alert[]>(getListAlertsUrl(params), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getListAlertsQueryKey = (params?: ListAlertsParams) => {
+  return [`/api/monitoring/alerts`, ...(params ? [params] : [])] as const;
+};
+
+export const getListAlertsQueryOptions = <
+  TData = Awaited<ReturnType<typeof listAlerts>>,
+  TError = ErrorType<void>,
+>(
+  params?: ListAlertsParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listAlerts>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getListAlertsQueryKey(params);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof listAlerts>>> = ({
+    signal,
+  }) => listAlerts(params, { signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listAlerts>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListAlertsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listAlerts>>
+>;
+export type ListAlertsQueryError = ErrorType<void>;
+
+/**
+ * @summary List alerts (admin only)
+ */
+
+export function useListAlerts<
+  TData = Awaited<ReturnType<typeof listAlerts>>,
+  TError = ErrorType<void>,
+>(
+  params?: ListAlertsParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listAlerts>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListAlertsQueryOptions(params, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Get a single alert (admin only)
+ */
+export const getGetAlertUrl = (id: string) => {
+  return `/api/monitoring/alerts/${id}`;
+};
+
+export const getAlert = async (
+  id: string,
+  options?: RequestInit,
+): Promise<Alert> => {
+  return customFetch<Alert>(getGetAlertUrl(id), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetAlertQueryKey = (id: string) => {
+  return [`/api/monitoring/alerts/${id}`] as const;
+};
+
+export const getGetAlertQueryOptions = <
+  TData = Awaited<ReturnType<typeof getAlert>>,
+  TError = ErrorType<void>,
+>(
+  id: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getAlert>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetAlertQueryKey(id);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getAlert>>> = ({
+    signal,
+  }) => getAlert(id, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!id,
+    ...queryOptions,
+  } as UseQueryOptions<Awaited<ReturnType<typeof getAlert>>, TError, TData> & {
+    queryKey: QueryKey;
+  };
+};
+
+export type GetAlertQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getAlert>>
+>;
+export type GetAlertQueryError = ErrorType<void>;
+
+/**
+ * @summary Get a single alert (admin only)
+ */
+
+export function useGetAlert<
+  TData = Awaited<ReturnType<typeof getAlert>>,
+  TError = ErrorType<void>,
+>(
+  id: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getAlert>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetAlertQueryOptions(id, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Acknowledge or resolve an alert (admin only)
+ */
+export const getUpdateAlertUrl = (id: string) => {
+  return `/api/monitoring/alerts/${id}`;
+};
+
+export const updateAlert = async (
+  id: string,
+  alertUpdate: AlertUpdate,
+  options?: RequestInit,
+): Promise<Alert> => {
+  return customFetch<Alert>(getUpdateAlertUrl(id), {
+    ...options,
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(alertUpdate),
+  });
+};
+
+export const getUpdateAlertMutationOptions = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateAlert>>,
+    TError,
+    { id: string; data: BodyType<AlertUpdate> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof updateAlert>>,
+  TError,
+  { id: string; data: BodyType<AlertUpdate> },
+  TContext
+> => {
+  const mutationKey = ["updateAlert"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof updateAlert>>,
+    { id: string; data: BodyType<AlertUpdate> }
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return updateAlert(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type UpdateAlertMutationResult = NonNullable<
+  Awaited<ReturnType<typeof updateAlert>>
+>;
+export type UpdateAlertMutationBody = BodyType<AlertUpdate>;
+export type UpdateAlertMutationError = ErrorType<void>;
+
+/**
+ * @summary Acknowledge or resolve an alert (admin only)
+ */
+export const useUpdateAlert = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateAlert>>,
+    TError,
+    { id: string; data: BodyType<AlertUpdate> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof updateAlert>>,
+  TError,
+  { id: string; data: BodyType<AlertUpdate> },
+  TContext
+> => {
+  return useMutation(getUpdateAlertMutationOptions(options));
+};

@@ -5,6 +5,7 @@
  * Classmate API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { MonitoringStatusAlerts } from "./monitoringStatusAlerts";
 import type { MonitoringStatusBackup } from "./monitoringStatusBackup";
 import type { MonitoringStatusDatabase } from "./monitoringStatusDatabase";
 import type { MonitoringStatusReplication } from "./monitoringStatusReplication";
@@ -16,4 +17,5 @@ export interface MonitoringStatus {
   database: MonitoringStatusDatabase;
   backup: MonitoringStatusBackup;
   replication: MonitoringStatusReplication;
+  alerts: MonitoringStatusAlerts;
 }

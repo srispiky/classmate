@@ -1,0 +1,306 @@
+# Sprint 12 Chunk 3 — Alerting & Incident Response Foundation
+
+Before making changes:
+
+1. Read and understand:
+   - Monitoring dashboard implementation
+   - Metrics service
+   - Monitoring endpoints
+   - Backup workflows
+   - Replication workflows
+   - Structured logging
+   - Health check implementation
+   - OPERATIONS.md
+   - RUNBOOK-BACKUP.md
+
+2. Review all observability work completed so far.
+
+3. Review operational failure scenarios.
+
+4. Keep implementation strictly focused on alerting and incident response.
+
+--------------------------------------------------
+OBJECTIVE
+--------------------------------------------------
+
+Move from passive monitoring to proactive alerting.
+
+Current state:
+
+- logs available
+- metrics available
+- monitoring dashboard available
+
+Missing:
+
+- alerts
+- incident detection
+- operational thresholds
+- escalation guidance
+
+Implement alerting foundation.
+
+--------------------------------------------------
+PART 1 — ALERT INVENTORY
+--------------------------------------------------
+
+Review platform risks.
+
+Identify alert categories:
+
+- authentication
+- authorization
+- database
+- backups
+- replication
+- application health
+- performance
+
+Document findings.
+
+--------------------------------------------------
+PART 2 — ALERT ENGINE
+--------------------------------------------------
+
+Create:
+
+AlertService
+
+Responsibilities:
+
+- evaluate metrics
+- evaluate health state
+- create alert records
+- track alert status
+
+Support:
+
+- ACTIVE
+- ACKNOWLEDGED
+- RESOLVED
+
+Do not implement notifications yet.
+
+Focus on alert lifecycle.
+
+--------------------------------------------------
+PART 3 — AUTHENTICATION ALERTS
+--------------------------------------------------
+
+Create alerts for:
+
+- excessive login failures
+- rate-limit violations
+- authentication spikes
+
+Detect:
+
+credential stuffing patterns.
+
+--------------------------------------------------
+PART 4 — DATABASE ALERTS
+--------------------------------------------------
+
+Create alerts for:
+
+- database unavailable
+- repeated query failures
+- abnormal query latency
+
+Track:
+
+alert duration.
+
+--------------------------------------------------
+PART 5 — BACKUP ALERTS
+--------------------------------------------------
+
+Create alerts for:
+
+- backup failure
+- replication failure
+- checksum validation failure
+- retention failure
+
+Verify:
+
+backup readiness visibility.
+
+--------------------------------------------------
+PART 6 — APPLICATION HEALTH ALERTS
+--------------------------------------------------
+
+Create alerts for:
+
+- health endpoint degradation
+- elevated error rates
+- repeated exceptions
+
+Support configurable thresholds.
+
+--------------------------------------------------
+PART 7 — PERFORMANCE ALERTS
+--------------------------------------------------
+
+Create alerts for:
+
+- high p95 latency
+- high p99 latency
+- sustained slow endpoints
+
+Identify:
+
+top offending routes.
+
+--------------------------------------------------
+PART 8 — MONITORING API
+--------------------------------------------------
+
+Add:
+
+GET /monitoring/alerts
+
+GET /monitoring/alerts/:id
+
+Admin-only.
+
+Return:
+
+- severity
+- status
+- createdAt
+- resolvedAt
+- description
+
+--------------------------------------------------
+PART 9 — FRONTEND ALERT CENTER
+--------------------------------------------------
+
+Add:
+
+Operations Alert Center
+
+Admin-only.
+
+Display:
+
+- active alerts
+- acknowledged alerts
+- resolved alerts
+
+Allow:
+
+- acknowledge
+- filter
+- sort
+
+Reuse generated hooks.
+
+--------------------------------------------------
+PART 10 — OPENAPI COMPLIANCE
+--------------------------------------------------
+
+Document:
+
+/monitoring/alerts
+/monitoring/alerts/{id}
+
+Generate:
+
+- hooks
+- schemas
+- validators
+
+No manual fetch calls.
+
+--------------------------------------------------
+PART 11 — SECURITY REVIEW
+--------------------------------------------------
+
+Verify:
+
+Admin-only access.
+
+Confirm:
+
+Teachers denied.
+
+Students denied.
+
+No sensitive secrets exposed.
+
+--------------------------------------------------
+PART 12 — TEST COVERAGE
+--------------------------------------------------
+
+Add tests covering:
+
+- alert generation
+- alert resolution
+- alert acknowledgement
+- authorization
+- frontend rendering
+
+Verify:
+
+full suite passes.
+
+--------------------------------------------------
+PART 13 — INCIDENT RUNBOOKS
+--------------------------------------------------
+
+Update:
+
+OPERATIONS.md
+
+Create:
+
+Incident Response section.
+
+Include:
+
+- database outage
+- backup failure
+- replication failure
+- authentication attack
+- elevated error rate
+
+--------------------------------------------------
+PART 14 — E2E VERIFICATION
+--------------------------------------------------
+
+Simulate:
+
+1. backup failure
+2. database failure
+3. authentication attack
+4. latency threshold breach
+
+Verify:
+
+alerts generated correctly.
+
+--------------------------------------------------
+DELIVERABLE
+--------------------------------------------------
+
+Provide:
+
+1. Files modified
+2. Alert architecture
+3. Alert types
+4. Security review
+5. Test results
+6. E2E verification
+7. Remaining observability gaps
+
+--------------------------------------------------
+GIT REQUIREMENT
+--------------------------------------------------
+
+git add .
+git commit -m "feat(observability): add alerting and incident response foundation"
+
+git push origin main
+
+Include commit hash in report.

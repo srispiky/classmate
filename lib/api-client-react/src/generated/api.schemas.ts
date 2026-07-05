@@ -202,6 +202,12 @@ export type MonitoringStatusReplication = {
   configured: boolean;
 };
 
+export type MonitoringStatusAlerts = {
+  active: number;
+  acknowledged: number;
+  resolved: number;
+};
+
 export interface MonitoringStatus {
   status: string;
   version: string;
@@ -209,6 +215,7 @@ export interface MonitoringStatus {
   database: MonitoringStatusDatabase;
   backup: MonitoringStatusBackup;
   replication: MonitoringStatusReplication;
+  alerts: MonitoringStatusAlerts;
 }
 
 export type MonitoringSummaryRequestsByStatus = { [key: string]: number };
@@ -265,6 +272,51 @@ export interface MonitoringSummary {
   database: MonitoringSummaryDatabase;
   backup: MonitoringSummaryBackup;
   process: MonitoringSummaryProcess;
+}
+
+export type AlertSeverity = (typeof AlertSeverity)[keyof typeof AlertSeverity];
+
+export const AlertSeverity = {
+  low: "low",
+  medium: "medium",
+  high: "high",
+  critical: "critical",
+} as const;
+
+export type AlertStatus = (typeof AlertStatus)[keyof typeof AlertStatus];
+
+export const AlertStatus = {
+  active: "active",
+  acknowledged: "acknowledged",
+  resolved: "resolved",
+} as const;
+
+export type AlertMetadata = { [key: string]: unknown };
+
+export interface Alert {
+  id: string;
+  type: string;
+  severity: AlertSeverity;
+  status: AlertStatus;
+  title: string;
+  description: string;
+  metadata: AlertMetadata;
+  createdAt: string;
+  updatedAt: string;
+  acknowledgedAt: string | null;
+  resolvedAt: string | null;
+}
+
+export type AlertUpdateAction =
+  (typeof AlertUpdateAction)[keyof typeof AlertUpdateAction];
+
+export const AlertUpdateAction = {
+  acknowledge: "acknowledge",
+  resolve: "resolve",
+} as const;
+
+export interface AlertUpdate {
+  action: AlertUpdateAction;
 }
 
 export interface CreateStudentBody {
@@ -999,3 +1051,19 @@ export type GetStudentReportSummaryParams = {
 export type GetCourseReportSummaryParams = {
   courseId: number;
 };
+
+export type ListAlertsParams = {
+  /**
+   * Filter by alert status
+   */
+  status?: ListAlertsStatus;
+};
+
+export type ListAlertsStatus =
+  (typeof ListAlertsStatus)[keyof typeof ListAlertsStatus];
+
+export const ListAlertsStatus = {
+  active: "active",
+  acknowledged: "acknowledged",
+  resolved: "resolved",
+} as const;

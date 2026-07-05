@@ -1,42 +1,48 @@
 import { Router, type IRouter } from "express";
+import { z } from "zod/v4";
 import { requireRole } from "../middleware/require-role";
 import { metrics } from "../lib/metrics";
+import { alertService } from "../lib/alerts";
 import { pool } from "@workspace/db";
 
 const router: IRouter = Router();
 
-// Both monitoring endpoints are admin-only.
-// Authentication is enforced globally by routes/index.ts requireAuth,
-// and role enforcement is applied at the handler level here.
+// ── Shared helper ─────────────────────────────────────────────────────────────
 
-// GET /monitoring/status
-// Full system-status view: application, database, backup, replication.
-// Safe to poll from external monitoring systems (no secrets exposed).
-router.get("/monitoring/status", requireRole("admin"), async (_req, res): Promise<void> => {
-  let dbOk = false;
-  let dbDetail: string | undefined;
-
+async function checkDbOk(): Promise<{ ok: boolean; detail?: string }> {
   try {
     const client = await pool.connect();
     try {
       await client.query("SELECT 1");
-      dbOk = true;
+      return { ok: true };
     } finally {
       client.release();
     }
   } catch (err: unknown) {
-    dbDetail = err instanceof Error ? err.message : "unknown error";
+    return {
+      ok: false,
+      detail: err instanceof Error ? err.message : "unknown error",
+    };
   }
+}
 
-  const snap = metrics.snapshot();
+// ── GET /monitoring/status ────────────────────────────────────────────────────
+// Full system-status view. Safe to poll from external monitoring systems.
+
+router.get("/monitoring/status", requireRole("admin"), async (_req, res): Promise<void> => {
+  const [db, snap] = await Promise.all([checkDbOk(), Promise.resolve(metrics.snapshot())]);
+
+  // Evaluate alerts so the counts stay current.
+  alertService.evaluate(snap, db.ok);
+  const alertCounts = alertService.counts();
 
   res.json({
-    status: dbOk ? "ok" : "degraded",
+    status: db.ok ? "ok" : "degraded",
     version: process.env["npm_package_version"] ?? "0.0.0",
     uptime: snap.process.uptimeSeconds,
     database: {
-      status: dbOk ? "ok" : "error",
-      ...(dbDetail ? { detail: dbDetail } : {}),
+      status: db.ok ? "ok" : "error",
+      ...(db.detail ? { detail: db.detail } : {}),
       queryCount: snap.database.queryCount,
       queryFailures: snap.database.queryFailures,
       avgQueryMs: snap.database.avgQueryMs,
@@ -50,15 +56,14 @@ router.get("/monitoring/status", requireRole("admin"), async (_req, res): Promis
     replication: {
       configured: Boolean(process.env["S3_BUCKET"]),
     },
+    alerts: alertCounts,
   });
 });
 
-// GET /monitoring/summary
-// Operational summary: request metrics, auth counters, latency percentiles,
-// slowest endpoints, database stats, backup health, and process info.
+// ── GET /monitoring/summary ───────────────────────────────────────────────────
+
 router.get("/monitoring/summary", requireRole("admin"), (_req, res): void => {
   const snap = metrics.snapshot();
-
   res.json({
     requests: snap.requests,
     auth: snap.auth,
@@ -68,6 +73,64 @@ router.get("/monitoring/summary", requireRole("admin"), (_req, res): void => {
     backup: snap.backup,
     process: snap.process,
   });
+});
+
+// ── GET /monitoring/alerts ────────────────────────────────────────────────────
+// Evaluate conditions, then return the current alert list.
+// Optional query param: ?status=active|acknowledged|resolved
+
+const listAlertsQuerySchema = z.object({
+  status: z.enum(["active", "acknowledged", "resolved"]).optional(),
+});
+
+router.get("/monitoring/alerts", requireRole("admin"), async (req, res): Promise<void> => {
+  const parse = listAlertsQuerySchema.safeParse(req.query);
+  const statusFilter = parse.success ? parse.data.status : undefined;
+
+  const [db, snap] = await Promise.all([checkDbOk(), Promise.resolve(metrics.snapshot())]);
+  alertService.evaluate(snap, db.ok);
+
+  res.json(alertService.list(statusFilter));
+});
+
+// ── GET /monitoring/alerts/:id ────────────────────────────────────────────────
+
+router.get("/monitoring/alerts/:id", requireRole("admin"), (req, res): void => {
+  const id = String(req.params["id"]);
+  const alert = alertService.get(id);
+  if (!alert) {
+    res.status(404).json({ error: "Alert not found" });
+    return;
+  }
+  res.json(alert);
+});
+
+// ── PATCH /monitoring/alerts/:id ─────────────────────────────────────────────
+// Body: { action: "acknowledge" | "resolve" }
+
+const patchAlertSchema = z.object({
+  action: z.enum(["acknowledge", "resolve"]),
+});
+
+router.patch("/monitoring/alerts/:id", requireRole("admin"), (req, res): void => {
+  const parse = patchAlertSchema.safeParse(req.body);
+  if (!parse.success) {
+    res.status(400).json({ error: "action must be 'acknowledge' or 'resolve'" });
+    return;
+  }
+
+  const id = String(req.params["id"]);
+  const { action } = parse.data;
+  const result =
+    action === "acknowledge"
+      ? alertService.acknowledge(id)
+      : alertService.resolve(id);
+
+  if (!result) {
+    res.status(404).json({ error: "Alert not found" });
+    return;
+  }
+  res.json(result);
 });
 
 export default router;
