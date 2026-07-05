@@ -10,12 +10,15 @@
     "check-barrel": "tsx ./src/check-api-barrel.ts",
     "backup": "tsx ./src/backup.ts",
     "backup:weekly": "cross-env BACKUP_RETENTION_DAYS=28 BACKUP_ENV=weekly tsx ./src/backup.ts",
+    "backup:monthly": "cross-env BACKUP_RETENTION_DAYS=365 BACKUP_ENV=monthly tsx ./src/backup.ts",
+    "backup:replicate": "tsx ./src/backup-replicate.ts",
     "restore-verify": "tsx ./src/restore-verify.ts",
     "restore-verify:dr": "cross-env RESTORE_CREATE_DB=true tsx ./src/restore-verify.ts",
-    "test": "vitest run src/backup-lib.test.ts src/restore-lib.test.ts src/backup-schedule.test.ts",
+    "test": "vitest run src/backup-lib.test.ts src/restore-lib.test.ts src/backup-schedule.test.ts src/backup-replication.test.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.1079.0",
     "@workspace/db": "workspace:*",
     "drizzle-orm": "catalog:"
   },

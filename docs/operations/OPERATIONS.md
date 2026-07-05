@@ -103,38 +103,54 @@ The `url` field strips query strings (see `app.ts` serializer) to prevent sensit
 
 Backups run automatically via `.github/workflows/backup.yml`:
 
-| Type | Schedule | Retention |
-|------|----------|-----------|
-| Daily | 02:00 UTC every day | 30 days (GitHub Actions artifact) |
-| Weekly | 02:00 UTC every Sunday (auto-detected) | 90 days (GitHub Actions artifact) |
+| Type | Schedule | GitHub artifact TTL | Offsite retention |
+|------|----------|--------------------|--------------------|
+| Daily | 02:00 UTC every day | 30 days | 30 days |
+| Weekly | 02:00 UTC every Sunday | 90 days | 84 days (12 weeks) |
+| Monthly | 02:00 UTC on 1st of month | 365 days | 365 days (12 months) |
 
-Backup artifacts are available under **GitHub → Actions → Database Backup → Artifacts**.
+GitHub Actions artifacts: **GitHub → Actions → Database Backup → Artifacts**
+
+Offsite backups: `s3://{S3_BUCKET}/backups/{tier}/{filename}` — browsable with `aws s3 ls` or the provider's console.
 
 ### Expected log signatures (GitHub Actions run)
 
-A healthy backup run produces these log lines from the backup script:
+A healthy backup run produces these log lines:
 
+**Backup script:**
 ```
 [backup] Starting backup → classmate_YYYYMMDD_020000_production.dump
-[backup] Output directory: /home/runner/work/.../backup-output
-[backup] Environment: production | Retention: 7 days
 [backup] SUCCESS: classmate_YYYYMMDD_020000_production.dump (NNN KB)
 [backup] Sidecar written: classmate_YYYYMMDD_020000_production.json
 [backup] Retention: no files to prune (policy: 7 days)
 [backup] Done
 ```
 
-For the `pg_restore` validation step expect:
-
+**Validation steps:**
 ```
 TABLE DATA sections in dump: 11
 ```
+(11 is the expected table count — a lower number is an error.)
 
-(11 tables in the production schema — a lower number is an error condition.)
+**Replication (when S3_BUCKET configured):**
+```
+[replicate] Uploading dump → s3://<bucket>/backups/daily/classmate_YYYYMMDD_020000_production.dump
+[replicate] Dump uploaded and verified (NNN KB, sha256=<first 12 chars>…)
+[replicate] Uploading sidecar → s3://<bucket>/backups/daily/classmate_YYYYMMDD_020000_production.json
+[replicate] Sidecar uploaded and verified
+[replicate] Retention: no offsite objects to prune for daily (policy: 30 days)
+[replicate] SUCCESS
+```
+
+**Replication skipped (S3_BUCKET not yet configured):**
+```
+Offsite replication: skipped (S3_BUCKET not configured)
+```
+This is a notice, not an error — the backup and artifact upload still succeed.
 
 ### Alerting
 
-GitHub sends failure email notifications automatically for failed scheduled workflows. No additional alerting configuration is required.
+GitHub sends failure email notifications automatically for failed scheduled workflows.
 
 To check backup status manually:
 
@@ -146,11 +162,13 @@ gh run list --workflow=backup.yml --limit=10
 
 | Symptom | Likely cause | Action |
 |---------|-------------|--------|
-| Workflow fails at "Run backup" step with `DATABASE_URL is not set` | `DATABASE_URL` secret not configured | Add secret under **Settings → Secrets → Actions** |
-| Workflow fails at "Validate — dump file exists" | `pg_dump` authentication error | Verify `DATABASE_URL` value points to the production DB and credentials are valid |
-| `TABLE DATA sections in dump: 0` | DB empty or pg_restore version mismatch | Restore to a local instance and inspect manually |
-| Sidecar JSON parse fails | Disk full or psql error during sidecar write | Check runner disk space; sidecar is non-fatal to backup itself but blocks validation |
-| Artifact not found after 30 days | Retention window expired | Run a new backup via `workflow_dispatch` or check the weekly artifact (90-day retention) |
+| "Run backup" fails: `DATABASE_URL is not set` | Secret not configured | Add `DATABASE_URL` under **Settings → Secrets → Actions** |
+| "Validate — dump file exists" fails | `pg_dump` auth error | Verify `DATABASE_URL` value is correct and points to production |
+| `TABLE DATA sections in dump: 0` | DB empty or pg_restore mismatch | Restore locally and inspect with `pg_restore --list` |
+| "Replicate to offsite storage" fails: `NoSuchBucket` | Bucket doesn't exist | Create bucket; verify `S3_BUCKET` and `AWS_REGION` secrets |
+| "Replicate" fails: `Upload integrity check failed` | Network corruption or provider issue | Re-run workflow; if persistent, check S3_ENDPOINT config |
+| "Replicate" fails: `Checksum mismatch` | File corrupted in transit | Re-run workflow; if persistent, escalate to storage provider |
+| Artifact not found after TTL | Retention window expired | Download from offsite storage (30-day window still valid for daily) |
 
 ---
 

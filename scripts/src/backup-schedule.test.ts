@@ -35,10 +35,44 @@ describe("Backup workflow configuration", () => {
     expect(content).toContain("workflow_dispatch");
   });
 
-  it("workflow provides daily and weekly as manual backup type options", () => {
+  it("workflow provides daily, weekly, and monthly as manual backup type options", () => {
     const content = readFileSync(WORKFLOW_PATH, "utf-8");
     expect(content).toContain("- daily");
     expect(content).toContain("- weekly");
+    expect(content).toContain("- monthly");
+  });
+
+  it("workflow detects monthly on 1st of month before weekly on Sunday", () => {
+    const content = readFileSync(WORKFLOW_PATH, "utf-8");
+    const monthlyIdx = content.indexOf('type=monthly');
+    const weeklyIdx = content.indexOf('type=weekly');
+    expect(monthlyIdx).toBeGreaterThan(-1);
+    expect(weeklyIdx).toBeGreaterThan(-1);
+    expect(monthlyIdx).toBeLessThan(weeklyIdx);
+  });
+
+  it("workflow has replication check step that reads S3_BUCKET from secrets", () => {
+    const content = readFileSync(WORKFLOW_PATH, "utf-8");
+    expect(content).toContain("secrets.S3_BUCKET");
+    expect(content).toContain("backup:replicate");
+  });
+
+  it("workflow passes replication env vars from secrets only", () => {
+    const content = readFileSync(WORKFLOW_PATH, "utf-8");
+    expect(content).toContain("secrets.AWS_ACCESS_KEY_ID");
+    expect(content).toContain("secrets.AWS_SECRET_ACCESS_KEY");
+    expect(content).not.toMatch(/AWS_ACCESS_KEY_ID\s*:\s*[A-Z0-9]{10,}/);
+  });
+
+  it("workflow skips replication when S3_BUCKET is not configured", () => {
+    const content = readFileSync(WORKFLOW_PATH, "utf-8");
+    expect(content).toContain("enabled=false");
+    expect(content).toContain("S3_BUCKET not configured");
+  });
+
+  it("monthly artifact has 365-day retention", () => {
+    const content = readFileSync(WORKFLOW_PATH, "utf-8");
+    expect(content).toContain("retention-days: 365");
   });
 
   it("workflow uses DATABASE_URL from GitHub secrets — never hardcoded", () => {

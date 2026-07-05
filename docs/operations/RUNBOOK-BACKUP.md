@@ -80,38 +80,48 @@ Automated backups are implemented in `.github/workflows/backup.yml`. No manual s
 
 **Schedule:**
 
-| Type | Trigger | Retention | Artifact |
-|------|---------|-----------|---------|
-| Daily | 02:00 UTC every day (cron `0 2 * * *`) | 30 days (Actions artifact) | `classmate-backup-daily-<run>` |
-| Weekly | Auto-detected on Sunday runs | 90 days (Actions artifact) | `classmate-backup-weekly-<run>` |
-| Manual | `workflow_dispatch` — choose `daily` or `weekly` | Same as above | Same as above |
+| Type | Trigger | Script | GitHub artifact TTL | Offsite retention |
+|------|---------|--------|-------------------|------------------|
+| Daily | 02:00 UTC every day | `backup` | 30 days | 30 days |
+| Weekly | 02:00 UTC on Sundays | `backup:weekly` | 90 days | 84 days (12 weeks) |
+| Monthly | 02:00 UTC on 1st of month | `backup:monthly` | 365 days | 365 days (12 months) |
+| Manual | `workflow_dispatch` | user-chosen | same as type | same as type |
 
-**One-time setup required** — add `DATABASE_URL` as a GitHub repository secret:
+**Type detection priority (scheduled runs):**
 
-1. Go to **GitHub → Repository → Settings → Secrets and variables → Actions**
-2. Click **New repository secret**
-3. Name: `DATABASE_URL`
-4. Value: the full PostgreSQL connection string (from Replit environment)
-5. Click **Add secret**
+1. 1st of month → `monthly`
+2. Sunday (not 1st) → `weekly`
+3. Any other day → `daily`
 
-Without this secret the workflow will fail at the backup step with `DATABASE_URL is not set`.
+**One-time setup required** — add GitHub repository secrets (**Settings → Secrets and variables → Actions → New repository secret**):
+
+| Secret | Required | Description |
+|--------|----------|-------------|
+| `DATABASE_URL` | **Yes** | PostgreSQL connection string (Replit production) |
+| `S3_BUCKET` | Yes (offsite) | Bucket name for offsite replication |
+| `AWS_ACCESS_KEY_ID` | Yes (offsite) | S3 access key |
+| `AWS_SECRET_ACCESS_KEY` | Yes (offsite) | S3 secret key |
+| `AWS_REGION` | Yes (offsite) | AWS region (default: `us-east-1`) |
+| `S3_ENDPOINT` | No | Custom endpoint for R2/B2/MinIO |
+| `S3_PREFIX` | No | Key prefix (default: `backups`) |
+| `S3_PATH_STYLE` | No | `true` for MinIO path-style URLs |
+
+If `S3_BUCKET` is absent, offsite replication is skipped with a workflow notice (not an error). All other backup + validation steps still run.
 
 **Workflow steps (automatic, every run):**
 
-1. Installs PostgreSQL client tools on the runner
-2. Installs Node.js 24 and pnpm 9
-3. Installs `@workspace/scripts` dependencies
-4. Detects backup type (day-of-week for scheduled runs; manual input for dispatched runs)
-5. Runs `pnpm --filter @workspace/scripts run backup` (daily) or `backup:weekly` (weekly)
-6. Validates: dump file exists, size > 0, sidecar JSON parseable, pg_restore dry-run passes
-7. Uploads backup files as a GitHub Actions artifact
-8. Writes a job summary (visible under Actions → run → Summary)
+1. Install PostgreSQL client tools on the runner
+2. Install Node.js 24 + pnpm 9 + `@workspace/scripts` dependencies
+3. Detect backup type (priority: monthly → weekly → daily)
+4. Run backup script → produces `.dump` + `.json` sidecar
+5. Validate: dump exists, size > 0, sidecar parseable, `pg_restore` dry-run ≥ 1 TABLE DATA section
+6. If `S3_BUCKET` configured → replicate to offsite storage + verify size/checksum + prune offsite retention
+7. Upload backup files as GitHub Actions artifact (TTL per schedule table above)
+8. Write job summary (always, even on failure)
 
-**Workflow fails loudly** — any validation step that fails produces a GitHub Actions error annotation and sets the run status to ❌ Failure. GitHub sends email notifications for failed scheduled workflows by default.
+**Workflow fails loudly** — any step exits 1 on failure → GitHub Actions run status → ❌ → email notification to repository collaborators.
 
 **Manual override procedure:**
-
-To trigger a backup immediately (e.g., before a production deploy):
 
 ```
 GitHub → Actions → Database Backup → Run workflow → Choose type → Run workflow
@@ -122,6 +132,7 @@ Or via GitHub CLI:
 ```bash
 gh workflow run backup.yml -f backup_type=daily
 gh workflow run backup.yml -f backup_type=weekly
+gh workflow run backup.yml -f backup_type=monthly
 ```
 
 **Operator machine cron** — alternative if running from a server with repo access:
@@ -129,6 +140,90 @@ gh workflow run backup.yml -f backup_type=weekly
 ```
 0 2 * * * cd /opt/classmate && BACKUP_DIR=/var/backups/classmate pnpm --filter @workspace/scripts run backup >> /var/log/classmate-backup.log 2>&1
 ```
+
+---
+
+## 2a — Offsite Replication Architecture
+
+### Design
+
+The replication service (`scripts/src/backup-replication.ts` — `BackupReplicationService`) is isolated from the backup generator. It receives already-generated dump + sidecar paths and uploads them to S3-compatible object storage.
+
+```
+GitHub Actions runner
+  │
+  ├─ backup.ts              → classmate_YYYYMMDD_HHMMSS_{env}.dump
+  │                            classmate_YYYYMMDD_HHMMSS_{env}.json
+  │
+  └─ backup-replicate.ts   → BackupReplicationService
+       │
+       ├─ PutObjectCommand  →  s3://{bucket}/{prefix}/{tier}/{filename}.dump
+       ├─ HeadObjectCommand ←  verify ContentLength + sha256 metadata
+       ├─ PutObjectCommand  →  s3://{bucket}/{prefix}/{tier}/{filename}.json
+       ├─ HeadObjectCommand ←  verify ContentLength
+       └─ ListObjectsV2     →  prune expired objects per retention window
+          DeleteObjectCommand ×N
+```
+
+### Key structure
+
+```
+{prefix}/{tier}/{filename}
+
+backups/daily/classmate_20260705_020000_production.dump
+backups/daily/classmate_20260705_020000_production.json
+backups/weekly/classmate_20260706_020000_weekly.dump
+backups/monthly/classmate_20260701_020000_monthly.dump
+```
+
+### Integrity verification
+
+For each upload:
+1. SHA-256 of local file computed before upload
+2. `PutObjectCommand` carries `Metadata: { sha256: "<hex>", backup-tier: "<tier>" }`
+3. `HeadObjectCommand` confirms `ContentLength` matches local file size
+4. If remote metadata carries `sha256`, it is compared against local hash
+5. Any mismatch → throws → fails the workflow
+
+### Provider compatibility
+
+| Provider | Endpoint | `S3_PATH_STYLE` |
+|----------|----------|----------------|
+| AWS S3 | (none — default) | false |
+| Cloudflare R2 | `https://<account>.r2.cloudflarestorage.com` | false |
+| Backblaze B2 | `https://s3.<region>.backblazeb2.com` | false |
+| MinIO | `https://minio.example.com` | **true** |
+
+### Offsite retention
+
+| Tier | Retention | Pruning |
+|------|-----------|---------|
+| daily | 30 days | Automatic — runs after each upload |
+| weekly | 84 days (12 weeks) | Automatic — runs after each upload |
+| monthly | 365 days (12 months) | Automatic — runs after each upload |
+
+Safety: the most recently uploaded backup is never pruned, regardless of age (same guarantee as local retention — provided by `getFilesToPrune` from `backup-lib.ts`).
+
+### Recovery from offsite storage
+
+To recover from offsite storage after a local loss:
+
+```bash
+# 1. List available backups in the bucket
+aws s3 ls s3://<bucket>/backups/daily/ --endpoint-url <S3_ENDPOINT>
+
+# 2. Download the most recent dump
+aws s3 cp s3://<bucket>/backups/daily/classmate_YYYYMMDD_HHMMSS_production.dump ./recovery/ \
+  --endpoint-url <S3_ENDPOINT>
+aws s3 cp s3://<bucket>/backups/daily/classmate_YYYYMMDD_HHMMSS_production.json ./recovery/ \
+  --endpoint-url <S3_ENDPOINT>
+
+# 3. Verify restore compatibility (see §4 for full procedure)
+BACKUP_DIR=./recovery DATABASE_URL=<target-db-url> \
+  pnpm --filter @workspace/scripts run restore-verify
+```
+
+See §4 for the full restore procedure including row-count verification.
 
 ### Verify a backup is readable
 

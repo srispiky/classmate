@@ -13,6 +13,7 @@ on:
         options:
           - daily
           - weekly
+          - monthly
 
 permissions:
   contents: read
@@ -55,6 +56,8 @@ jobs:
         run: |
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
             echo "type=${{ inputs.backup_type }}" >> "$GITHUB_OUTPUT"
+          elif [ "$(date -u +%d)" = "01" ]; then
+            echo "type=monthly" >> "$GITHUB_OUTPUT"
           elif [ "$(date -u +%u)" = "7" ]; then
             echo "type=weekly" >> "$GITHUB_OUTPUT"
           else
@@ -66,8 +69,11 @@ jobs:
 
       - name: Run backup
         run: |
-          if [ "${{ steps.type.outputs.type }}" = "weekly" ]; then
+          TYPE="${{ steps.type.outputs.type }}"
+          if [ "$TYPE" = "weekly" ]; then
             pnpm --filter @workspace/scripts run backup:weekly
+          elif [ "$TYPE" = "monthly" ]; then
+            pnpm --filter @workspace/scripts run backup:monthly
           else
             pnpm --filter @workspace/scripts run backup
           fi
@@ -123,6 +129,35 @@ jobs:
             exit 1
           fi
 
+      - name: Check replication configuration
+        id: repl
+        run: |
+          if [ -n "$S3_BUCKET" ]; then
+            echo "enabled=true" >> "$GITHUB_OUTPUT"
+            echo "Offsite replication: enabled (bucket=$S3_BUCKET)"
+          else
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+            echo "Offsite replication: skipped (S3_BUCKET not configured)"
+            echo "::notice::Set S3_BUCKET + AWS credentials in repository secrets to enable offsite replication"
+          fi
+        env:
+          S3_BUCKET: ${{ secrets.S3_BUCKET }}
+
+      - name: Replicate to offsite storage
+        if: steps.repl.outputs.enabled == 'true'
+        run: pnpm --filter @workspace/scripts run backup:replicate
+        env:
+          S3_BUCKET: ${{ secrets.S3_BUCKET }}
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_REGION: ${{ secrets.AWS_REGION }}
+          S3_ENDPOINT: ${{ secrets.S3_ENDPOINT }}
+          S3_PREFIX: ${{ secrets.S3_PREFIX }}
+          S3_PATH_STYLE: ${{ secrets.S3_PATH_STYLE }}
+          BACKUP_DUMP_PATH: ${{ steps.outputs.outputs.dump }}
+          BACKUP_SIDECAR_PATH: ${{ steps.outputs.outputs.sidecar }}
+          BACKUP_TYPE: ${{ steps.type.outputs.type }}
+
       - name: Upload daily backup artifact
         if: steps.type.outputs.type == 'daily'
         uses: actions/upload-artifact@v4
@@ -145,10 +180,22 @@ jobs:
           retention-days: 90
           if-no-files-found: error
 
+      - name: Upload monthly backup artifact
+        if: steps.type.outputs.type == 'monthly'
+        uses: actions/upload-artifact@v4
+        with:
+          name: classmate-backup-monthly-${{ github.run_number }}
+          path: |
+            ${{ env.BACKUP_DIR }}/*.dump
+            ${{ env.BACKUP_DIR }}/*.json
+          retention-days: 365
+          if-no-files-found: error
+
       - name: Write job summary
         if: always()
         run: |
           STATUS="${{ job.status }}"
+          REPL="${{ steps.repl.outputs.enabled }}"
           {
             if [ "$STATUS" = "success" ]; then
               echo "### Backup Succeeded"
@@ -160,6 +207,7 @@ jobs:
             echo "| ----- | ----- |"
             echo "| Type | ${{ steps.type.outputs.type }} |"
             echo "| File | ${{ steps.outputs.outputs.dump_base }} |"
+            echo "| Offsite replication | ${REPL:-false} |"
             echo "| Trigger | ${{ github.event_name }} |"
             echo "| Run | [#${{ github.run_number }}](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}) |"
           } >> "$GITHUB_STEP_SUMMARY"

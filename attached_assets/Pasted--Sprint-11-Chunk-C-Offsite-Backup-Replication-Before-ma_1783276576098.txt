@@ -1,0 +1,256 @@
+# Sprint 11 Chunk C — Offsite Backup Replication
+
+Before making changes:
+
+1. Read and understand:
+   - scripts/src/backup.ts
+   - scripts/src/backup-lib.ts
+   - restore-verify.ts
+   - GitHub Actions backup workflow
+   - RUNBOOK-BACKUP.md
+   - OPERATIONS.md
+   - Sprint 10 Gate Review
+   - Risk Register R-H3
+
+2. Review current backup outputs.
+
+3. Review backup retention implementation.
+
+4. Review backup artifact storage strategy.
+
+5. Keep changes strictly scoped to offsite backup replication.
+
+--------------------------------------------------
+OBJECTIVE
+--------------------------------------------------
+
+Eliminate Risk R-H3.
+
+Current finding:
+
+Backups are generated successfully but remain on the same platform.
+
+There is no offsite copy.
+
+A platform outage, storage failure, accidental deletion,
+or repository compromise could destroy all backups.
+
+Implement secure offsite replication.
+
+--------------------------------------------------
+PART 1 — CURRENT BACKUP AUDIT
+--------------------------------------------------
+
+Review:
+
+- backup generation
+- backup locations
+- retention policy
+- backup workflow
+
+Verify:
+
+- where backups are stored
+- how long backups survive
+- current failure scenarios
+
+Document findings.
+
+--------------------------------------------------
+PART 2 — OFFSITE STORAGE DESIGN
+--------------------------------------------------
+
+Implement offsite replication architecture.
+
+Requirements:
+
+- provider agnostic
+- environment driven
+- no hardcoded credentials
+- encrypted transport
+- retry support
+
+Examples:
+
+- S3 compatible storage
+- Azure Blob Storage
+- Google Cloud Storage
+
+Design abstraction so storage provider can be changed later.
+
+--------------------------------------------------
+PART 3 — REPLICATION SERVICE
+--------------------------------------------------
+
+Create:
+
+BackupReplicationService
+
+Responsibilities:
+
+- upload backup artifacts
+- upload metadata sidecars
+- verify upload success
+- return replication status
+
+Requirements:
+
+- idempotent
+- testable
+- isolated from backup generation
+
+Do not modify backup logic.
+
+Reuse existing backup outputs.
+
+--------------------------------------------------
+PART 4 — CHECKSUM VERIFICATION
+--------------------------------------------------
+
+Implement:
+
+Checksum verification after upload.
+
+Verify:
+
+- uploaded file size
+- checksum match
+- metadata integrity
+
+Fail replication if verification fails.
+
+--------------------------------------------------
+PART 5 — GITHUB ACTIONS INTEGRATION
+--------------------------------------------------
+
+Extend backup workflow.
+
+After successful backup:
+
+1. Execute replication
+2. Verify replication
+3. Publish replication report
+
+Fail workflow if:
+
+- upload fails
+- checksum mismatch
+- metadata missing
+
+--------------------------------------------------
+PART 6 — RETENTION STRATEGY
+--------------------------------------------------
+
+Implement:
+
+Offsite retention management.
+
+Requirements:
+
+Daily:
+- retain 30 days
+
+Weekly:
+- retain 12 weeks
+
+Monthly:
+- retain 12 months
+
+Verify cleanup behavior.
+
+--------------------------------------------------
+PART 7 — SECURITY REVIEW
+--------------------------------------------------
+
+Verify:
+
+- credentials stored only in secrets
+- secrets never logged
+- storage access least privilege
+- uploads encrypted in transit
+- backup metadata contains no secrets
+
+--------------------------------------------------
+PART 8 — TEST COVERAGE
+--------------------------------------------------
+
+Add tests covering:
+
+- successful replication
+- upload failure
+- checksum mismatch
+- retention cleanup
+- retry behavior
+
+Verify:
+
+all tests pass.
+
+--------------------------------------------------
+PART 9 — DISASTER RECOVERY VALIDATION
+--------------------------------------------------
+
+Perform recovery drill.
+
+Simulate:
+
+1. local backup loss
+2. recovery from offsite storage
+3. restore verification
+
+Document:
+
+- recovery duration
+- recovery success
+- validation results
+
+--------------------------------------------------
+PART 10 — DOCUMENTATION
+--------------------------------------------------
+
+Update:
+
+RUNBOOK-BACKUP.md
+
+Include:
+
+- replication architecture
+- recovery procedure
+- storage requirements
+- verification process
+
+Update:
+
+OPERATIONS.md
+
+Include:
+
+- monitoring
+- troubleshooting
+- recovery workflow
+
+--------------------------------------------------
+PART 11 — DELIVERABLE
+--------------------------------------------------
+
+Provide:
+
+1. Files modified
+2. Replication architecture
+3. Storage strategy
+4. Verification strategy
+5. Security review
+6. Test results
+7. Recovery drill results
+8. Remaining backup risks
+
+--------------------------------------------------
+GIT REQUIREMENT
+--------------------------------------------------
+
+git add .
+git commit -m "feat(ops): add offsite backup replication"
+
+git push origin main
+
+Include commit hash in report.
