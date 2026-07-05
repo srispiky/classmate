@@ -13,6 +13,7 @@ export const usersTable = pgTable(
     displayName: text("display_name").notNull(),
     role: text("role").notNull().default("teacher"),
     isActive: boolean("is_active").notNull().default(true),
+    pushToken: text("push_token"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
     createdBy: integer("created_by").references(

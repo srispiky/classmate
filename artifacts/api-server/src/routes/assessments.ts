@@ -25,6 +25,7 @@ import {
 } from "../lib/assessments.queries";
 import { assessmentPolicy, PolicyAuthorizationError } from "../lib/policies";
 import { requireRole } from "../middleware/require-role";
+import { notifyParentsForStudent } from "../services/push-notifications.service";
 
 const router: IRouter = Router();
 
@@ -196,6 +197,14 @@ router.post(
       courseName: course?.name ?? "Unknown",
       courseId: parsed.data.courseId,
     });
+
+    void notifyParentsForStudent(
+      parsed.data.studentId,
+      student?.name ?? "Unknown",
+      `New assessment for ${student?.name ?? "your child"}`,
+      `"${parsed.data.title}" scored ${parsed.data.score}/${parsed.data.maxScore}.`,
+      `/students/${parsed.data.studentId}`,
+    );
 
     res.status(201).json(
       serializeAssessment({

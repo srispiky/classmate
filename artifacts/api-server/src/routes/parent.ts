@@ -6,7 +6,9 @@ import {
   studentGuardiansTable,
   assignmentsTable,
   assessmentsTable,
+  usersTable,
 } from "@workspace/db";
+import { z } from "zod/v4";
 import { buildScopeContext, type ClassmateSession } from "../lib/scope-context";
 import { requireRole } from "../middleware/require-role";
 import { requireActiveAccount } from "../middleware/require-active-account";
@@ -455,6 +457,42 @@ router.get(
     }));
 
     res.json(ListParentStudentAssessmentsResponse.parse({ items }));
+  },
+);
+
+const RegisterPushTokenBody = z.object({
+  token: z.string().min(1),
+});
+
+/**
+ * POST /parent/push-token
+ *
+ * Registers or updates the Expo push notification token for the authenticated
+ * parent. The token is stored against the user record so the server can send
+ * push notifications when assignments or assessments are posted for their
+ * linked students.
+ *
+ * Layer 1: requireRole("parent").
+ */
+router.post(
+  "/parent/push-token",
+  requireRole("parent"),
+  requireActiveAccount,
+  async (req, res): Promise<void> => {
+    const scope = buildScopeContext(req.session as ClassmateSession);
+
+    const parsed = RegisterPushTokenBody.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({ error: "Invalid push token" });
+      return;
+    }
+
+    await db
+      .update(usersTable)
+      .set({ pushToken: parsed.data.token, updatedAt: new Date() })
+      .where(eq(usersTable.id, scope.userId));
+
+    res.status(204).send();
   },
 );
 

@@ -1,4 +1,6 @@
-import React, { createContext, useCallback, useContext, useEffect, useState } from "react";
+import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
+import * as Notifications from "expo-notifications";
+import { Platform } from "react-native";
 
 export interface AuthUser {
   id: number;
@@ -22,9 +24,49 @@ function buildApiUrl(path: string): string {
   return `https://${domain}${path}`;
 }
 
+Notifications.setNotificationHandler({
+  handleNotification: async () => ({
+    shouldShowAlert: true,
+    shouldPlaySound: true,
+    shouldSetBadge: false,
+    shouldShowBanner: true,
+    shouldShowList: true,
+  }),
+});
+
+async function registerPushToken(apiUrl: (path: string) => string): Promise<void> {
+  if (Platform.OS === "web") return;
+
+  try {
+    type PermResult = { granted: boolean; canAskAgain: boolean };
+    const existing = (await Notifications.getPermissionsAsync()) as unknown as PermResult;
+    let granted = existing.granted;
+
+    if (!granted && existing.canAskAgain) {
+      const result = (await Notifications.requestPermissionsAsync()) as unknown as PermResult;
+      granted = result.granted;
+    }
+
+    if (!granted) return;
+
+    const tokenData = await Notifications.getExpoPushTokenAsync();
+    const token = tokenData.data;
+
+    await fetch(apiUrl("/api/parent/push-token"), {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify({ token }),
+    });
+  } catch {
+  }
+}
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const notificationListener = useRef<Notifications.EventSubscription | null>(null);
+  const responseListener = useRef<Notifications.EventSubscription | null>(null);
 
   const checkAuth = useCallback(async () => {
     try {
@@ -48,6 +90,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     checkAuth();
   }, [checkAuth]);
 
+  useEffect(() => {
+    notificationListener.current = Notifications.addNotificationReceivedListener(
+      (_notification) => {},
+    );
+
+    return () => {
+      notificationListener.current?.remove();
+    };
+  }, []);
+
+  useEffect(() => {
+    responseListener.current = Notifications.addNotificationResponseReceivedListener(
+      (_response) => {},
+    );
+
+    return () => {
+      responseListener.current?.remove();
+    };
+  }, []);
+
   const login = useCallback(async (username: string, password: string) => {
     const res = await fetch(buildApiUrl("/api/auth/login"), {
       method: "POST",
@@ -61,6 +123,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
     const data = await res.json();
     setUser(data);
+
+    void registerPushToken(buildApiUrl);
   }, []);
 
   const logout = useCallback(async () => {

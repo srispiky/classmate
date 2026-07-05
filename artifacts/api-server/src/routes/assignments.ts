@@ -16,6 +16,7 @@ import { ownershipDenied } from "../lib/query-contracts";
 import { listAssignments, getAssignmentById, type AssignmentRow } from "../lib/assignments.queries";
 import { assignmentPolicy, PolicyAuthorizationError } from "../lib/policies";
 import { requireRole } from "../middleware/require-role";
+import { notifyParentsForStudent } from "../services/push-notifications.service";
 
 const router: IRouter = Router();
 
@@ -114,6 +115,14 @@ router.post(
       courseName: course?.name ?? "Unknown",
       courseId: parsed.data.courseId,
     });
+
+    void notifyParentsForStudent(
+      parsed.data.studentId,
+      student?.name ?? "Unknown",
+      `New assignment for ${student?.name ?? "your child"}`,
+      `"${parsed.data.title}" has been posted in ${course?.name ?? "a course"}.`,
+      `/students/${parsed.data.studentId}`,
+    );
 
     res.status(201).json(
       GetAssignmentResponse.parse(
@@ -225,6 +234,16 @@ router.patch(
         courseName: existing.courseName,
         courseId: existing.courseId,
       });
+
+      void notifyParentsForStudent(
+        existing.studentId,
+        existing.studentName,
+        `Assignment graded for ${existing.studentName}`,
+        parsed.data.score != null
+          ? `"${updated.title}" scored ${parsed.data.score}/${updated.maxScore}.`
+          : `"${updated.title}" has been graded.`,
+        `/students/${existing.studentId}`,
+      );
     }
 
     res.json(
