@@ -23,7 +23,7 @@ export function requireRole(...allowed: RoleKey[]): RequestHandler {
   return (req, res, next) => {
     const scope = buildScopeContext(req.session as ClassmateSession);
     if (!allowed.includes(scope.role)) {
-      res.status(403).json(ownershipDenied("endpoint", 0));
+      res.status(403).json({ ...ownershipDenied("endpoint", 0), requestId: String(req.id ?? "") });
       return;
     }
     next();

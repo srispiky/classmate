@@ -1,6 +1,6 @@
 # Production Operations Guide — Classmate Connect
 
-**Last updated:** Sprint 11 Chunk B
+**Last updated:** Sprint 12 Chunk 1
 **Readiness score:** 89.25 / 100
 
 ---
@@ -59,6 +59,24 @@ The API server uses **pino** for structured JSON logging. All log lines are mach
 
 Set `LOG_LEVEL=debug` temporarily during incident investigation. Revert to `info` afterward.
 
+### Request correlation
+
+Every HTTP request is assigned a **UUID v4 request ID** via `crypto.randomUUID()` (pino-http `genReqId`). The ID:
+
+- Appears in every log line for that request (`req.id`)
+- Is echoed back to the caller in the `X-Request-Id` response header
+- Is included in all error responses under the `requestId` field
+
+To correlate a client error report with a server log entry:
+
+```bash
+# In production logs, grep for the requestId the client captured:
+grep "a0daf4ab-c7ef-44b1-940a-7aa6a41c0ba7" /var/log/api-server.log
+
+# Or in GitHub Actions / Replit console output:
+# search for the UUID — all log lines for that request share the same id
+```
+
 ### Sensitive data redaction
 
 The following fields are **automatically redacted** from all log output:
@@ -69,6 +87,12 @@ The following fields are **automatically redacted** from all log output:
 
 This is enforced in `lib/logger.ts` via pino's `redact` option. No session tokens, passwords, or auth headers appear in logs.
 
+**Additional security invariants (verified in observability tests):**
+
+- `GET /api/healthz` never includes `DATABASE_URL`, `S3_BUCKET`, `SESSION_SECRET`, or `PASSWORD_ENCRYPTION_KEY` in its response body
+- Backup/replication status is reported as boolean flags only (`configured: true/false`)
+- Error responses for 5xx never echo raw stack traces — only a generic message + `requestId`
+
 ### Request log format
 
 Every HTTP request produces a structured log line:
@@ -77,23 +101,140 @@ Every HTTP request produces a structured log line:
 {
   "level": 30,
   "time": 1749657600000,
-  "req": { "id": "1", "method": "GET", "url": "/api/students" },
+  "req": { "id": "a0daf4ab-c7ef-44b1-940a-7aa6a41c0ba7", "method": "GET", "url": "/api/students" },
   "res": { "statusCode": 200 },
   "responseTime": 42
 }
 ```
 
-The `url` field strips query strings (see `app.ts` serializer) to prevent sensitive filter values from appearing in logs.
+The `url` field strips query strings (see `app.ts` serializer) to prevent sensitive filter values from appearing in logs. The `req.id` field is now a UUID (changed from sequential integer in Sprint 12 Chunk 1).
 
 ### Log levels
 
 | Level | Usage |
 |-------|-------|
 | `fatal` | Startup failures (DB unreachable, missing env var) — process exits |
-| `error` | Unexpected exceptions, port bind failures |
-| `warn` | Authorization denied (403), rate-limit triggered (429) |
+| `error` | Unexpected 5xx exceptions — routed through `globalErrorHandler` with full error detail |
+| `warn` | 4xx client errors routed through `globalErrorHandler`; auth failures |
 | `info` | Normal request lifecycle, startup summary, DB connectivity verified |
 | `debug` | Verbose — query params, scope context — dev/investigation only |
+
+### Metrics catalog
+
+In-memory counters (reset on server restart) are exposed via two endpoints:
+
+**`GET /api/healthz`** — public, no auth required:
+```json
+{
+  "metrics": {
+    "requests": 1543,
+    "errors": 2,
+    "avgDurationMs": 38
+  }
+}
+```
+
+**`GET /api/admin/metrics`** — admin only, full snapshot:
+```json
+{
+  "requests": {
+    "total": 1543,
+    "errors": 2,
+    "byStatus": { "200": 1410, "401": 80, "403": 51, "500": 2 },
+    "avgDurationMs": 38
+  },
+  "auth": {
+    "loginAttempts": 124,
+    "loginFailures": 18,
+    "rateLimitHits": 0
+  },
+  "database": {
+    "queryFailures": 0
+  },
+  "backup": {
+    "runs": 0,
+    "failures": 0,
+    "lastRunAt": null
+  },
+  "process": {
+    "startedAt": "2026-07-05T19:00:00.000Z",
+    "uptimeSeconds": 3600
+  }
+}
+```
+
+**Metric descriptions:**
+
+| Metric | Description |
+|--------|-------------|
+| `requests.total` | Total HTTP requests handled since last restart |
+| `requests.errors` | Requests that resulted in a 5xx status |
+| `requests.byStatus` | Count per HTTP status code |
+| `requests.avgDurationMs` | Rolling average response time (ms) |
+| `auth.loginAttempts` | `POST /auth/login` calls (all outcomes) |
+| `auth.loginFailures` | Failed credential checks (wrong user/pass, inactive user) |
+| `auth.rateLimitHits` | Requests blocked by the login rate limiter |
+| `database.queryFailures` | Drizzle/pg query errors recorded via `metrics.recordDbFailure()` |
+| `backup.runs` | Backup runs recorded by the backup script (if integrated) |
+| `backup.failures` | Failed backup runs |
+| `process.uptimeSeconds` | Seconds since server process started |
+
+### Health endpoint
+
+`GET /api/healthz` — no authentication required.
+
+**Full response shape:**
+```json
+{
+  "status": "ok",
+  "version": "0.0.0",
+  "uptime": 3600,
+  "database": { "status": "ok" },
+  "backup": { "configured": true },
+  "replication": { "configured": false },
+  "metrics": { "requests": 1543, "errors": 2, "avgDurationMs": 38 }
+}
+```
+
+| Field | Value | Meaning |
+|-------|-------|---------|
+| `status` | `"ok"` / `"error"` | Overall health — `"error"` if DB unreachable (returns HTTP 503) |
+| `version` | semver string | Application version from `package.json` |
+| `uptime` | integer seconds | Process uptime since last restart |
+| `database.status` | `"ok"` / `"error"` | DB connectivity (SELECT 1 probe) |
+| `database.detail` | error string | Present only when `database.status == "error"` |
+| `backup.configured` | boolean | Whether `DATABASE_URL` is set (backup can run) |
+| `replication.configured` | boolean | Whether `S3_BUCKET` is set (offsite replication active) |
+| `metrics.*` | numbers | Session-level request counters |
+
+### Troubleshooting workflow
+
+**Step 1 — Identify the failed request**
+Find the `X-Request-Id` header in the client error response or browser DevTools Network tab.
+
+**Step 2 — Find the log entry**
+```bash
+# Replit console: search for the UUID
+# Production logs:
+grep "<request-uuid>" /path/to/api-server.log | jq .
+```
+
+**Step 3 — Check the health endpoint**
+```bash
+curl -s https://your-app.replit.app/api/healthz | jq .
+```
+A `503` with `database.status: "error"` means the database is unreachable — check the `DATABASE_URL` secret and Replit DB status.
+
+**Step 4 — Review admin metrics (requires admin session)**
+```bash
+curl -s -b "connect.sid=<admin-cookie>" https://your-app.replit.app/api/admin/metrics | jq .
+```
+Compare `auth.loginFailures` against `auth.loginAttempts`. A high ratio signals a credential-stuffing attack. `requests.errors > 0` warrants log investigation.
+
+**Step 5 — Escalate to runbooks**
+- Database issues → `RUNBOOK-BACKUP.md` §3 (restore procedure)
+- Deployment issues → `RUNBOOK-DEPLOY.md`
+- Backup failures → `OPERATIONS.md` §3 troubleshooting table
 
 ---
 

@@ -4,6 +4,7 @@ import { db, usersTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { hashPassword, verifyPassword } from "../lib/password";
 import { SessionEnricherService } from "../lib/session-enricher";
+import { metrics } from "../lib/metrics";
 
 const router: IRouter = Router();
 
@@ -27,6 +28,8 @@ const loginRateLimiter = rateLimit({
 router.post("/auth/login", loginRateLimiter, async (req, res): Promise<void> => {
   const { username, password } = req.body as { username?: string; password?: string };
 
+  metrics.recordAuthAttempt();
+
   if (!username || !password) {
     res.status(400).json({ error: "Username and password are required" });
     return;
@@ -35,12 +38,14 @@ router.post("/auth/login", loginRateLimiter, async (req, res): Promise<void> => 
   const [user] = await db.select().from(usersTable).where(eq(usersTable.username, username)).limit(1);
 
   if (!user || !user.isActive) {
+    metrics.recordAuthFailure();
     res.status(401).json({ error: "Invalid username or password" });
     return;
   }
 
   const valid = await verifyPassword(password, user.passwordHash);
   if (!valid) {
+    metrics.recordAuthFailure();
     res.status(401).json({ error: "Invalid username or password" });
     return;
   }

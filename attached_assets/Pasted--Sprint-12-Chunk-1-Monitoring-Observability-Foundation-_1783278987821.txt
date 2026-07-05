@@ -1,0 +1,247 @@
+# Sprint 12 Chunk 1 — Monitoring & Observability Foundation
+
+Before making changes:
+
+1. Read and understand:
+   - app.ts
+   - routes/index.ts
+   - dashboard routes
+   - reports routes
+   - auth routes
+   - backup workflows
+   - replication workflows
+   - health check implementation
+   - OPERATIONS.md
+   - RUNBOOK-BACKUP.md
+
+2. Review current logging strategy.
+
+3. Review production readiness audit findings.
+
+4. Keep implementation strictly focused on observability.
+
+--------------------------------------------------
+OBJECTIVE
+--------------------------------------------------
+
+Establish production-grade observability.
+
+Current state:
+
+- basic logs only
+- no metrics
+- no operational dashboards
+- no alerting hooks
+- limited visibility into failures
+
+Implement the observability foundation.
+
+--------------------------------------------------
+PART 1 — LOGGING AUDIT
+--------------------------------------------------
+
+Review:
+
+- console.log usage
+- console.error usage
+- route logging
+- startup logging
+- backup logging
+
+Identify:
+
+- duplicated logs
+- missing logs
+- inconsistent formats
+
+Document findings.
+
+--------------------------------------------------
+PART 2 — STRUCTURED LOGGING
+--------------------------------------------------
+
+Implement:
+
+Centralized logging utility.
+
+Requirements:
+
+- timestamp
+- severity
+- component
+- operation
+- correlation id support
+
+Levels:
+
+- DEBUG
+- INFO
+- WARN
+- ERROR
+
+Replace:
+
+ad-hoc console logging.
+
+Do not change business logic.
+
+--------------------------------------------------
+PART 3 — REQUEST CORRELATION
+--------------------------------------------------
+
+Implement:
+
+Request ID middleware.
+
+Requirements:
+
+Every request receives:
+
+- requestId
+
+Request ID must flow through:
+
+- route handlers
+- services
+- error logging
+
+Include requestId in logs.
+
+--------------------------------------------------
+PART 4 — APPLICATION METRICS
+--------------------------------------------------
+
+Implement metrics collection.
+
+Track:
+
+- request count
+- request duration
+- error count
+- auth failures
+- database query failures
+- backup failures
+
+Metrics must be centralized.
+
+--------------------------------------------------
+PART 5 — HEALTH CHECK EXPANSION
+--------------------------------------------------
+
+Enhance:
+
+GET /healthz
+
+Include:
+
+- application status
+- database status
+- backup status
+- replication status
+- version
+
+Avoid exposing sensitive information.
+
+--------------------------------------------------
+PART 6 — ERROR OBSERVABILITY
+--------------------------------------------------
+
+Implement:
+
+Standardized error reporting.
+
+Capture:
+
+- route failures
+- service failures
+- database failures
+- backup failures
+
+Ensure:
+
+consistent error metadata.
+
+--------------------------------------------------
+PART 7 — SECURITY REVIEW
+--------------------------------------------------
+
+Verify:
+
+Logs never contain:
+
+- passwords
+- session secrets
+- database URLs
+- authentication tokens
+- personal student data
+
+Audit all new logging paths.
+
+--------------------------------------------------
+PART 8 — TEST COVERAGE
+--------------------------------------------------
+
+Add tests covering:
+
+- request id generation
+- metrics registration
+- structured log formatting
+- health endpoint behavior
+
+Verify:
+
+full test suite passes.
+
+--------------------------------------------------
+PART 9 — DOCUMENTATION
+--------------------------------------------------
+
+Update:
+
+OPERATIONS.md
+
+Add:
+
+- logging standards
+- troubleshooting workflow
+- metrics catalog
+- health endpoint usage
+
+--------------------------------------------------
+PART 10 — E2E VERIFICATION
+--------------------------------------------------
+
+Verify:
+
+1. application startup
+2. request tracing
+3. error logging
+4. metrics collection
+5. health endpoint
+
+Document results.
+
+--------------------------------------------------
+DELIVERABLE
+--------------------------------------------------
+
+Provide:
+
+1. Files modified
+2. Logging architecture
+3. Metrics architecture
+4. Security review
+5. Test results
+6. E2E verification
+7. Remaining observability gaps
+
+--------------------------------------------------
+GIT REQUIREMENT
+--------------------------------------------------
+
+git add .
+git commit -m "feat(observability): add structured logging and metrics foundation"
+
+git push origin main
+
+Include commit hash in report.

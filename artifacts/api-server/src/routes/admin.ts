@@ -2,6 +2,7 @@ import { Router, type IRouter } from "express";
 import { pool, db, testConnection, studentsTable, coursesTable, assignmentsTable, notesTable, assessmentsTable } from "@workspace/db";
 import { sql } from "drizzle-orm";
 import { requireRole } from "../middleware/require-role";
+import { metrics } from "../lib/metrics";
 
 const router: IRouter = Router();
 
@@ -86,6 +87,13 @@ router.post("/admin/test-db", requireRole("admin"), async (req, res): Promise<vo
   });
 
   res.json(result);
+});
+
+// GET /admin/metrics — admin-only operational metrics snapshot.
+// Returns in-memory counters that reset on server restart.
+// Security: never exposes credentials, session data, or student PII.
+router.get("/admin/metrics", requireRole("admin"), (_req, res): void => {
+  res.json(metrics.snapshot());
 });
 
 export default router;

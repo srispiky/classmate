@@ -1,4 +1,4 @@
-import express, { type Express } from "express";
+import express, { type Express, type Request, type Response, type NextFunction } from "express";
 import cors from "cors";
 import helmet from "helmet";
 import session from "express-session";
@@ -7,6 +7,8 @@ import pinoHttp from "pino-http";
 import router from "./routes";
 import { logger } from "./lib/logger";
 import { pool } from "@workspace/db";
+import { metrics } from "./lib/metrics";
+import { globalErrorHandler } from "./middleware/error-handler";
 
 const PgSession = connectPgSimple(session);
 
@@ -15,6 +17,9 @@ const app: Express = express();
 app.use(
   pinoHttp({
     logger,
+    // Use a cryptographically random UUID for each request so IDs are
+    // globally unique and safe to include in responses and external logs.
+    genReqId: () => crypto.randomUUID(),
     serializers: {
       req(req) {
         return {
@@ -31,6 +36,25 @@ app.use(
     },
   }),
 );
+
+// ── Request ID header ─────────────────────────────────────────────────────────
+// Echo the request ID back to the caller so client-side error reports can be
+// correlated with server logs without exposing any sensitive information.
+app.use((req: Request, res: Response, next: NextFunction) => {
+  res.setHeader("X-Request-Id", String(req.id));
+  next();
+});
+
+// ── Request metrics ───────────────────────────────────────────────────────────
+// Capture per-request timing and status-code bucketing after the response
+// is finished. Using the `finish` event ensures the status code is final.
+app.use((req: Request, res: Response, next: NextFunction) => {
+  const startMs = Date.now();
+  res.on("finish", () => {
+    metrics.recordRequest(res.statusCode, Date.now() - startMs);
+  });
+  next();
+});
 
 // ── Security headers ─────────────────────────────────────────────────────────
 // The API server serves only JSON; no HTML is rendered here, so the default
@@ -115,5 +139,9 @@ app.use(
 );
 
 app.use("/api", router);
+
+// ── Global error handler ──────────────────────────────────────────────────────
+// Must be registered after all routes. Catches any error passed to next(err).
+app.use(globalErrorHandler);
 
 export default app;

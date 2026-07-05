@@ -5,5 +5,5 @@ export const requireAuth: RequestHandler = (req, res, next) => {
     next();
     return;
   }
-  res.status(401).json({ error: "Unauthorized" });
+  res.status(401).json({ error: "Unauthorized", requestId: String(req.id ?? "") });
 };
