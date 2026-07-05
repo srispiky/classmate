@@ -1,6 +1,7 @@
 import { Router, type IRouter } from "express";
 import { buildScopeContext, type ClassmateSession } from "../lib/scope-context";
 import { requireRole } from "../middleware/require-role";
+import { requireActiveStudent } from "../middleware/require-active-student";
 import { StudentCourseService } from "../services/student-courses.service";
 import {
   GetStudentCoursesResponse,
@@ -22,6 +23,7 @@ const router: IRouter = Router();
 router.get(
   "/student/courses",
   requireRole("student"),
+  requireActiveStudent,
   async (req, res): Promise<void> => {
     const scope = buildScopeContext(req.session as ClassmateSession);
     const courses = await StudentCourseService.listCourses(scope);
@@ -35,6 +37,7 @@ router.get(
  * Returns details for a single enrolled course.
  *
  * Layer 1: requireRole("student").
+ * Layer 1b: requireActiveStudent — re-validates student record liveness.
  * Layer 3: StudentCourseService.getCourse() checks scope.enrolledCourseIds
  *          membership before issuing a DB query. Returns null for non-enrolled
  *          or deleted courses → 404 (IDOR-safe: does not reveal course existence).
@@ -42,6 +45,7 @@ router.get(
 router.get(
   "/student/courses/:courseId",
   requireRole("student"),
+  requireActiveStudent,
   async (req, res): Promise<void> => {
     const scope = buildScopeContext(req.session as ClassmateSession);
 

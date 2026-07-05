@@ -1,6 +1,7 @@
 import { Router, type IRouter } from "express";
 import { buildScopeContext, type ClassmateSession } from "../lib/scope-context";
 import { requireRole } from "../middleware/require-role";
+import { requireActiveStudent } from "../middleware/require-active-student";
 import { StudentAssessmentService } from "../services/student-assessments.service";
 import {
   GetStudentAssessmentsResponse,
@@ -23,6 +24,7 @@ const router: IRouter = Router();
 router.get(
   "/student/assessments",
   requireRole("student"),
+  requireActiveStudent,
   async (req, res): Promise<void> => {
     const scope = buildScopeContext(req.session as ClassmateSession);
     const assessments = await StudentAssessmentService.listAssessments(scope);
@@ -43,6 +45,7 @@ router.get(
 router.get(
   "/student/assessments/:assessmentId",
   requireRole("student"),
+  requireActiveStudent,
   async (req, res): Promise<void> => {
     const scope = buildScopeContext(req.session as ClassmateSession);
 

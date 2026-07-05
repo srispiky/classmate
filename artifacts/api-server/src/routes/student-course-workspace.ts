@@ -1,6 +1,7 @@
 import { Router, type IRouter } from "express";
 import { buildScopeContext, type ClassmateSession } from "../lib/scope-context";
 import { requireRole } from "../middleware/require-role";
+import { requireActiveStudent } from "../middleware/require-active-student";
 import { StudentCourseWorkspaceService } from "../services/student-course-workspace.service";
 import {
   GetStudentCourseWorkspaceResponse,
@@ -24,6 +25,7 @@ const router: IRouter = Router();
 router.get(
   "/student/courses/:courseId/workspace",
   requireRole("student"),
+  requireActiveStudent,
   async (req, res): Promise<void> => {
     const scope = buildScopeContext(req.session as ClassmateSession);
 
