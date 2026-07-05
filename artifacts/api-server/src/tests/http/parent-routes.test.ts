@@ -204,6 +204,63 @@ describe("GET /api/parent/students/:studentId/assessments", () => {
   });
 });
 
+describe("Deactivated parent account — receives 403 on all endpoints even within an active session", () => {
+  let deactivatedParent: { id: number; username: string; password: string; role: "parent" };
+  let deactivatedStudentId: number;
+  let deactivatedAgent: SupertestAgent;
+
+  beforeAll(async () => {
+    deactivatedParent = await createParentUser("deactivated", adminUserId);
+    deactivatedStudentId = await createUnlinkedStudent("DeactivatedChild", adminUserId);
+    await linkGuardian(deactivatedParent.id, deactivatedStudentId, adminUserId);
+
+    // Log in while the account is still active so we hold a valid session.
+    deactivatedAgent = await loginAs(deactivatedParent as Parameters<typeof loginAs>[0]);
+
+    // Now deactivate the account — the session remains open.
+    await db
+      .update(usersTable)
+      .set({ isActive: false })
+      .where(eq(usersTable.id, deactivatedParent.id));
+  });
+
+  afterAll(async () => {
+    // Re-activate so cleanupHttpUser can delete it without foreign-key issues.
+    await db
+      .update(usersTable)
+      .set({ isActive: true })
+      .where(eq(usersTable.id, deactivatedParent.id));
+    await unlinkGuardian(deactivatedParent.id, deactivatedStudentId);
+    await cleanupLinkedStudent(deactivatedStudentId);
+    await cleanupHttpUser(deactivatedParent.id);
+  });
+
+  it("returns 403 on GET /parent/dashboard", async () => {
+    const res = await deactivatedAgent.get("/api/parent/dashboard");
+    expect(res.status).toBe(403);
+  });
+
+  it("returns 403 on GET /parent/students", async () => {
+    const res = await deactivatedAgent.get("/api/parent/students");
+    expect(res.status).toBe(403);
+  });
+
+  it("returns 403 on GET /parent/students/:id/progress", async () => {
+    const res = await deactivatedAgent.get(`/api/parent/students/${deactivatedStudentId}/progress`);
+    expect(res.status).toBe(403);
+  });
+
+  it("returns 403 on GET /parent/students/:id/assignments", async () => {
+    const res = await deactivatedAgent.get(`/api/parent/students/${deactivatedStudentId}/assignments`);
+    expect(res.status).toBe(403);
+  });
+
+  it("returns 403 on GET /parent/students/:id/assessments", async () => {
+    const res = await deactivatedAgent.get(`/api/parent/students/${deactivatedStudentId}/assessments`);
+    expect(res.status).toBe(403);
+  });
+});
+
 describe("Role isolation — non-parent roles receive 403 on all parent endpoints", () => {
   let teacherAgent: SupertestAgent;
   let teacherUserId: number;

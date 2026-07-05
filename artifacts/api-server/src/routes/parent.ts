@@ -9,6 +9,7 @@ import {
 } from "@workspace/db";
 import { buildScopeContext, type ClassmateSession } from "../lib/scope-context";
 import { requireRole } from "../middleware/require-role";
+import { requireActiveAccount } from "../middleware/require-active-account";
 import { computeRiskLevel, computeTrend } from "../services/progress-analytics.service";
 import {
   GetParentDashboardResponse,
@@ -79,7 +80,7 @@ async function applyParentGuard(
  * Layer 2: live guardian query replaces cached childStudentIds for the
  *          student filter and all downstream inArray() restrictions.
  */
-router.get("/parent/dashboard", requireRole("parent"), async (req, res): Promise<void> => {
+router.get("/parent/dashboard", requireRole("parent"), requireActiveAccount, async (req, res): Promise<void> => {
   const scope = buildScopeContext(req.session as ClassmateSession);
 
   // Fetch live guardian rows — do not trust cached session childStudentIds.
@@ -226,7 +227,7 @@ router.get("/parent/dashboard", requireRole("parent"), async (req, res): Promise
  * Layer 2: live guardian query replaces cached childStudentIds.
  * Layer 3: N/A — list is already scoped to the parent's own live children.
  */
-router.get("/parent/students", requireRole("parent"), async (req, res): Promise<void> => {
+router.get("/parent/students", requireRole("parent"), requireActiveAccount, async (req, res): Promise<void> => {
   const scope = buildScopeContext(req.session as ClassmateSession);
 
   // Fetch live guardian rows — do not trust cached session childStudentIds.
@@ -279,6 +280,7 @@ router.get("/parent/students", requireRole("parent"), async (req, res): Promise<
 router.get(
   "/parent/students/:studentId/progress",
   requireRole("parent"),
+  requireActiveAccount,
   async (req, res): Promise<void> => {
     const scope = buildScopeContext(req.session as ClassmateSession);
     const params = GetParentStudentProgressParams.safeParse(req.params);
@@ -367,6 +369,7 @@ router.get(
 router.get(
   "/parent/students/:studentId/assignments",
   requireRole("parent"),
+  requireActiveAccount,
   async (req, res): Promise<void> => {
     const scope = buildScopeContext(req.session as ClassmateSession);
     const params = ListParentStudentAssignmentsParams.safeParse(req.params);
@@ -417,6 +420,7 @@ router.get(
 router.get(
   "/parent/students/:studentId/assessments",
   requireRole("parent"),
+  requireActiveAccount,
   async (req, res): Promise<void> => {
     const scope = buildScopeContext(req.session as ClassmateSession);
     const params = ListParentStudentAssessmentsParams.safeParse(req.params);
