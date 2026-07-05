@@ -1,7 +1,7 @@
 # Backup, Recovery & Restore Runbook — Classmate Connect
 
 **Applies to:** All environments
-**Last updated:** Sprint 10 Chunk 7
+**Last updated:** Sprint 11 Chunk B
 
 ---
 
@@ -74,30 +74,58 @@ BACKUP_RETENTION_DAYS=9999 \
 | `BACKUP_RETENTION_DAYS` | No | `7` | Days to keep daily backups before pruning |
 | `BACKUP_ENV` | No | `$NODE_ENV` or `development` | Label embedded in the filename |
 
-### Scheduling (external scheduler)
+### Scheduling — GitHub Actions (automated)
 
-Replit does not provide a native cron facility. Schedule the backup from an external system:
+Automated backups are implemented in `.github/workflows/backup.yml`. No manual steps are required for day-to-day operation once the repository secret is configured.
 
-**GitHub Actions (recommended)** — create `.github/workflows/backup.yml`:
-```yaml
-on:
-  schedule:
-    - cron: '0 2 * * *'   # 02:00 UTC daily
-jobs:
-  backup:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
-      - run: pnpm install --filter @workspace/scripts
-      - run: pnpm --filter @workspace/scripts run backup
-        env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
-          BACKUP_DIR: /tmp/classmate-backups
-          BACKUP_ENV: production
+**Schedule:**
+
+| Type | Trigger | Retention | Artifact |
+|------|---------|-----------|---------|
+| Daily | 02:00 UTC every day (cron `0 2 * * *`) | 30 days (Actions artifact) | `classmate-backup-daily-<run>` |
+| Weekly | Auto-detected on Sunday runs | 90 days (Actions artifact) | `classmate-backup-weekly-<run>` |
+| Manual | `workflow_dispatch` — choose `daily` or `weekly` | Same as above | Same as above |
+
+**One-time setup required** — add `DATABASE_URL` as a GitHub repository secret:
+
+1. Go to **GitHub → Repository → Settings → Secrets and variables → Actions**
+2. Click **New repository secret**
+3. Name: `DATABASE_URL`
+4. Value: the full PostgreSQL connection string (from Replit environment)
+5. Click **Add secret**
+
+Without this secret the workflow will fail at the backup step with `DATABASE_URL is not set`.
+
+**Workflow steps (automatic, every run):**
+
+1. Installs PostgreSQL client tools on the runner
+2. Installs Node.js 24 and pnpm 9
+3. Installs `@workspace/scripts` dependencies
+4. Detects backup type (day-of-week for scheduled runs; manual input for dispatched runs)
+5. Runs `pnpm --filter @workspace/scripts run backup` (daily) or `backup:weekly` (weekly)
+6. Validates: dump file exists, size > 0, sidecar JSON parseable, pg_restore dry-run passes
+7. Uploads backup files as a GitHub Actions artifact
+8. Writes a job summary (visible under Actions → run → Summary)
+
+**Workflow fails loudly** — any validation step that fails produces a GitHub Actions error annotation and sets the run status to ❌ Failure. GitHub sends email notifications for failed scheduled workflows by default.
+
+**Manual override procedure:**
+
+To trigger a backup immediately (e.g., before a production deploy):
+
+```
+GitHub → Actions → Database Backup → Run workflow → Choose type → Run workflow
 ```
 
-**Operator machine cron** — if running from a server with repo access:
+Or via GitHub CLI:
+
+```bash
+gh workflow run backup.yml -f backup_type=daily
+gh workflow run backup.yml -f backup_type=weekly
+```
+
+**Operator machine cron** — alternative if running from a server with repo access:
+
 ```
 0 2 * * * cd /opt/classmate && BACKUP_DIR=/var/backups/classmate pnpm --filter @workspace/scripts run backup >> /var/log/classmate-backup.log 2>&1
 ```

@@ -1,0 +1,165 @@
+name: Database Backup
+
+on:
+  schedule:
+    - cron: '0 2 * * *'
+  workflow_dispatch:
+    inputs:
+      backup_type:
+        description: 'Backup type'
+        required: false
+        default: 'daily'
+        type: choice
+        options:
+          - daily
+          - weekly
+
+permissions:
+  contents: read
+
+env:
+  BACKUP_DIR: ${{ github.workspace }}/backup-output
+  BACKUP_ENV: production
+  DATABASE_URL: ${{ secrets.DATABASE_URL }}
+
+jobs:
+  backup:
+    name: Database backup
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install PostgreSQL client
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y postgresql-client
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: 'pnpm'
+
+      - name: Install script dependencies
+        run: pnpm install --filter @workspace/scripts
+
+      - name: Determine backup type
+        id: type
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "type=${{ inputs.backup_type }}" >> "$GITHUB_OUTPUT"
+          elif [ "$(date -u +%u)" = "7" ]; then
+            echo "type=weekly" >> "$GITHUB_OUTPUT"
+          else
+            echo "type=daily" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Create backup output directory
+        run: mkdir -p "$BACKUP_DIR"
+
+      - name: Run backup
+        run: |
+          if [ "${{ steps.type.outputs.type }}" = "weekly" ]; then
+            pnpm --filter @workspace/scripts run backup:weekly
+          else
+            pnpm --filter @workspace/scripts run backup
+          fi
+
+      - name: Locate backup outputs
+        id: outputs
+        run: |
+          DUMP=$(ls "$BACKUP_DIR"/classmate_*.dump 2>/dev/null | head -1)
+          SIDECAR=$(ls "$BACKUP_DIR"/classmate_*.json 2>/dev/null | head -1)
+          echo "dump=$DUMP" >> "$GITHUB_OUTPUT"
+          echo "sidecar=$SIDECAR" >> "$GITHUB_OUTPUT"
+          echo "dump_base=$(basename "${DUMP:-not-found}")" >> "$GITHUB_OUTPUT"
+
+      - name: Validate — dump file exists
+        run: |
+          if [ -z "${{ steps.outputs.outputs.dump }}" ]; then
+            echo "::error::No .dump file found in $BACKUP_DIR after backup completed"
+            exit 1
+          fi
+          echo "Dump file: ${{ steps.outputs.outputs.dump_base }}"
+
+      - name: Validate — dump file non-empty
+        run: |
+          SIZE=$(stat -c%s "${{ steps.outputs.outputs.dump }}")
+          echo "Dump size: ${SIZE} bytes"
+          if [ "$SIZE" -eq 0 ]; then
+            echo "::error::Dump file is 0 bytes — pg_dump may have failed silently"
+            exit 1
+          fi
+
+      - name: Validate — sidecar JSON exists
+        run: |
+          if [ -z "${{ steps.outputs.outputs.sidecar }}" ]; then
+            echo "::error::No .json sidecar found in $BACKUP_DIR"
+            exit 1
+          fi
+          echo "Sidecar: $(basename "${{ steps.outputs.outputs.sidecar }}")"
+
+      - name: Validate — sidecar JSON is parseable
+        run: |
+          if ! python3 -c "import json,sys; json.load(open('${{ steps.outputs.outputs.sidecar }}'))" 2>&1; then
+            echo "::error::Sidecar JSON failed to parse — file may be corrupt"
+            exit 1
+          fi
+          echo "Sidecar JSON: valid"
+
+      - name: Validate — dump structure readable (pg_restore dry-run)
+        run: |
+          TABLE_COUNT=$(pg_restore --list "${{ steps.outputs.outputs.dump }}" 2>/dev/null | grep -c "TABLE DATA" || true)
+          echo "TABLE DATA sections in dump: $TABLE_COUNT"
+          if [ "$TABLE_COUNT" -eq 0 ]; then
+            echo "::error::pg_restore found 0 TABLE DATA sections — dump appears empty or corrupt"
+            exit 1
+          fi
+
+      - name: Upload daily backup artifact
+        if: steps.type.outputs.type == 'daily'
+        uses: actions/upload-artifact@v4
+        with:
+          name: classmate-backup-daily-${{ github.run_number }}
+          path: |
+            ${{ env.BACKUP_DIR }}/*.dump
+            ${{ env.BACKUP_DIR }}/*.json
+          retention-days: 30
+          if-no-files-found: error
+
+      - name: Upload weekly backup artifact
+        if: steps.type.outputs.type == 'weekly'
+        uses: actions/upload-artifact@v4
+        with:
+          name: classmate-backup-weekly-${{ github.run_number }}
+          path: |
+            ${{ env.BACKUP_DIR }}/*.dump
+            ${{ env.BACKUP_DIR }}/*.json
+          retention-days: 90
+          if-no-files-found: error
+
+      - name: Write job summary
+        if: always()
+        run: |
+          STATUS="${{ job.status }}"
+          {
+            if [ "$STATUS" = "success" ]; then
+              echo "### Backup Succeeded"
+            else
+              echo "### Backup FAILED"
+            fi
+            echo ""
+            echo "| Field | Value |"
+            echo "| ----- | ----- |"
+            echo "| Type | ${{ steps.type.outputs.type }} |"
+            echo "| File | ${{ steps.outputs.outputs.dump_base }} |"
+            echo "| Trigger | ${{ github.event_name }} |"
+            echo "| Run | [#${{ github.run_number }}](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}) |"
+          } >> "$GITHUB_STEP_SUMMARY"

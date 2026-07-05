@@ -1,0 +1,225 @@
+# Sprint 11 Chunk B — Automated Backup Scheduling
+
+Before making changes:
+
+1. Read and understand:
+   - scripts/src/backup.ts
+   - scripts/src/backup-lib.ts
+   - restore-verify.ts
+   - RUNBOOK-BACKUP.md
+   - OPERATIONS.md
+   - Sprint 10 Gate Review
+   - Risk Register R-H2
+
+2. Review current backup implementation.
+
+3. Review retention policy.
+
+4. Review backup naming conventions.
+
+5. Keep changes strictly scoped to automation.
+
+--------------------------------------------------
+OBJECTIVE
+--------------------------------------------------
+
+Eliminate Risk R-H2.
+
+Current finding:
+
+Backups exist but require manual execution.
+
+Production systems require scheduled backups.
+
+Implement automated backup execution.
+
+--------------------------------------------------
+PART 1 — CURRENT BACKUP AUDIT
+--------------------------------------------------
+
+Review:
+
+- backup scripts
+- backup outputs
+- retention enforcement
+- sidecar generation
+
+Verify:
+
+- daily backup command
+- weekly backup command
+- restore compatibility
+
+Document findings.
+
+--------------------------------------------------
+PART 2 — SCHEDULING ARCHITECTURE
+--------------------------------------------------
+
+Implement automated scheduling.
+
+Requirements:
+
+- unattended execution
+- repeatable
+- environment driven
+- no hardcoded credentials
+- failure visibility
+
+Support:
+
+Daily backups
+Weekly backups
+
+Reuse existing backup implementation.
+
+Do not duplicate logic.
+
+--------------------------------------------------
+PART 3 — GITHUB ACTIONS WORKFLOW
+--------------------------------------------------
+
+Create workflow:
+
+.backup.yml
+
+Requirements:
+
+Daily execution
+
+Weekly execution
+
+Workflow must:
+
+1. Execute backup
+2. Verify success
+3. Preserve artifacts
+4. Fail loudly on error
+
+Do not expose:
+
+- DATABASE_URL
+- SESSION_SECRET
+- credentials
+
+--------------------------------------------------
+PART 4 — BACKUP VALIDATION
+--------------------------------------------------
+
+After backup generation:
+
+Verify:
+
+- dump file exists
+- sidecar JSON exists
+- retention enforcement executed
+- output is non-empty
+
+Fail workflow if validation fails.
+
+--------------------------------------------------
+PART 5 — FAILURE HANDLING
+--------------------------------------------------
+
+Implement:
+
+clear logging
+
+non-zero exit codes
+
+error reporting
+
+Verify:
+
+backup failure causes workflow failure.
+
+--------------------------------------------------
+PART 6 — SECURITY REVIEW
+--------------------------------------------------
+
+Verify:
+
+- secrets not logged
+- credentials not exposed
+- artifacts handled safely
+- no sensitive metadata leaked
+
+--------------------------------------------------
+PART 7 — TEST COVERAGE
+--------------------------------------------------
+
+Add tests covering:
+
+- scheduler invocation
+- validation failure
+- retention execution
+- workflow configuration
+
+Verify:
+
+all tests pass.
+
+--------------------------------------------------
+PART 8 — DOCUMENTATION
+--------------------------------------------------
+
+Update:
+
+RUNBOOK-BACKUP.md
+
+Include:
+
+- schedule
+- workflow behavior
+- failure recovery
+- manual override procedure
+
+Update:
+
+OPERATIONS.md
+
+Include:
+
+- backup monitoring
+- expected logs
+- troubleshooting
+
+--------------------------------------------------
+PART 9 — E2E VERIFICATION
+--------------------------------------------------
+
+Execute:
+
+1. Trigger workflow manually
+2. Generate backup
+3. Validate outputs
+4. Verify retention
+5. Verify restore compatibility
+
+Document results.
+
+--------------------------------------------------
+PART 10 — DELIVERABLE
+--------------------------------------------------
+
+Provide:
+
+1. Files modified
+2. Workflow design
+3. Scheduling strategy
+4. Validation process
+5. Security review
+6. Test results
+7. E2E verification
+8. Remaining backup risks
+
+--------------------------------------------------
+GIT REQUIREMENT
+--------------------------------------------------
+
+git add .
+git commit -m "feat(ops): automate scheduled backups"
+
+git push origin main
+
+Include commit hash in report.

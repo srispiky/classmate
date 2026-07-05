@@ -1,6 +1,6 @@
 # Production Operations Guide — Classmate Connect
 
-**Last updated:** Sprint 9 Chunk 6
+**Last updated:** Sprint 11 Chunk B
 **Readiness score:** 89.25 / 100
 
 ---
@@ -9,11 +9,12 @@
 
 1. [Architecture Overview](#1-architecture-overview)
 2. [Monitoring & Logging](#2-monitoring--logging)
-3. [Critical Operational Events](#3-critical-operational-events)
-4. [Failure Scenarios & Responses](#4-failure-scenarios--responses)
-5. [Security Operations Verification](#5-security-operations-verification)
-6. [Production Readiness Assessment](#6-production-readiness-assessment)
-7. [Remaining Launch Blockers](#7-remaining-launch-blockers)
+3. [Backup Monitoring](#3-backup-monitoring)
+4. [Critical Operational Events](#4-critical-operational-events)
+5. [Failure Scenarios & Responses](#5-failure-scenarios--responses)
+6. [Security Operations Verification](#6-security-operations-verification)
+7. [Production Readiness Assessment](#7-production-readiness-assessment)
+8. [Remaining Launch Blockers](#8-remaining-launch-blockers)
 
 Related runbooks:
 - [RUNBOOK-DEPLOY.md](./RUNBOOK-DEPLOY.md) — deployment, rollback, health checks
@@ -96,7 +97,64 @@ The `url` field strips query strings (see `app.ts` serializer) to prevent sensit
 
 ---
 
-## 3 — Critical Operational Events
+## 3 — Backup Monitoring
+
+### Automated backup schedule
+
+Backups run automatically via `.github/workflows/backup.yml`:
+
+| Type | Schedule | Retention |
+|------|----------|-----------|
+| Daily | 02:00 UTC every day | 30 days (GitHub Actions artifact) |
+| Weekly | 02:00 UTC every Sunday (auto-detected) | 90 days (GitHub Actions artifact) |
+
+Backup artifacts are available under **GitHub → Actions → Database Backup → Artifacts**.
+
+### Expected log signatures (GitHub Actions run)
+
+A healthy backup run produces these log lines from the backup script:
+
+```
+[backup] Starting backup → classmate_YYYYMMDD_020000_production.dump
+[backup] Output directory: /home/runner/work/.../backup-output
+[backup] Environment: production | Retention: 7 days
+[backup] SUCCESS: classmate_YYYYMMDD_020000_production.dump (NNN KB)
+[backup] Sidecar written: classmate_YYYYMMDD_020000_production.json
+[backup] Retention: no files to prune (policy: 7 days)
+[backup] Done
+```
+
+For the `pg_restore` validation step expect:
+
+```
+TABLE DATA sections in dump: 11
+```
+
+(11 tables in the production schema — a lower number is an error condition.)
+
+### Alerting
+
+GitHub sends failure email notifications automatically for failed scheduled workflows. No additional alerting configuration is required.
+
+To check backup status manually:
+
+```bash
+gh run list --workflow=backup.yml --limit=10
+```
+
+### Troubleshooting
+
+| Symptom | Likely cause | Action |
+|---------|-------------|--------|
+| Workflow fails at "Run backup" step with `DATABASE_URL is not set` | `DATABASE_URL` secret not configured | Add secret under **Settings → Secrets → Actions** |
+| Workflow fails at "Validate — dump file exists" | `pg_dump` authentication error | Verify `DATABASE_URL` value points to the production DB and credentials are valid |
+| `TABLE DATA sections in dump: 0` | DB empty or pg_restore version mismatch | Restore to a local instance and inspect manually |
+| Sidecar JSON parse fails | Disk full or psql error during sidecar write | Check runner disk space; sidecar is non-fatal to backup itself but blocks validation |
+| Artifact not found after 30 days | Retention window expired | Run a new backup via `workflow_dispatch` or check the weekly artifact (90-day retention) |
+
+---
+
+## 4 — Critical Operational Events
 
 Monitor for these log signatures in production:
 
