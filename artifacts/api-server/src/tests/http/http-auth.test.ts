@@ -250,6 +250,41 @@ describe("Account deactivated mid-session", () => {
 // ── Role changed mid-session ──────────────────────────────────────────────────
 
 describe("Role changed mid-session", () => {
+  it("teacher→admin promotion takes effect immediately — admin-only endpoint is accessible and teacher endpoint is still allowed without re-login", async () => {
+    // Arrange: create a teacher user and obtain a live session
+    const user = await createHttpUser(`${PREFIX}_promote`, "teacher");
+    const agent = await loginAs(user);
+
+    // Sanity-check: teacher can access a teacher-allowed endpoint before the role change
+    const beforeTeacher = await agent.get("/api/dashboard/summary");
+    expect(beforeTeacher.status).toBe(200);
+
+    // Sanity-check: teacher cannot access an admin-only endpoint before the role change
+    const beforeAdmin = await agent.get("/api/admin/db-status");
+    expect(beforeAdmin.status).toBe(403);
+
+    // Act: promote the role in the DB from teacher → admin while the session is live
+    const { db, usersTable } = await import("@workspace/db");
+    const { eq } = await import("drizzle-orm");
+    await db
+      .update(usersTable)
+      .set({ role: "admin" })
+      .where(eq(usersTable.id, user.id));
+
+    // Assert: the global requireActiveAccount middleware re-queries the role on the
+    // very next request and updates req.session.role before any per-route requireRole
+    // check fires, so the promotion is reflected immediately without re-login.
+    const afterAdmin = await agent.get("/api/admin/db-status");
+    expect(afterAdmin.status).toBe(200);
+
+    // Assert: the former teacher-allowed endpoint is still accessible on the same
+    // session — admins retain all teacher permissions.
+    const afterTeacher = await agent.get("/api/dashboard/summary");
+    expect(afterTeacher.status).toBe(200);
+
+    await cleanupHttpUser(user.id);
+  });
+
   it("admin→teacher demotion takes effect immediately — admin-only endpoint is denied and teacher endpoint is allowed without re-login", async () => {
     // Arrange: create an admin user and obtain a live session
     const user = await createHttpUser(`${PREFIX}_rolechange`, "admin");
