@@ -1,4 +1,5 @@
 import { Router, type IRouter } from "express";
+import rateLimit from "express-rate-limit";
 import { and, eq, isNull, inArray } from "drizzle-orm";
 import {
   db,
@@ -23,6 +24,18 @@ import { computeRiskLevel, computeTrend } from "../services/progress-analytics.s
 import type { Response } from "express";
 
 const router: IRouter = Router();
+
+// ── Report rate limiter ───────────────────────────────────────────────────────
+// Report endpoints run multi-table aggregation queries. Limit to 20 per minute
+// per IP to prevent scan amplification and runaway database load.
+const reportRateLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 20,
+  message: { error: "Too many report requests, please slow down" },
+  standardHeaders: true,
+  legacyHeaders: false,
+  skip: () => process.env.NODE_ENV === "test",
+});
 
 // ── Layer 3 guard helpers ─────────────────────────────────────────────────────
 // Authorization decisions live in the policy classes. These helpers apply the
@@ -90,6 +103,7 @@ function applyCourseLayer3Guard(
 // No analytics logic duplicated in this handler.
 router.get(
   "/reports/student-summary",
+  reportRateLimiter,
   requireRole("admin", "teacher"),
   async (req, res): Promise<void> => {
     const scope = buildScopeContext(req.session as ClassmateSession);
@@ -195,6 +209,7 @@ router.get(
 // Aggregates into riskDistribution, topPerformers, and a per-student rows table.
 router.get(
   "/reports/course-summary",
+  reportRateLimiter,
   requireRole("admin", "teacher"),
   async (req, res): Promise<void> => {
     const scope = buildScopeContext(req.session as ClassmateSession);

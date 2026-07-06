@@ -1,4 +1,5 @@
 import { Router, type IRouter } from "express";
+import rateLimit from "express-rate-limit";
 import { eq } from "drizzle-orm";
 import { db, assessmentsTable, studentsTable, coursesTable, activityTable } from "@workspace/db";
 import {
@@ -28,6 +29,18 @@ import { requireRole } from "../middleware/require-role";
 import { notifyParentsForStudent } from "../services/push-notifications.service";
 
 const router: IRouter = Router();
+
+// ── AI suggestion rate limiter ────────────────────────────────────────────────
+// AI suggestion endpoints invoke non-trivial server-side logic. Limit to
+// 30 requests per minute per IP to prevent runaway polling and cost amplification.
+const aiRateLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 30,
+  message: { error: "Too many AI suggestion requests, please slow down" },
+  standardHeaders: true,
+  legacyHeaders: false,
+  skip: () => process.env.NODE_ENV === "test",
+});
 
 function serializeAssessment(a: AssessmentRow) {
   const percentage = Math.round((a.score / a.maxScore) * 100 * 10) / 10;
@@ -319,8 +332,10 @@ router.patch(
 // ── GET /api/assessments/:id/ai-suggestions ──────────────────────────────────
 
 // Layer 1: AI suggestions are teacher-facing; restricted to admin and teacher.
+// Rate limited to 30 req/min per IP to prevent cost amplification.
 router.get(
   "/assessments/:id/ai-suggestions",
+  aiRateLimiter,
   requireRole("admin", "teacher"),
   async (req, res): Promise<void> => {
     const scope = buildScopeContext(req.session as ClassmateSession);
@@ -361,8 +376,10 @@ router.get(
 // ── GET /api/students/:id/ai-suggestions ─────────────────────────────────────
 
 // Layer 1: teacher-facing AI suggestions for a student; restricted to admin and teacher.
+// Rate limited to 30 req/min per IP to prevent cost amplification.
 router.get(
   "/students/:id/ai-suggestions",
+  aiRateLimiter,
   requireRole("admin", "teacher"),
   async (req, res): Promise<void> => {
     const scope = buildScopeContext(req.session as ClassmateSession);

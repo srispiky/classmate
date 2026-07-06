@@ -1,0 +1,256 @@
+# Sprint 13 Chunk 3 — Security Hardening Certification
+
+Before making changes:
+
+1. Review all prior security audits.
+2. Review Sprint 9 Production Readiness findings.
+3. Review Sprint 10 observability work.
+4. Review Sprint 13 migration certification.
+5. Produce GO / NO-GO assessment.
+
+Proceed only if GO.
+
+--------------------------------------------------
+OBJECTIVE
+--------------------------------------------------
+
+Certify platform security readiness for production.
+
+This is a certification and remediation sprint.
+
+Focus on:
+
+- authentication
+- authorization
+- session management
+- rate limiting
+- headers
+- secrets management
+- attack surface reduction
+
+No feature development.
+
+--------------------------------------------------
+PART 1 — AUTHENTICATION AUDIT
+--------------------------------------------------
+
+Review:
+
+- auth routes
+- session configuration
+- login flow
+- logout flow
+- auth middleware
+
+Verify:
+
+- session fixation protection
+- session invalidation
+- secure cookie settings
+- sameSite settings
+- httpOnly settings
+
+Confirm production-safe behavior.
+
+--------------------------------------------------
+PART 2 — AUTHORIZATION AUDIT
+--------------------------------------------------
+
+Review every route group.
+
+Verify:
+
+Layer 1:
+- requireRole
+
+Layer 2:
+- scope filtering
+
+Layer 3:
+- ownership validation
+
+Produce authorization matrix.
+
+Identify:
+
+- missing guards
+- inconsistent patterns
+- bypass opportunities
+
+--------------------------------------------------
+PART 3 — DOWNLOADS SECURITY REVIEW
+--------------------------------------------------
+
+Review:
+
+routes/downloads.ts
+
+Verify:
+
+- requireAuth
+- requireRole("admin")
+- file whitelist
+- path traversal protection
+- response headers
+
+Attempt to identify:
+
+- unauthorized access paths
+- direct object references
+- path manipulation vulnerabilities
+
+--------------------------------------------------
+PART 4 — RATE LIMITING CERTIFICATION
+--------------------------------------------------
+
+Review:
+
+- login endpoints
+- AI endpoints
+- reporting endpoints
+- export/download endpoints
+
+Verify:
+
+- rate limiter configuration
+- burst protection
+- brute-force protection
+
+Document limits.
+
+--------------------------------------------------
+PART 5 — SECURITY HEADERS
+--------------------------------------------------
+
+Review Express configuration.
+
+Verify:
+
+- helmet
+- CSP
+- HSTS
+- X-Frame-Options
+- X-Content-Type-Options
+- Referrer-Policy
+
+Document effective configuration.
+
+--------------------------------------------------
+PART 6 — CORS CERTIFICATION
+--------------------------------------------------
+
+Verify:
+
+- production origin restrictions
+- credentials behavior
+- wildcard avoidance
+
+Confirm:
+
+No unrestricted credentialed cross-origin access exists.
+
+--------------------------------------------------
+PART 7 — SECRETS AUDIT
+--------------------------------------------------
+
+Review repository.
+
+Search for:
+
+- passwords
+- API keys
+- connection strings
+- encryption keys
+- JWT secrets
+- session secrets
+
+Verify:
+
+all secrets come from environment variables.
+
+Identify any hardcoded values.
+
+--------------------------------------------------
+PART 8 — DEPENDENCY SECURITY
+--------------------------------------------------
+
+Audit:
+
+package.json
+pnpm-lock.yaml
+
+Review:
+
+- deprecated packages
+- known vulnerabilities
+- abandoned packages
+
+Document findings.
+
+Do not upgrade packages yet.
+
+--------------------------------------------------
+PART 9 — SECURITY TESTING
+--------------------------------------------------
+
+Create certification tests for:
+
+- unauthorized access
+- wrong-role access
+- ownership violations
+- downloads protection
+- session protection
+
+Run full security suite.
+
+--------------------------------------------------
+PART 10 — CERTIFICATION REPORT
+--------------------------------------------------
+
+Create:
+
+SECURITY_CERTIFICATION.md
+
+Include:
+
+1. Authentication audit
+2. Authorization audit
+3. Downloads audit
+4. Rate limiting review
+5. Header review
+6. CORS review
+7. Secrets audit
+8. Dependency audit
+9. Test results
+10. Production verdict
+
+--------------------------------------------------
+GIT REQUIREMENT
+--------------------------------------------------
+
+After completion:
+
+git add .
+git commit -m "feat(prod): certify security hardening readiness"
+git push origin main
+
+--------------------------------------------------
+DELIVERABLE FORMAT
+--------------------------------------------------
+
+Provide:
+
+1. GO / NO-GO decision
+2. Authentication findings
+3. Authorization findings
+4. Downloads findings
+5. Rate limiting findings
+6. Header findings
+7. Secrets findings
+8. Dependency findings
+9. Security test results
+10. Production security verdict
+11. Files modified
+12. Commit hash
+
+Complete certification, testing, commit, and push before reporting.

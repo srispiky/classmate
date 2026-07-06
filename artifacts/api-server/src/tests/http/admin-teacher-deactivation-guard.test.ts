@@ -62,12 +62,12 @@ let agentActiveAdmin: SupertestAgent;
 let agentActiveTeacher: SupertestAgent;
 
 beforeAll(async () => {
-  [deactAdmin, deactTeacher, activeAdmin, activeTeacher] = await Promise.all([
+  [deactAdmin, deactTeacher, activeAdmin, activeTeacher] = (await Promise.all([
     createUser("Deact", "admin"),
     createUser("Deact", "teacher"),
     createUser("Active", "admin"),
     createUser("Active", "teacher"),
-  ]);
+  ])) as [typeof deactAdmin, typeof deactTeacher, typeof activeAdmin, typeof activeTeacher];
 
   // Login BEFORE deactivating so the sessions carry valid cookies.
   [agentDeactAdmin, agentDeactTeacher, agentActiveAdmin, agentActiveTeacher] = await Promise.all([

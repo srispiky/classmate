@@ -50,6 +50,16 @@ router.post("/auth/login", loginRateLimiter, async (req, res): Promise<void> => 
     return;
   }
 
+  // Session fixation protection: regenerate the session to assign a new ID
+  // before writing any privileged data. This invalidates any session ID that
+  // was planted by an attacker before the victim authenticated.
+  await new Promise<void>((resolve, reject) => {
+    req.session.regenerate((err) => {
+      if (err) reject(err);
+      else resolve();
+    });
+  });
+
   req.session.userId = user.id;
   req.session.username = user.username;
   req.session.displayName = user.displayName;
