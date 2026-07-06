@@ -2,3 +2,4 @@
 - [Sprint 6A security patterns](sprint6a-patterns.md) — requireRole middleware location, soft-delete column convention, test file structure for Layer 1/2/3 security.
 - [HTTP integration test patterns](http-test-patterns.md) — supertest setup, rate-limiter test skip, courses GET finding, session management across tests.
 - [Dashboard SQL aggregation patterns](dashboard-sql-patterns.md) — Drizzle COUNT/AVG FILTER, GROUP BY for dashboard summary and grade-breakdown; EXPLAIN FORMAT JSON column name quirk.
+- [Drizzle push vs migrate](drizzle-push-not-migrate.md) — This project has NO migrations dir; post-merge.sh must use `db push` only — `db migrate` always fails with missing _journal.json.
