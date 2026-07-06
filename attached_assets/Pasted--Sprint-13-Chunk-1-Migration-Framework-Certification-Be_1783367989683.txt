@@ -1,0 +1,233 @@
+# Sprint 13 Chunk 1 — Migration Framework Certification
+
+Before making changes:
+
+1. Read and understand:
+   - lib/db
+   - drizzle.config.ts
+   - schema definitions
+   - deployment scripts
+   - artifact.toml
+   - existing database setup documentation
+   - any migration-related scripts
+
+2. Review current database lifecycle.
+
+3. Identify how schema changes are currently applied.
+
+4. Produce a GO / NO-GO assessment before implementation.
+
+--------------------------------------------------
+OBJECTIVE
+--------------------------------------------------
+
+Certify database migration readiness for production.
+
+Current concern:
+
+The platform historically relied on:
+
+- drizzle-kit push
+
+with limited or no migration history.
+
+Production requires:
+
+- versioned migrations
+- repeatable deployments
+- rollback strategy
+- fresh environment provisioning
+
+--------------------------------------------------
+PART 1 — CURRENT STATE AUDIT
+--------------------------------------------------
+
+Audit:
+
+- drizzle configuration
+- schema organization
+- migration folders
+- deployment process
+- database initialization process
+
+Document:
+
+1. Current migration strategy
+2. Risks
+3. Missing capabilities
+4. Production blockers
+
+--------------------------------------------------
+PART 2 — MIGRATION FRAMEWORK DESIGN
+--------------------------------------------------
+
+Design a production-safe migration process.
+
+Requirements:
+
+Support:
+
+- fresh database creation
+- incremental upgrades
+- repeatable deployments
+- migration history tracking
+
+Document:
+
+- migration architecture
+- migration lifecycle
+- deployment workflow
+
+--------------------------------------------------
+PART 3 — VERSIONED MIGRATIONS
+--------------------------------------------------
+
+Review existing schema.
+
+Determine whether:
+
+A) migration history already exists
+
+or
+
+B) baseline migration must be created.
+
+Implement production-safe approach.
+
+Avoid:
+
+- destructive changes
+- schema resets
+- breaking existing environments
+
+--------------------------------------------------
+PART 4 — ROLLBACK STRATEGY
+--------------------------------------------------
+
+Define rollback process.
+
+For each migration type:
+
+- additive
+- data migration
+- destructive migration
+
+Document:
+
+1. rollback approach
+2. limitations
+3. recovery requirements
+
+--------------------------------------------------
+PART 5 — FRESH ENVIRONMENT VALIDATION
+--------------------------------------------------
+
+Verify ability to create:
+
+Empty Database
+    →
+Run Migrations
+    →
+Operational System
+
+Document exact commands.
+
+--------------------------------------------------
+PART 6 — DEPLOYMENT INTEGRATION
+--------------------------------------------------
+
+Review:
+
+- artifact.toml
+- deployment scripts
+- CI/CD process
+
+Verify:
+
+Migration execution occurs at correct deployment stage.
+
+Document recommended deployment sequence.
+
+--------------------------------------------------
+PART 7 — DOCUMENTATION
+--------------------------------------------------
+
+Create:
+
+Migration Runbook
+
+Include:
+
+- migration creation
+- migration review
+- migration deployment
+- migration rollback
+- troubleshooting
+
+Target audience:
+
+New engineer joining project.
+
+--------------------------------------------------
+PART 8 — TESTING
+--------------------------------------------------
+
+Validate:
+
+Scenario 1:
+Fresh database build
+
+Scenario 2:
+Upgrade existing database
+
+Scenario 3:
+Migration failure simulation
+
+Scenario 4:
+Rollback procedure validation
+
+Document results.
+
+--------------------------------------------------
+PART 9 — ARCHITECTURE REVIEW
+--------------------------------------------------
+
+Provide:
+
+1. Files modified
+2. Migration architecture
+3. Risks identified
+4. Risks mitigated
+5. Remaining concerns
+6. Production readiness impact
+
+--------------------------------------------------
+GIT REQUIREMENT
+--------------------------------------------------
+
+After successful validation:
+
+git add .
+git commit -m "feat(prod): establish migration framework certification"
+
+git push origin main
+
+Include:
+
+- commit hash
+- migration strategy summary
+- GO / NO-GO recommendation
+
+--------------------------------------------------
+DELIVERABLE FORMAT
+--------------------------------------------------
+
+Provide:
+
+1. Current State Audit
+2. Migration Framework Design
+3. Validation Results
+4. Rollback Strategy
+5. Runbook Summary
+6. Production Readiness Assessment
+7. GO / NO-GO
