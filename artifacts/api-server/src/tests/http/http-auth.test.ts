@@ -112,6 +112,33 @@ describe("POST /api/auth/login", () => {
     },
   );
 
+  it("200 — re-activated account can log in again after being re-enabled", async () => {
+    const user = await createHttpUser(`${PREFIX}_reactivate`, "teacher");
+    const { db, usersTable } = await import("@workspace/db");
+    const { eq } = await import("drizzle-orm");
+
+    // Deactivate
+    await db.update(usersTable).set({ isActive: false }).where(eq(usersTable.id, user.id));
+
+    // Confirm login is blocked
+    const blocked = await req()
+      .post("/api/auth/login")
+      .send({ username: user.username, password: user.password });
+    expect(blocked.status).toBe(401);
+
+    // Re-activate
+    await db.update(usersTable).set({ isActive: true }).where(eq(usersTable.id, user.id));
+
+    // Confirm login works again
+    const restored = await req()
+      .post("/api/auth/login")
+      .send({ username: user.username, password: user.password });
+    expect(restored.status).toBe(200);
+    expect(restored.body).toMatchObject({ id: user.id, username: user.username });
+
+    await cleanupHttpUser(user.id);
+  });
+
   it("401 — wrong password returns same error message as non-existent user (no user enumeration)", async () => {
     const wrongPassRes = await req()
       .post("/api/auth/login")
