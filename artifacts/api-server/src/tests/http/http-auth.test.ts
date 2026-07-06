@@ -214,6 +214,39 @@ describe("GET /api/auth/me", () => {
   });
 });
 
+// ── Mid-session deactivation ──────────────────────────────────────────────────
+
+describe("Account deactivated mid-session", () => {
+  it("401 — session is killed immediately when account is deactivated mid-session", async () => {
+    // Arrange: create a user and log in to obtain a live session
+    const user = await createHttpUser(`${PREFIX}_middeact`, "admin");
+    const agent = await loginAs(user);
+
+    // Sanity-check: session is active
+    const before = await agent.get("/api/dashboard/summary");
+    expect(before.status).toBe(200);
+
+    // Act: deactivate the account while the session is still live
+    const { db, usersTable } = await import("@workspace/db");
+    const { eq } = await import("drizzle-orm");
+    await db
+      .update(usersTable)
+      .set({ isActive: false })
+      .where(eq(usersTable.id, user.id));
+
+    // Assert: the protected endpoint returns 401 — session is killed, not just forbidden
+    const after = await agent.get("/api/dashboard/summary");
+    expect(after.status).toBe(401);
+    expect(after.body).toHaveProperty("error");
+
+    // Assert: session is fully invalidated — /auth/me also returns 401 on the same agent
+    const meAfter = await agent.get("/api/auth/me");
+    expect(meAfter.status).toBe(401);
+
+    await cleanupHttpUser(user.id);
+  });
+});
+
 // ── Security headers (Helmet) ─────────────────────────────────────────────────
 
 describe("Security headers present on auth responses", () => {

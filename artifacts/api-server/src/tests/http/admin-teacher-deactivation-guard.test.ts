@@ -6,10 +6,10 @@
  * cookie is still valid.
  *
  * Covers:
- *  1. Deactivated admin  → 403 on admin-only route  (GET /api/users)
- *  2. Deactivated admin  → 403 on shared route       (GET /api/students)
- *  3. Deactivated teacher → 403 on shared route      (GET /api/students)
- *  4. Deactivated teacher → 403 on shared route      (GET /api/assignments)
+ *  1. Deactivated admin  → 401 on admin-only route  (GET /api/users)
+ *  2. Deactivated admin  → 401 on shared route       (GET /api/students)
+ *  3. Deactivated teacher → 401 on shared route      (GET /api/students)
+ *  4. Deactivated teacher → 401 on shared route      (GET /api/assignments)
  *  5. Active admin  → still receives 200 (control case)
  *  6. Active teacher → still receives 200 (control case)
  */
@@ -102,20 +102,20 @@ afterAll(async () => {
 // Deactivated admin — must be blocked on every subsequent request
 // ---------------------------------------------------------------------------
 
-describe("Deactivated admin — stale session is blocked with 403", () => {
-  it("GET /api/users → 403 for deactivated admin", async () => {
+describe("Deactivated admin — stale session is killed with 401", () => {
+  it("GET /api/users → 401 for deactivated admin", async () => {
     const res = await agentDeactAdmin.get("/api/users");
-    expect(res.status).toBe(403);
+    expect(res.status).toBe(401);
   });
 
-  it("GET /api/students → 403 for deactivated admin", async () => {
+  it("GET /api/students → 401 for deactivated admin", async () => {
     const res = await agentDeactAdmin.get("/api/students");
-    expect(res.status).toBe(403);
+    expect(res.status).toBe(401);
   });
 
-  it("GET /api/assignments → 403 for deactivated admin", async () => {
+  it("GET /api/assignments → 401 for deactivated admin", async () => {
     const res = await agentDeactAdmin.get("/api/assignments");
-    expect(res.status).toBe(403);
+    expect(res.status).toBe(401);
   });
 });
 
@@ -123,20 +123,20 @@ describe("Deactivated admin — stale session is blocked with 403", () => {
 // Deactivated teacher — must be blocked on every subsequent request
 // ---------------------------------------------------------------------------
 
-describe("Deactivated teacher — stale session is blocked with 403", () => {
-  it("GET /api/students → 403 for deactivated teacher", async () => {
+describe("Deactivated teacher — stale session is killed with 401", () => {
+  it("GET /api/students → 401 for deactivated teacher", async () => {
     const res = await agentDeactTeacher.get("/api/students");
-    expect(res.status).toBe(403);
+    expect(res.status).toBe(401);
   });
 
-  it("GET /api/assignments → 403 for deactivated teacher", async () => {
+  it("GET /api/assignments → 401 for deactivated teacher", async () => {
     const res = await agentDeactTeacher.get("/api/assignments");
-    expect(res.status).toBe(403);
+    expect(res.status).toBe(401);
   });
 
-  it("GET /api/courses → 403 for deactivated teacher", async () => {
+  it("GET /api/courses → 401 for deactivated teacher", async () => {
     const res = await agentDeactTeacher.get("/api/courses");
-    expect(res.status).toBe(403);
+    expect(res.status).toBe(401);
   });
 });
 

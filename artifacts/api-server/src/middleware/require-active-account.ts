@@ -2,7 +2,6 @@ import type { RequestHandler } from "express";
 import { eq } from "drizzle-orm";
 import { db, usersTable } from "@workspace/db";
 import { buildScopeContext, type ClassmateSession } from "../lib/scope-context";
-import { ownershipDenied } from "../lib/query-contracts";
 import { SessionEnricherService } from "../lib/session-enricher";
 
 /**
@@ -10,8 +9,11 @@ import { SessionEnricherService } from "../lib/session-enricher";
  *
  * Re-queries isActive AND role from the users table on every request so that:
  *
- *  1. A session issued before an account was deactivated is rejected immediately,
- *     even if the session cookie is still valid.
+ *  1. A session issued before an account was deactivated is killed immediately —
+ *     the session is destroyed server-side and the caller receives 401, exactly
+ *     as if they were unauthenticated.  This closes the window where a
+ *     deactivated account can continue making API requests until its session
+ *     cookie expires naturally.
  *
  *  2. A session whose role was changed mid-session (e.g. admin → parent) is
  *     re-enriched before the per-route requireRole check fires, preventing a
@@ -28,7 +30,7 @@ import { SessionEnricherService } from "../lib/session-enricher";
  *   );
  *
  * Response on denial:
- *   HTTP 403 with an OWNERSHIP_DENIED payload.
+ *   HTTP 401 — session is destroyed and the cookie is cleared.
  */
 export const requireActiveAccount: RequestHandler = async (req, res, next) => {
   const scope = buildScopeContext(req.session as ClassmateSession);
@@ -40,7 +42,12 @@ export const requireActiveAccount: RequestHandler = async (req, res, next) => {
     .limit(1);
 
   if (rows.length === 0 || !rows[0]!.isActive) {
-    res.status(403).json({ ...ownershipDenied("account", 0), requestId: String(req.id ?? "") });
+    // Destroy the server-side session immediately so the cookie becomes
+    // invalid for all subsequent requests, even if the caller retains it.
+    req.session.destroy(() => {
+      res.clearCookie("connect.sid");
+      res.status(401).json({ error: "Account is no longer active", requestId: String(req.id ?? "") });
+    });
     return;
   }
 
