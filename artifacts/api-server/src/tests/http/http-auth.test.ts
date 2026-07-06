@@ -247,6 +247,42 @@ describe("Account deactivated mid-session", () => {
   });
 });
 
+// ── Role changed mid-session ──────────────────────────────────────────────────
+
+describe("Role changed mid-session", () => {
+  it("admin→teacher demotion takes effect immediately — admin-only endpoint is denied and teacher endpoint is allowed without re-login", async () => {
+    // Arrange: create an admin user and obtain a live session
+    const user = await createHttpUser(`${PREFIX}_rolechange`, "admin");
+    const agent = await loginAs(user);
+
+    // Sanity-check: admin can access an admin-only endpoint before the role change
+    const before = await agent.get("/api/admin/db-status");
+    expect(before.status).toBe(200);
+
+    // Act: change the role in the DB from admin → teacher while the session is live
+    const { db, usersTable } = await import("@workspace/db");
+    const { eq } = await import("drizzle-orm");
+    await db
+      .update(usersTable)
+      .set({ role: "teacher" })
+      .where(eq(usersTable.id, user.id));
+
+    // Assert: the very next request to an admin-only endpoint is denied (403).
+    // The global requireActiveAccount middleware re-queries the role on every
+    // authenticated request and updates req.session.role before any per-route
+    // requireRole check fires, so the demotion is reflected immediately.
+    const afterAdmin = await agent.get("/api/admin/db-status");
+    expect(afterAdmin.status).toBe(403);
+
+    // Assert: a teacher-allowed endpoint is accessible on the same session —
+    // the freshened session role ("teacher") satisfies requireRole("admin", "teacher").
+    const afterTeacher = await agent.get("/api/dashboard/summary");
+    expect(afterTeacher.status).toBe(200);
+
+    await cleanupHttpUser(user.id);
+  });
+});
+
 // ── Security headers (Helmet) ─────────────────────────────────────────────────
 
 describe("Security headers present on auth responses", () => {
