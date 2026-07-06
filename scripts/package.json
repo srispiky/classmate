@@ -15,7 +15,7 @@
     "backup:replicate": "tsx ./src/backup-replicate.ts",
     "restore-verify": "tsx ./src/restore-verify.ts",
     "restore-verify:dr": "cross-env RESTORE_CREATE_DB=true tsx ./src/restore-verify.ts",
-    "test": "vitest run src/backup-lib.test.ts src/restore-lib.test.ts src/backup-schedule.test.ts src/backup-replication.test.ts",
+    "test": "vitest run src/backup-lib.test.ts src/restore-lib.test.ts src/backup-schedule.test.ts src/backup-replication.test.ts src/schema-smoke-test.test.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
