@@ -12,21 +12,24 @@
  *   pnpm --filter @workspace/scripts run schema-smoke-test
  *
  * Exit codes:
- *   0 — all checks passed (or DATABASE_URL is not set — skip mode)
- *   1 — one or more tables/columns are missing or unreachable
+ *   0 — all checks passed
+ *   1 — DATABASE_URL is not set, DB is unreachable, or one or more tables/columns are missing
  */
 
 import { sql } from "drizzle-orm";
 
-// Guard: if DATABASE_URL is not set we are in a CI/build environment that has
-// no database available.  Print a clear diagnostic and exit 0 so the build
-// does not fail for the wrong reason.  The @workspace/db import is deferred
-// until after this check so the missing-env error is never thrown.
+// Guard: if DATABASE_URL is not set, fail loudly so broken environments are
+// caught immediately rather than silently passing.  post-merge.sh guards for
+// this before invoking the script; this exit is a safety net for direct
+// invocations without a database configured.
 if (!process.env.DATABASE_URL) {
-  console.warn(
-    "schema-smoke-test: DATABASE_URL is not set — skipping DB schema check (CI/build mode).",
+  console.error(
+    "schema-smoke-test: DATABASE_URL is not set — cannot verify DB schema.",
   );
-  process.exit(0);
+  console.error(
+    "Set DATABASE_URL to a reachable PostgreSQL connection string and re-run.",
+  );
+  process.exit(1);
 }
 
 const {
