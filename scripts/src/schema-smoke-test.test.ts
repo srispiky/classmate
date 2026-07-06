@@ -33,4 +33,33 @@ describe("schema-smoke-test exit codes", () => {
     expect(result.status).toBe(1);
     expect(result.stderr).toContain("cannot connect to database");
   });
+
+  it("exits 1 when DATABASE_URL is set but the password is wrong (pg auth failure)", () => {
+    // Reuse the real host/port so the TCP connection succeeds, but substitute a
+    // deliberately wrong password so PostgreSQL rejects authentication.  This
+    // covers the production scenario where DATABASE_URL is present yet the
+    // credentials are invalid.
+    //
+    // If DATABASE_URL is not available in this environment we skip the test
+    // rather than fail, because there is no reachable server to auth against.
+    const rawUrl = process.env.DATABASE_URL;
+    if (!rawUrl) {
+      console.warn("Skipping auth-failure test: DATABASE_URL not set in this environment");
+      return;
+    }
+
+    let badPasswordUrl: string;
+    try {
+      const parsed = new URL(rawUrl);
+      parsed.password = "WRONG_PASSWORD_FOR_SMOKE_TEST";
+      badPasswordUrl = parsed.toString();
+    } catch {
+      console.warn("Skipping auth-failure test: could not parse DATABASE_URL");
+      return;
+    }
+
+    const result = runSmokeTest({ DATABASE_URL: badPasswordUrl });
+    expect(result.status).toBe(1);
+    expect(result.stderr).toContain("cannot connect to database");
+  });
 });
