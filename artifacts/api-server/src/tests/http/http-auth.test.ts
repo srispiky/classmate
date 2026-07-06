@@ -316,6 +316,45 @@ describe("Role changed mid-session", () => {
 
     await cleanupHttpUser(user.id);
   });
+
+  it("parent→teacher promotion takes effect immediately — teacher endpoint is accessible and parent-only endpoint is denied without re-login", async () => {
+    // Arrange: create a parent user and obtain a live session.
+    // The parent enricher populates childStudentIds/childCourseIds in the session;
+    // this test verifies those stale parent-scoped fields do not survive the role change.
+    const user = await createHttpUser(`${PREFIX}_par2teacher`, "parent");
+    const agent = await loginAs(user);
+
+    // Sanity-check: parent can access a parent-only endpoint before the role change
+    const beforeParent = await agent.get("/api/parent/dashboard");
+    expect(beforeParent.status).toBe(200);
+
+    // Sanity-check: parent cannot access a teacher-only endpoint before the role change
+    const beforeTeacher = await agent.get("/api/dashboard/summary");
+    expect(beforeTeacher.status).toBe(403);
+
+    // Act: promote the role in the DB from parent → teacher while the session is live
+    const { db, usersTable } = await import("@workspace/db");
+    const { eq } = await import("drizzle-orm");
+    await db
+      .update(usersTable)
+      .set({ role: "teacher" })
+      .where(eq(usersTable.id, user.id));
+
+    // Assert: the global requireActiveAccount middleware re-queries the role on the
+    // very next request, calls SessionEnricherService.enrich() with the new "teacher"
+    // role (clearing stale parent fields and populating teacherId/ownedCourseIds),
+    // so the teacher-allowed endpoint is immediately accessible without re-login.
+    const afterTeacher = await agent.get("/api/dashboard/summary");
+    expect(afterTeacher.status).toBe(200);
+
+    // Assert: the parent-only endpoint is now denied — the freshened session role
+    // ("teacher") no longer satisfies requireRole("parent"), so the per-route guard
+    // returns 403 before requireActiveAccount even runs.
+    const afterParent = await agent.get("/api/parent/dashboard");
+    expect(afterParent.status).toBe(403);
+
+    await cleanupHttpUser(user.id);
+  });
 });
 
 // ── Security headers (Helmet) ─────────────────────────────────────────────────
