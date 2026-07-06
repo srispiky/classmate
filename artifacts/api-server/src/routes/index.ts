@@ -23,6 +23,7 @@ import studentCourseWorkspaceRouter from "./student-course-workspace";
 import studentDashboardRouter from "./student-dashboard";
 import parentRouter from "./parent";
 import { requireAuth } from "../middleware/auth";
+import { requireActiveAccount } from "../middleware/require-active-account";
 
 const router: IRouter = Router();
 
@@ -33,6 +34,13 @@ router.use(authRouter);
 // All routes below this point require an authenticated session.
 // requireAuth returns 401 for unauthenticated callers before any handler runs.
 router.use(requireAuth);
+
+// Account liveness check — re-queries isActive on every authenticated request so
+// that a deactivated account is rejected immediately even if its session cookie
+// is still valid.  Applies to all roles (admin, teacher, student, parent).
+// Individual route files (e.g. parent.ts) also call requireActiveAccount per-route;
+// those duplicate calls are harmless — the global check here is the authoritative gate.
+router.use(requireActiveAccount);
 
 router.use(studentsRouter);
 router.use(coursesRouter);
