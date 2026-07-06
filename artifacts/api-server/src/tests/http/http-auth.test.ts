@@ -85,24 +85,32 @@ describe("POST /api/auth/login", () => {
     expect(res.body.error).toBe("Invalid username or password");
   });
 
-  it("401 — inactive user is rejected even with correct password", async () => {
-    const inactiveUser = await createHttpUser(`${PREFIX}_inactive`, "teacher");
-    // Deactivate via direct DB update to avoid going through the API
-    const { db, usersTable } = await import("@workspace/db");
-    const { eq } = await import("drizzle-orm");
-    await db
-      .update(usersTable)
-      .set({ isActive: false })
-      .where(eq(usersTable.id, inactiveUser.id));
+  it.each([
+    ["admin"],
+    ["teacher"],
+    ["parent"],
+  ] as const)(
+    "401 — deactivated %s account is rejected even with correct password",
+    async (role) => {
+      const inactiveUser = await createHttpUser(`${PREFIX}_inactive_${role}`, role);
+      // Deactivate via direct DB update to avoid going through the API
+      const { db, usersTable } = await import("@workspace/db");
+      const { eq } = await import("drizzle-orm");
+      await db
+        .update(usersTable)
+        .set({ isActive: false })
+        .where(eq(usersTable.id, inactiveUser.id));
 
-    const res = await req()
-      .post("/api/auth/login")
-      .send({ username: inactiveUser.username, password: inactiveUser.password });
+      const res = await req()
+        .post("/api/auth/login")
+        .send({ username: inactiveUser.username, password: inactiveUser.password });
 
-    expect(res.status).toBe(401);
+      expect(res.status).toBe(401);
+      expect(res.body.error).toBe("Invalid username or password");
 
-    await cleanupHttpUser(inactiveUser.id);
-  });
+      await cleanupHttpUser(inactiveUser.id);
+    },
+  );
 
   it("401 — wrong password returns same error message as non-existent user (no user enumeration)", async () => {
     const wrongPassRes = await req()
