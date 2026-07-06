@@ -19,6 +19,7 @@ import {
   studentsTable,
   studentGuardiansTable,
   assignmentsTable,
+  assessmentsTable,
 } from "@workspace/db";
 import { hashPassword } from "../../lib/password";
 import { req, loginAs, cleanupHttpUser, cleanupLinkedStudent, type SupertestAgent } from "./setup";
@@ -290,5 +291,179 @@ describe("GET /api/parent/dashboard — Parent B (1 student)", () => {
     const ids = res.body.items.map((s: { id: number }) => s.id);
     expect(ids).not.toContain(studentAId);
     expect(ids).not.toContain(studentBId);
+  });
+});
+
+/**
+ * Risk-sorted order tests
+ *
+ * Five students are linked to a dedicated parent with precise assignment scores
+ * so that computeRiskLevel produces a deterministic risk level for each:
+ *
+ *   "Alpha Risk High"        — 3× graded at 40/100 → avg 40% → HIGH
+ *   "Beta Risk High"         — 3× graded at 50/100 → avg 50% → HIGH  (tiebreaker)
+ *   "Charlie Risk Medium"    — 3× graded at 70/100 → avg 70% → MEDIUM
+ *   "Delta Risk Low"         — 3× graded at 85/100 → avg 85% → LOW
+ *   "Echo Risk Insufficient" — 1× graded at 60/100 → only 1 event  → INSUFFICIENT_DATA
+ *
+ * Expected sort: HIGH, HIGH, MEDIUM, LOW, INSUFFICIENT_DATA.
+ * Within HIGH: alphabetical → Alpha before Beta.
+ *
+ * A second set of assertions removes the Alpha guardian link and re-calls the
+ * endpoint to confirm the order stays correct with one fewer HIGH student.
+ */
+describe("GET /api/parent/dashboard — risk-sorted order and tiebreaker", () => {
+  let sortParent: { id: number; username: string; password: string; role: "parent" };
+  let sortAgent: SupertestAgent;
+  let highAlphaId: number;
+  let highBetaId: number;
+  let mediumId: number;
+  let lowId: number;
+  let insufficientId: number;
+
+  async function insertStudent(name: string, email: string): Promise<number> {
+    const [row] = await db
+      .insert(studentsTable)
+      .values({
+        name,
+        email,
+        grade: "10",
+        enrolledCourseIds: [],
+        createdBy: adminUserId,
+        updatedBy: adminUserId,
+      })
+      .returning({ id: studentsTable.id });
+    return row!.id;
+  }
+
+  async function insertGradedAssignments(
+    studentId: number,
+    scorePercent: number,
+    count: number,
+  ): Promise<void> {
+    for (let i = 0; i < count; i++) {
+      await db.insert(assignmentsTable).values({
+        studentId,
+        courseId: 1,
+        title: `Sort Assignment ${i + 1}`,
+        description: "Sort test",
+        dueDate: "2026-12-31",
+        status: "graded",
+        score: scorePercent,
+        maxScore: 100,
+        createdBy: adminUserId,
+        updatedBy: adminUserId,
+      });
+    }
+  }
+
+  beforeAll(async () => {
+    const username = `sort_dash_parent_${Date.now()}`;
+    const hash = await hashPassword(TEST_PASSWORD);
+    const [userRow] = await db
+      .insert(usersTable)
+      .values({
+        username,
+        passwordHash: hash,
+        displayName: "Sort Dash Parent",
+        role: "parent",
+        isActive: true,
+        createdBy: adminUserId,
+        updatedBy: adminUserId,
+      })
+      .returning({ id: usersTable.id });
+    sortParent = { id: userRow!.id, username, password: TEST_PASSWORD, role: "parent" };
+    sortAgent = await loginAs(sortParent);
+
+    const ts = Date.now();
+    [highAlphaId, highBetaId, mediumId, lowId, insufficientId] = await Promise.all([
+      insertStudent("Alpha Risk High", `sort_alpha_${ts}@sort.test`),
+      insertStudent("Beta Risk High", `sort_beta_${ts}@sort.test`),
+      insertStudent("Charlie Risk Medium", `sort_charlie_${ts}@sort.test`),
+      insertStudent("Delta Risk Low", `sort_delta_${ts}@sort.test`),
+      insertStudent("Echo Risk Insufficient", `sort_echo_${ts}@sort.test`),
+    ]);
+
+    await Promise.all([
+      db.insert(studentGuardiansTable).values({ userId: sortParent.id, studentId: highAlphaId, relationship: "parent", createdBy: adminUserId }),
+      db.insert(studentGuardiansTable).values({ userId: sortParent.id, studentId: highBetaId, relationship: "parent", createdBy: adminUserId }),
+      db.insert(studentGuardiansTable).values({ userId: sortParent.id, studentId: mediumId, relationship: "parent", createdBy: adminUserId }),
+      db.insert(studentGuardiansTable).values({ userId: sortParent.id, studentId: lowId, relationship: "parent", createdBy: adminUserId }),
+      db.insert(studentGuardiansTable).values({ userId: sortParent.id, studentId: insufficientId, relationship: "parent", createdBy: adminUserId }),
+    ]);
+
+    await Promise.all([
+      insertGradedAssignments(highAlphaId, 40, 3),
+      insertGradedAssignments(highBetaId, 50, 3),
+      insertGradedAssignments(mediumId, 70, 3),
+      insertGradedAssignments(lowId, 85, 3),
+      insertGradedAssignments(insufficientId, 60, 1),
+    ]);
+  });
+
+  afterAll(async () => {
+    await db.delete(studentGuardiansTable).where(eq(studentGuardiansTable.userId, sortParent.id));
+    await Promise.all([
+      db.delete(assignmentsTable).where(eq(assignmentsTable.studentId, highAlphaId)),
+      db.delete(assignmentsTable).where(eq(assignmentsTable.studentId, highBetaId)),
+      db.delete(assignmentsTable).where(eq(assignmentsTable.studentId, mediumId)),
+      db.delete(assignmentsTable).where(eq(assignmentsTable.studentId, lowId)),
+      db.delete(assignmentsTable).where(eq(assignmentsTable.studentId, insufficientId)),
+      db.delete(assessmentsTable).where(eq(assessmentsTable.studentId, highAlphaId)),
+      db.delete(assessmentsTable).where(eq(assessmentsTable.studentId, highBetaId)),
+      db.delete(assessmentsTable).where(eq(assessmentsTable.studentId, mediumId)),
+      db.delete(assessmentsTable).where(eq(assessmentsTable.studentId, lowId)),
+      db.delete(assessmentsTable).where(eq(assessmentsTable.studentId, insufficientId)),
+    ]);
+    await Promise.all([
+      cleanupLinkedStudent(highAlphaId),
+      cleanupLinkedStudent(highBetaId),
+      cleanupLinkedStudent(mediumId),
+      cleanupLinkedStudent(lowId),
+      cleanupLinkedStudent(insufficientId),
+      cleanupHttpUser(sortParent.id),
+    ]);
+  });
+
+  it("returns all 5 students for the sort parent", async () => {
+    const res = await sortAgent.get("/api/parent/dashboard");
+    expect(res.status).toBe(200);
+    expect(res.body.items).toHaveLength(5);
+  });
+
+  it("items are ordered HIGH → MEDIUM → LOW → INSUFFICIENT_DATA", async () => {
+    const res = await sortAgent.get("/api/parent/dashboard");
+    const levels = res.body.items.map((s: { riskLevel: string }) => s.riskLevel);
+    expect(levels).toEqual(["HIGH", "HIGH", "MEDIUM", "LOW", "INSUFFICIENT_DATA"]);
+  });
+
+  it("applies alphabetical tiebreaker within the HIGH risk bucket", async () => {
+    const res = await sortAgent.get("/api/parent/dashboard");
+    const highItems = res.body.items.filter(
+      (s: { riskLevel: string }) => s.riskLevel === "HIGH",
+    );
+    expect(highItems).toHaveLength(2);
+    expect(highItems[0].name).toBe("Alpha Risk High");
+    expect(highItems[1].name).toBe("Beta Risk High");
+  });
+
+  it("after removing a guardian link the remaining items stay in correct risk order", async () => {
+    await db
+      .delete(studentGuardiansTable)
+      .where(
+        and(
+          eq(studentGuardiansTable.userId, sortParent.id),
+          eq(studentGuardiansTable.studentId, highAlphaId),
+        ),
+      );
+
+    const res = await sortAgent.get("/api/parent/dashboard");
+    expect(res.status).toBe(200);
+    expect(res.body.items).toHaveLength(4);
+
+    const levels = res.body.items.map((s: { riskLevel: string }) => s.riskLevel);
+    expect(levels).toEqual(["HIGH", "MEDIUM", "LOW", "INSUFFICIENT_DATA"]);
+
+    expect(res.body.items[0].id).toBe(highBetaId);
   });
 });
