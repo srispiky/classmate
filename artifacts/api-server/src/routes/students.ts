@@ -261,8 +261,8 @@ router.get(
     if (denied) return;
 
     const [assignments, assessments] = await Promise.all([
-      db.select().from(assignmentsTable).where(eq(assignmentsTable.studentId, studentId)),
-      db.select().from(assessmentsTable).where(eq(assessmentsTable.studentId, studentId)),
+      db.select().from(assignmentsTable).where(and(eq(assignmentsTable.studentId, studentId), isNull(assignmentsTable.deletedAt))),
+      db.select().from(assessmentsTable).where(and(eq(assessmentsTable.studentId, studentId), isNull(assessmentsTable.deletedAt))),
     ]);
 
     const completed = assignments.filter(
@@ -369,7 +369,7 @@ router.get(
         })
         .from(assignmentsTable)
         .leftJoin(coursesTable, eq(assignmentsTable.courseId, coursesTable.id))
-        .where(eq(assignmentsTable.studentId, studentId)),
+        .where(and(eq(assignmentsTable.studentId, studentId), isNull(assignmentsTable.deletedAt))),
       db
         .select({
           createdAt: assessmentsTable.createdAt,
@@ -382,7 +382,7 @@ router.get(
         })
         .from(assessmentsTable)
         .leftJoin(coursesTable, eq(assessmentsTable.courseId, coursesTable.id))
-        .where(eq(assessmentsTable.studentId, studentId)),
+        .where(and(eq(assessmentsTable.studentId, studentId), isNull(assessmentsTable.deletedAt))),
     ]);
 
     const events = buildTimeline(assignmentRows, assessmentRows);

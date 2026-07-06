@@ -1,0 +1,251 @@
+# Sprint 13 Chunk 2 — Database Integrity Certification
+
+Before making changes:
+
+1. Read:
+   - lib/db/src/schema/*
+   - lib/db/migrations/*
+   - schema-smoke-test
+   - MIGRATION_RUNBOOK.md
+
+2. Review:
+   - all foreign key declarations
+   - all indexes
+   - all soft-delete columns
+   - all frequently queried columns
+
+3. Produce a GO / NO-GO assessment before implementation.
+
+Proceed only if GO.
+
+--------------------------------------------------
+OBJECTIVE
+--------------------------------------------------
+
+Certify database integrity for production deployment.
+
+The migration framework is now certified.
+
+This chunk certifies:
+
+- referential integrity
+- index coverage
+- query scalability
+- schema consistency
+
+without changing application behavior.
+
+--------------------------------------------------
+PART 1 — FOREIGN KEY AUDIT
+--------------------------------------------------
+
+Audit every table.
+
+Verify:
+
+- FK declared in schema
+- FK exists in database
+- migration contains FK
+- drizzle relations align
+
+Pay special attention to:
+
+- assignments
+- assessments
+- announcements
+- notes
+- activity
+- student_guardians
+- course_enrollments
+
+Identify:
+
+- missing FK declarations
+- nullable FK inconsistencies
+- orphan risk
+
+--------------------------------------------------
+PART 2 — INDEX COVERAGE AUDIT
+--------------------------------------------------
+
+Review all major queries.
+
+Audit routes:
+
+- students
+- courses
+- assignments
+- assessments
+- announcements
+- notes
+- dashboard
+- reports
+- student portal
+
+For every WHERE clause identify:
+
+- filter column
+- join column
+- sort column
+
+Verify index coverage.
+
+Create matrix:
+
+Column
+Query frequency
+Current index
+Recommended index
+Status
+
+--------------------------------------------------
+PART 3 — SOFT DELETE CONSISTENCY
+--------------------------------------------------
+
+Review all tables.
+
+Verify:
+
+deletedAt
+deletedBy
+
+where applicable.
+
+Confirm:
+
+all queries properly filter soft-deleted records.
+
+Identify any route that:
+
+- forgets deletedAt filter
+- exposes deleted data
+- performs joins incorrectly
+
+--------------------------------------------------
+PART 4 — RELATIONAL CONSISTENCY TESTS
+--------------------------------------------------
+
+Create certification tests.
+
+Verify:
+
+Cannot create:
+
+- assignment with invalid studentId
+- assignment with invalid courseId
+- assessment with invalid studentId
+- assessment with invalid courseId
+
+Verify deletes:
+
+- blocked when FK exists
+or
+- behave according to intended cascade policy
+
+Document actual behavior.
+
+--------------------------------------------------
+PART 5 — QUERY PLAN REVIEW
+--------------------------------------------------
+
+For high-volume endpoints review:
+
+- dashboard summary
+- student health
+- course report
+- student progress timeline
+
+Identify:
+
+- table scans
+- N+1 patterns
+- memory aggregation
+
+Document findings.
+
+Do NOT optimize yet.
+
+Certification only.
+
+--------------------------------------------------
+PART 6 — SCHEMA DRIFT PROTECTION
+--------------------------------------------------
+
+Verify:
+
+schema
+migration snapshot
+database
+
+are aligned.
+
+Confirm:
+
+drizzle-kit generate
+
+produces:
+
+"No schema changes"
+
+If drift exists:
+
+document exact differences.
+
+--------------------------------------------------
+PART 7 — PRODUCTION CERTIFICATION
+--------------------------------------------------
+
+Create:
+
+DATABASE_CERTIFICATION.md
+
+Include:
+
+1. FK audit
+2. Index audit
+3. Soft-delete audit
+4. Relational integrity tests
+5. Query plan review
+6. Schema drift review
+7. Production readiness verdict
+
+--------------------------------------------------
+PART 8 — TESTING
+--------------------------------------------------
+
+Run:
+
+- schema smoke tests
+- migration validation
+- database integrity tests
+
+Record results.
+
+--------------------------------------------------
+GIT REQUIREMENT
+--------------------------------------------------
+
+After completion:
+
+git add .
+git commit -m "feat(prod): certify database integrity and scalability readiness"
+git push origin main
+
+--------------------------------------------------
+DELIVERABLE FORMAT
+--------------------------------------------------
+
+Provide:
+
+1. GO / NO-GO decision
+2. FK audit results
+3. Index audit results
+4. Soft-delete audit results
+5. Integrity test results
+6. Query plan findings
+7. Schema drift findings
+8. Production certification verdict
+9. Files modified
+10. Commit hash
+
+Complete certification, testing, commit, and push before reporting.
