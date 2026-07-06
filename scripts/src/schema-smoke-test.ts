@@ -261,11 +261,22 @@ const checks: Array<{ name: string; fn: () => Promise<unknown> }> = [
   },
 ];
 
+console.log("schema-smoke-test: verifying live DB schema against ORM definitions…\n");
+
+// Connectivity check — fail fast with a clear message before any table checks.
+try {
+  await db.execute(sql`SELECT 1`);
+} catch (err: unknown) {
+  const msg = err instanceof Error ? err.message : String(err);
+  console.error(`schema-smoke-test: cannot connect to database — ${msg}`);
+  console.error("Check that DATABASE_URL is set correctly and the database is reachable.");
+  await pool.end();
+  process.exit(1);
+}
+
 let passed = 0;
 let failed = 0;
 const failures: CheckResult[] = [];
-
-console.log("schema-smoke-test: verifying live DB schema against ORM definitions…\n");
 
 for (const check of checks) {
   const result = await checkTable(check.name, check.fn);
