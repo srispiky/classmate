@@ -18,6 +18,12 @@ if [ -z "${DATABASE_URL:-}" ]; then
   exit 0
 fi
 
+# Pre-flight smoke test — verify DB connectivity and current schema before
+# attempting a push.  This gives a clear diagnostic when the database is
+# unreachable before any destructive DDL runs.
+echo "post-merge: running pre-flight smoke test..." >&2
+pnpm --filter @workspace/scripts run schema-smoke-test
+
 # Run the schema push.
 # NOTE: drizzle-kit push exits 0 even when PostgreSQL rejects authentication
 # (pg error code 28P01).  Capture its combined output so we can detect auth
@@ -40,5 +46,5 @@ if printf '%s\n' "$push_log" | grep -qiE "password authentication failed|authent
   exit 1
 fi
 
-echo "post-merge: running smoke test..." >&2
+echo "post-merge: running post-push smoke test..." >&2
 pnpm --filter @workspace/scripts run schema-smoke-test

@@ -33,7 +33,7 @@ function runPostMerge(env: Record<string, string | undefined>) {
         _POST_MERGE_SKIP_INSTALL: "1",
       },
       encoding: "utf8",
-      timeout: 30_000,
+      timeout: 60_000,
     },
   );
   return result;
@@ -92,14 +92,12 @@ describe("post-merge.sh exit behavior", () => {
     expect(combined).toContain("skipping");
   });
 
-  it("exits 1 at the db push step when DATABASE_URL has a bad password", () => {
-    // Core regression guard: post-merge.sh must exit 1 at the schema push
-    // step when PostgreSQL rejects authentication, before the smoke test runs.
-    //
-    // Background: drizzle-kit push exits 0 even when authentication fails
-    // (pg error code 28P01), so post-merge.sh cannot rely on `set -e` alone.
-    // It explicitly scans push output for auth-failure strings and exits 1
-    // if found — this test confirms that detection is in place and effective.
+  it("exits 1 at the pre-flight step when DATABASE_URL has a bad password", () => {
+    // Core regression guard: post-merge.sh must exit 1 when PostgreSQL rejects
+    // authentication.  With the pre-flight smoke test in place, this failure is
+    // now caught before the schema push runs — the smoke test uses a direct pg
+    // connection that properly surfaces auth errors, unlike drizzle-kit push
+    // which exits 0 on pg error code 28P01.
     //
     // If DATABASE_URL is not set in this environment there is no running
     // PostgreSQL server to auth against, so we skip rather than fail.
@@ -124,17 +122,47 @@ describe("post-merge.sh exit behavior", () => {
     // Must exit with code 1 specifically (not just any non-zero value).
     expect(result.status).toBe(1);
 
-    // The push step must have been reached — post-merge.sh emits
-    // "running schema push..." before invoking drizzle-kit push.
-    expect(result.stderr).toContain("running schema push");
+    // The pre-flight step must have been reached — post-merge.sh emits
+    // "running pre-flight smoke test..." before invoking the smoke test.
+    expect(result.stderr).toContain("running pre-flight smoke test");
 
-    // The push step must have detected the failure — post-merge.sh emits
-    // "schema push failed" when it catches the auth error in drizzle-kit output.
-    expect(result.stderr).toContain("schema push failed");
+    // The pre-flight must have detected the failure — schema-smoke-test emits
+    // "cannot connect to database" when authentication is rejected.
+    expect(result.stderr).toContain("cannot connect to database");
 
-    // The smoke test must NOT have been reached — post-merge.sh emits
-    // "running smoke test..." immediately before that step.  Its absence
-    // confirms the script stopped at the push step, not later.
-    expect(result.stderr).not.toContain("running smoke test");
+    // The schema push must NOT have been reached — post-merge.sh emits
+    // "running schema push..." immediately before that step.  Its absence
+    // confirms the script aborted at the pre-flight step.
+    expect(result.stderr).not.toContain("running schema push");
+
+    // The post-push smoke test must also NOT have been reached.
+    expect(result.stderr).not.toContain("running post-push smoke test");
   });
+
+  it("exits 0 and runs both smoke tests when DATABASE_URL is valid", () => {
+    // Happy-path end-to-end guard: post-merge.sh must complete successfully
+    // Vitest timeout is set to 70 s (third arg) because this test runs the full
+    // post-merge flow: pre-flight smoke test + schema push + post-push smoke test.
+    // when a real, reachable database is available.  Confirms that:
+    //   1. the pre-flight smoke test passes
+    //   2. the schema push succeeds
+    //   3. the post-push smoke test passes
+    //
+    // If DATABASE_URL is not set in this environment we skip rather than fail.
+    const rawUrl = process.env.DATABASE_URL;
+    if (!rawUrl) {
+      console.warn("Skipping post-merge happy-path test: DATABASE_URL not set in this environment");
+      return;
+    }
+
+    const result = runPostMerge({ DATABASE_URL: rawUrl });
+
+    // Must exit 0 — the entire post-merge flow succeeded.
+    expect(result.status).toBe(0);
+
+    // Both smoke test steps must have been reached and completed.
+    expect(result.stderr).toContain("running pre-flight smoke test");
+    expect(result.stderr).toContain("running schema push");
+    expect(result.stderr).toContain("running post-push smoke test");
+  }, 70_000);
 });
