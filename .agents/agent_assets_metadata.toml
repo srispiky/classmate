@@ -167,3 +167,9 @@ id = "ZkZ_yj_yz7g9IsMRkrD_x"
 uri = "file://ClaudePromptResult/sprint10-gate-review.md"
 type = "text"
 title = "Sprint 10 Gate Review"
+
+[[outputs]]
+id = "D_ijkX9-NMsh2IA5Sw_O1"
+uri = "file://docs/sprint-13-chunk1-migration-framework.md"
+type = "text"
+title = "Sprint 13 Chunk 1 — Migration Framework Certification"
